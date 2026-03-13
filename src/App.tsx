@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 import Landing from "./pages/Landing";
@@ -24,34 +25,92 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/landing" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/landing" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* Protected Routes */}
-            <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/app/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-            <Route path="/app/media/new" element={<ProtectedRoute><AddMedia /></ProtectedRoute>} />
-            <Route path="/app/media/:id" element={<ProtectedRoute><MediaDetail /></ProtectedRoute>} />
-            <Route path="/app/quiz" element={<ProtectedRoute><QuizHub /></ProtectedRoute>} />
-            <Route path="/app/quiz/:mediaId" element={<ProtectedRoute><QuizSession /></ProtectedRoute>} />
-            <Route path="/app/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
-            <Route path="/app/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              {/* Protected Routes */}
+              <Route
+                path="/app"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/library"
+                element={
+                  <ProtectedRoute>
+                    <Library />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/media/new"
+                element={
+                  <ProtectedRoute>
+                    <AddMedia />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/media/:id"
+                element={
+                  <ProtectedRoute>
+                    <MediaDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/quiz"
+                element={
+                  <ProtectedRoute>
+                    <QuizHub />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/quiz/:mediaId"
+                element={
+                  <ProtectedRoute>
+                    <QuizSession />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/feed"
+                element={
+                  <ProtectedRoute>
+                    <Feed />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

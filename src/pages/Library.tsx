@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { MediaCardSkeleton } from '@/components/ui/skeleton-cards';
-import { EmptyState } from '@/components/ui/empty-state';
-import { MediaTypeBadge } from '@/components/ui/media-type-badge';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { mediaService } from '@/services/mediaService';
-import { MediaItem, MediaType, MediaStatus } from '@/types';
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MediaCardSkeleton } from "@/components/ui/skeleton-cards";
+import { EmptyState } from "@/components/ui/empty-state";
+import { MediaTypeBadge } from "@/components/ui/media-type-badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { mediaService } from "@/services/mediaService";
+import { MediaItem, MediaType, MediaStatus } from "@/types";
 import {
   Plus,
   Search,
@@ -18,32 +18,32 @@ import {
   BookOpen,
   Lightbulb,
   Quote,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 
-type SortOption = 'recent' | 'title' | 'themes' | 'vocab';
+type SortOption = "recent" | "title" | "themes" | "vocab";
 
 export default function Library() {
   const [searchParams] = useSearchParams();
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
-  const [statusFilter, setStatusFilter] = useState<MediaStatus | 'all'>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<MediaType | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<MediaStatus | "all">("all");
+  const [sortBy, setSortBy] = useState<SortOption>("recent");
 
   useEffect(() => {
     async function loadMedia() {
@@ -52,7 +52,7 @@ export default function Library() {
         const data = await mediaService.getAll();
         setMedia(data);
       } catch (error) {
-        console.error('Failed to load media:', error);
+        console.error("Failed to load media:", error);
       } finally {
         setIsLoading(false);
       }
@@ -66,22 +66,26 @@ export default function Library() {
     .filter((item) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        if (!item.title.toLowerCase().includes(query) &&
-            !item.tags.some((tag) => tag.toLowerCase().includes(query))) {
+        if (
+          !item.title.toLowerCase().includes(query) &&
+          !item.tags.some((tag) => tag.toLowerCase().includes(query))
+        ) {
           return false;
         }
       }
-      if (typeFilter !== 'all' && item.type !== typeFilter) return false;
-      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+      if (typeFilter !== "all" && item.type !== typeFilter) return false;
+      if (statusFilter !== "all" && item.status !== statusFilter) return false;
       return true;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'title':
+        case "title":
           return a.title.localeCompare(b.title);
-        case 'recent':
+        case "recent":
         default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
       }
     });
 
@@ -91,8 +95,12 @@ export default function Library() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Library</h1>
-            <p className="text-muted-foreground mt-1">{media.length} items in your collection</p>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">
+              Library
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {media.length} items in your collection
+            </p>
           </div>
           <Link to="/app/media/new">
             <Button className="gap-2">
@@ -114,7 +122,10 @@ export default function Library() {
             />
           </div>
           <div className="flex gap-2">
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as MediaType | 'all')}>
+            <Select
+              value={typeFilter}
+              onValueChange={(v) => setTypeFilter(v as MediaType | "all")}
+            >
               <SelectTrigger className="w-32">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Type" />
@@ -129,7 +140,10 @@ export default function Library() {
                 <SelectItem value="game">Games</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as MediaStatus | 'all')}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as MediaStatus | "all")}
+            >
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -147,11 +161,22 @@ export default function Library() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                  <DropdownMenuRadioItem value="recent">Recently Added</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="title">Title A-Z</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="themes">Most Themes</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="vocab">Most Vocab</DropdownMenuRadioItem>
+                <DropdownMenuRadioGroup
+                  value={sortBy}
+                  onValueChange={(v) => setSortBy(v as SortOption)}
+                >
+                  <DropdownMenuRadioItem value="recent">
+                    Recently Added
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="title">
+                    Title A-Z
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="themes">
+                    Most Themes
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="vocab">
+                    Most Vocab
+                  </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -169,9 +194,11 @@ export default function Library() {
           <EmptyState
             icon={LibraryIcon}
             title="No media found"
-            description={searchQuery || typeFilter !== 'all' || statusFilter !== 'all'
-              ? "Try adjusting your search or filters."
-              : "Add your first movie, book, or show to start learning."}
+            description={
+              searchQuery || typeFilter !== "all" || statusFilter !== "all"
+                ? "Try adjusting your search or filters."
+                : "Add your first movie, book, or show to start learning."
+            }
             action={
               <Link to="/app/media/new">
                 <Button className="gap-2">
@@ -207,7 +234,7 @@ function MediaCard({ media }: { media: MediaItem }) {
   return (
     <Link
       to={`/app/media/${media.id}`}
-      className="glass grain rounded-2xl overflow-hidden transition-smooth hover:glow-teal hover:border-primary/30 group"
+      className="glass grain rounded-2xl overflow-hidden transition-smooth hover:glow-amber hover:border-primary/30 group"
     >
       {/* Cover Image */}
       <div className="aspect-[2/3] relative overflow-hidden">
@@ -233,7 +260,9 @@ function MediaCard({ media }: { media: MediaItem }) {
       {/* Content */}
       <div className="p-4 space-y-3">
         <div>
-          <h3 className="font-display font-semibold text-foreground truncate">{media.title}</h3>
+          <h3 className="font-display font-semibold text-foreground truncate">
+            {media.title}
+          </h3>
           <p className="text-sm text-muted-foreground">
             {media.creator && `${media.creator} • `}
             {media.year}

@@ -1,12 +1,20 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
-import { MediaTypeBadge } from '@/components/ui/media-type-badge';
-import { mediaService } from '@/services/mediaService';
-import { MediaItem } from '@/types';
-import { Brain, Play, Trophy, BookOpen, Lightbulb, Quote, Info } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { MediaTypeBadge } from "@/components/ui/media-type-badge";
+import { mediaService } from "@/services/mediaService";
+import { MediaItem } from "@/types";
+import {
+  Brain,
+  Play,
+  Trophy,
+  BookOpen,
+  Lightbulb,
+  Quote,
+  Info,
+} from "lucide-react";
 
 export default function QuizHub() {
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -18,7 +26,7 @@ export default function QuizHub() {
         const data = await mediaService.getAll();
         setMedia(data);
       } catch (error) {
-        console.error('Failed to load media:', error);
+        console.error("Failed to load media:", error);
       } finally {
         setIsLoading(false);
       }
@@ -27,10 +35,30 @@ export default function QuizHub() {
   }, []);
 
   const quizTypes = [
-    { id: 'themes', label: 'Themes Quiz', icon: Lightbulb, description: 'Test your understanding of key themes' },
-    { id: 'vocab', label: 'Vocabulary Quiz', icon: BookOpen, description: 'Practice vocabulary words' },
-    { id: 'quotes', label: 'Quote Matching', icon: Quote, description: 'Match quotes to themes' },
-    { id: 'facts', label: 'Fact Check', icon: Info, description: 'Identify misconceptions vs truth' },
+    {
+      id: "themes",
+      label: "Themes Quiz",
+      icon: Lightbulb,
+      description: "Test your understanding of key themes",
+    },
+    {
+      id: "vocab",
+      label: "Vocabulary Quiz",
+      icon: BookOpen,
+      description: "Practice vocabulary words",
+    },
+    {
+      id: "quotes",
+      label: "Quote Matching",
+      icon: Quote,
+      description: "Match quotes to themes",
+    },
+    {
+      id: "facts",
+      label: "Fact Check",
+      icon: Info,
+      description: "Identify misconceptions vs truth",
+    },
   ];
 
   return (
@@ -38,8 +66,12 @@ export default function QuizHub() {
       <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-20 md:pb-0">
         {/* Header */}
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Quiz Hub</h1>
-          <p className="text-muted-foreground mt-1">Test your knowledge from what you've learned</p>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">
+            Quiz Hub
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Test your knowledge from what you've learned
+          </p>
         </div>
 
         {/* Stats */}
@@ -51,24 +83,32 @@ export default function QuizHub() {
           </div>
           <div className="glass grain rounded-2xl p-5 text-center">
             <Brain className="h-6 w-6 text-primary mx-auto mb-2" />
-            <p className="font-display text-2xl font-bold text-foreground">85%</p>
+            <p className="font-display text-2xl font-bold text-foreground">
+              85%
+            </p>
             <p className="text-sm text-muted-foreground">Avg. Score</p>
           </div>
           <div className="glass grain rounded-2xl p-5 text-center">
             <Lightbulb className="h-6 w-6 text-violet-400 mx-auto mb-2" />
-            <p className="font-display text-2xl font-bold text-foreground">12</p>
+            <p className="font-display text-2xl font-bold text-foreground">
+              12
+            </p>
             <p className="text-sm text-muted-foreground">Themes Tested</p>
           </div>
           <div className="glass grain rounded-2xl p-5 text-center">
             <BookOpen className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
-            <p className="font-display text-2xl font-bold text-foreground">28</p>
+            <p className="font-display text-2xl font-bold text-foreground">
+              28
+            </p>
             <p className="text-sm text-muted-foreground">Words Reviewed</p>
           </div>
         </div>
 
         {/* Quiz Types */}
         <div>
-          <h2 className="font-display text-lg font-semibold text-foreground mb-4">Quiz Types</h2>
+          <h2 className="font-display text-lg font-semibold text-foreground mb-4">
+            Quiz Types
+          </h2>
           <div className="grid sm:grid-cols-2 gap-4">
             {quizTypes.map((type) => (
               <div
@@ -79,8 +119,12 @@ export default function QuizHub() {
                   <type.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-semibold text-foreground">{type.label}</h3>
-                  <p className="text-sm text-muted-foreground">{type.description}</p>
+                  <h3 className="font-display font-semibold text-foreground">
+                    {type.label}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {type.description}
+                  </p>
                 </div>
               </div>
             ))}
@@ -89,7 +133,9 @@ export default function QuizHub() {
 
         {/* Choose Media */}
         <div>
-          <h2 className="font-display text-lg font-semibold text-foreground mb-4">Choose Media to Quiz</h2>
+          <h2 className="font-display text-lg font-semibold text-foreground mb-4">
+            Choose Media to Quiz
+          </h2>
           {isLoading ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
@@ -113,7 +159,7 @@ export default function QuizHub() {
                 <Link
                   key={item.id}
                   to={`/app/quiz/${item.id}`}
-                  className="glass grain rounded-2xl p-5 flex items-center gap-4 transition-smooth hover:glow-teal hover:border-primary/30 group"
+                  className="glass grain rounded-2xl p-5 flex items-center gap-4 transition-smooth hover:glow-amber hover:border-primary/30 group"
                 >
                   {item.coverUrl ? (
                     <img
@@ -127,12 +173,22 @@ export default function QuizHub() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-semibold text-foreground truncate">{item.title}</h3>
+                    <h3 className="font-display font-semibold text-foreground truncate">
+                      {item.title}
+                    </h3>
                     <div className="mt-1">
-                      <MediaTypeBadge type={item.type} size="sm" showIcon={false} />
+                      <MediaTypeBadge
+                        type={item.type}
+                        size="sm"
+                        showIcon={false}
+                      />
                     </div>
                     <div className="flex items-center gap-2 mt-3">
-                      <Button size="sm" variant="outline" className="gap-1 group-hover:bg-primary group-hover:text-primary-foreground">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 group-hover:bg-primary group-hover:text-primary-foreground"
+                      >
                         <Play className="h-3 w-3" />
                         Start Quiz
                       </Button>
