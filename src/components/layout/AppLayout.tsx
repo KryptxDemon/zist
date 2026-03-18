@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
   Sun,
   Moon,
+  LineChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -37,7 +38,9 @@ import {
 const navItems = [
   { path: "/app", label: "Home" },
   { path: "/app/library", label: "Library" },
+  { path: "/app/vocabulary", label: "Vocabulary" },
   { path: "/app/feed", label: "Feed" },
+  { path: "/app/insights", label: "Insights" },
 ];
 
 const quizItems = [
@@ -296,6 +299,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="text-xs">Quiz</span>
           </Link>
           <Link
+            to="/app/vocabulary"
+            className={cn(
+              "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-smooth",
+              location.pathname === "/app/vocabulary"
+                ? "text-primary"
+                : "text-muted-foreground",
+            )}
+          >
+            <BookOpen className="h-5 w-5" />
+            <span className="text-xs">Vocab</span>
+          </Link>
+          <Link
             to="/app/feed"
             className={cn(
               "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-smooth",
@@ -306,6 +321,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <Rss className="h-5 w-5" />
             <span className="text-xs">Feed</span>
+          </Link>
+          <Link
+            to="/app/insights"
+            className={cn(
+              "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-smooth",
+              location.pathname === "/app/insights"
+                ? "text-primary"
+                : "text-muted-foreground",
+            )}
+          >
+            <LineChart className="h-5 w-5" />
+            <span className="text-xs">Insights</span>
           </Link>
         </div>
       </nav>

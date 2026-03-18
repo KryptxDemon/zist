@@ -1,19 +1,17 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, Sun, Moon } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import "./Login.css";
+
+const logoImg = "/zistv2-logo.png";
+const stockImg = "/bg.jpg";
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
 
   const [email, setEmail] = useState("");
@@ -22,7 +20,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const from = location.state?.from?.pathname || "/app";
+  const from = location.state?.from?.pathname || "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,127 +45,122 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background relative">
-      {/* Theme Toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleTheme}
-        className="absolute top-4 right-4 rounded-full"
-        title={
-          theme === "light" ? "Switch to dark mode" : "Switch to light mode"
-        }
-      >
-        {theme === "light" ? (
-          <Moon className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-        ) : (
-          <Sun className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-        )}
-      </Button>
-
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <img
-              src="/zist logo.png"
-              alt="Zist Logo"
-              className="h-12 w-12 rounded-2xl object-contain"
-            />
-          </Link>
-          <h1 className="font-display text-2xl font-bold text-foreground mt-6 mb-2">
-            Welcome back
-          </h1>
-          <p className="text-muted-foreground">Sign in to continue learning</p>
-        </div>
-
-        {/* Login Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="glass grain rounded-2xl p-6 sm:p-8 space-y-6"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="h-11"
-            />
+    <div className="login-page-v3">
+      <div className="login-container-v3">
+        {/* Left Side - Form */}
+        <div className="login-left-v3">
+          <div className="login-logo-wrap">
+            <img src={logoImg} alt="Zist Logo" className="login-logo" />
+            <span className="login-brand">ZIST</span>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                to="/forgot-password"
-                className="text-sm text-primary hover:underline"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-11 pr-10"
-              />
+          <div className="login-content">
+            <h1 className="login-title">Welcome Back</h1>
+            <p className="login-subtitle">Welcome back! Please enter your details.</p>
+
+            <form onSubmit={handleSubmit} className="login-form">
+              <div className="login-field">
+                <label htmlFor="email" className="login-label">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="login-input"
+                />
+              </div>
+
+              <div className="login-field">
+                <label htmlFor="password" className="login-label">Password</label>
+                <div className="login-password-wrap">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="login-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="login-password-toggle"
+                  >
+                    {showPassword ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="login-footer-row">
+                <div className="login-checkbox-wrap">
+                  <input
+                    id="remember"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="login-checkbox"
+                  />
+                  <label htmlFor="remember" className="login-checkbox-label">
+                    Remember me
+                  </label>
+                </div>
+                <Link to="/forgot-password" className="login-forgot-link">
+                  Forgot password
+                </Link>
+              </div>
+
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                type="submit"
+                disabled={isLoading}
+                className="login-btn-signin"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="inline mr-2 animate-spin" />
+                    Signing in...
+                  </>
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  "Sign in"
                 )}
               </button>
+            </form>
+
+            <div className="login-divider">
+              <span>or</span>
             </div>
+
+            <button className="login-btn-google" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10" opacity="0.2" />
+              </svg>
+              Sign in with Google
+            </button>
+
+            <p className="login-signup-text">
+              Don't have an account?{" "}
+              <Link to="/signup" className="login-signup-link">
+                Sign up for free!
+              </Link>
+            </p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="remember"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-            />
-            <Label
-              htmlFor="remember"
-              className="text-sm font-normal cursor-pointer"
-            >
-              Remember me
-            </Label>
-          </div>
-
-          <Button type="submit" className="w-full h-11" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Sign in"
-            )}
-          </Button>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-primary hover:underline font-medium"
-            >
-              Sign up
-            </Link>
-          </p>
-        </form>
+        {/* Right Side - Image */}
+        <div className="login-right-v3">
+          <img
+            src={stockImg}
+            alt="Welcome illustration"
+            className="login-image"
+          />
+          <div className="login-image-overlay" aria-hidden="true" />
+        </div>
       </div>
     </div>
   );

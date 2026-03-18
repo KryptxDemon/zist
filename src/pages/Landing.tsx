@@ -1,274 +1,286 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useNavigate } from "react-router-dom";
 import {
-  Brain,
-  Library,
-  Rss,
-  Sparkles,
-  ArrowRight,
+  ArrowUpRight,
+  BookOpenText,
+  BrainCircuit,
   Quote,
-  BookOpen,
-  Lightbulb,
-  CheckCircle,
-  Sun,
-  Moon,
+  Sparkles,
 } from "lucide-react";
+import "./Landing.css";
 
-const features = [
+const logoImg = "/zistv2-logo.png";
+const heroImg = "/replace.jpg";
+
+const capabilities = [
   {
-    icon: Lightbulb,
-    title: "Themes & Concepts",
-    description:
-      "Every story has themes. Extract meaning from movies, shows, music, books, and games with AI-powered insights.",
+    icon: BookOpenText,
+    title: "Capture Themes",
+    description: "Extract deeper ideas from movies, books, music, and shows.",
   },
   {
-    icon: BookOpen,
-    title: "Vocabulary Builder",
-    description:
-      "Capture new words from song lyrics, movie dialogues, and books. Build vocabulary from everything you consume.",
+    icon: Sparkles,
+    title: "Build Vocabulary",
+    description: "Save new words in context and practice them naturally.",
+    featured: true,
   },
   {
     icon: Quote,
-    title: "Quote Collection",
-    description:
-      "Save memorable lines from films, lyrics from songs, passages from books—with your interpretations.",
+    title: "Collect Quotes",
+    description: "Keep meaningful lines and connect them to your own insights.",
   },
   {
-    icon: Brain,
+    icon: BrainCircuit,
     title: "Smart Quizzes",
-    description:
-      "Test your knowledge across all your media. Remember the themes, quotes, and vocabulary you've collected.",
-  },
-  {
-    icon: Library,
-    title: "Media Library",
-    description:
-      "Movies, TV shows, music, books, podcasts, games—all organized in one beautiful library.",
-  },
-  {
-    icon: Rss,
-    title: "Social Learning",
-    description:
-      "Share what you're learning from your favorite media and discover insights from friends.",
+    description: "Turn your saved media knowledge into active recall sessions.",
   },
 ];
 
-const steps = [
+const topThemes = [
   {
-    step: "01",
-    title: "Add Media",
-    description:
-      "Add movies, shows, music, books, podcasts, or games to your library.",
+    title: "Identity & Growth",
+    count: "42 insights",
+    activity: "10 media items",
+    imageClass: "theme-card-image-one",
   },
   {
-    step: "02",
-    title: "Capture Insights",
-    description:
-      "Save themes, lyrics, dialogues, quotes, and vocabulary as you experience.",
+    title: "Power & Society",
+    count: "31 insights",
+    activity: "8 media items",
+    imageClass: "theme-card-image-two",
   },
   {
-    step: "03",
-    title: "Test Yourself",
-    description:
-      "Take quizzes to remember what you've learned from all your media.",
-  },
-  {
-    step: "04",
-    title: "Share & Grow",
-    description:
-      "Share your insights and see what themes others are discovering.",
+    title: "Faith & Meaning",
+    count: "26 insights",
+    activity: "7 media items",
+    imageClass: "theme-card-image-three",
   },
 ];
+
+function EveryUnderline() {
+  return (
+    <svg
+      viewBox="0 0 180 12"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="landing-every-underline"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M2 8 C30 3, 60 10, 90 5 C118 1, 148 9, 176 5"
+        stroke="#7B6FF8"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <img
-              src="/zist logo.png"
-              alt="Zist Logo"
-              className="h-9 w-9 rounded-xl object-contain"
-            />
-            <span className="font-display text-xl font-semibold text-foreground">
-              Zist
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="rounded-full"
-              title={
-                theme === "light"
-                  ? "Switch to dark mode"
-                  : "Switch to light mode"
-              }
+    <div className="landing-page-v3">
+      <svg
+        className="landing-bg-top-left"
+        viewBox="0 0 480 420"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M0 0 L480 0 C480 0, 420 30, 360 80 C300 130, 260 200, 200 260 C140 320, 60 370, 0 420 Z"
+          fill="#E2E6FF"
+        />
+        <ellipse cx="160" cy="160" rx="220" ry="200" fill="#E2E6FF" />
+      </svg>
+
+      <svg
+        className="landing-bg-bottom-right"
+        viewBox="0 0 520 440"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M520 440 L0 440 C0 440, 60 410, 130 360 C200 310, 250 240, 310 180 C370 120, 450 60, 520 0 Z"
+          fill="#E2E6FF"
+        />
+        <ellipse cx="360" cy="280" rx="220" ry="200" fill="#E2E6FF" />
+      </svg>
+
+      <div className="landing-decor-box-1" aria-hidden="true" />
+      <div className="landing-decor-box-2" aria-hidden="true" />
+      <div className="landing-decor-box-3" aria-hidden="true" />
+      <div className="landing-decor-box-4" aria-hidden="true" />
+
+      <header className="landing-v3-navbar">
+        <div className="landing-v3-logo-wrap">
+          <img src={logoImg} alt="Zist Logo" className="landing-v3-logo" />
+          <span className="landing-v3-brand">ZIST</span>
+        </div>
+
+        <div className="landing-v3-nav-actions">
+          <button
+            type="button"
+            className="landing-v3-login"
+            onClick={() => navigate("/login")}
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            className="landing-v3-signup"
+            onClick={() => navigate("/signup")}
+          >
+            Sign up
+          </button>
+          <button
+            type="button"
+            className="landing-v3-lang"
+            aria-label="Language selector"
+          >
+            EN
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              aria-hidden="true"
             >
-              {theme === "light" ? (
-                <Moon className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-              ) : (
-                <Sun className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-              )}
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("/login")}>
-              Log in
-            </Button>
-            <Button onClick={() => navigate("/signup")}>Get Started</Button>
-          </div>
+              <path
+                d="M3 5L7 9L11 5"
+                stroke="#111111"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="container mx-auto max-w-5xl text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-            <Sparkles className="h-4 w-4" />
-            Everything has themes
-          </div>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
-            Learn from every movie, song,
-            <br />
-            <span className="text-gradient-warm">show, and book you love</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Zist helps you capture themes, vocabulary, and quotes from all your
-            media—movies, TV shows, music, books, podcasts, and games. Your
-            learning companion for everything you experience.
+      <section className="landing-v3-hero">
+        <div className="landing-v3-left">
+          <p className="landing-v3-overline">
+            Turn passive media consumption into active learning
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              size="lg"
-              onClick={() => navigate("/signup")}
-              className="gap-2 text-lg px-8"
-            >
-              Start Learning Free
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate("/login")}
-            >
-              I already have an account
-            </Button>
-          </div>
-        </div>
-      </section>
 
-      {/* Features Grid */}
-      <section className="py-20 px-4 border-t border-border/50">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Everything you need to learn deeply
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Capture insights from any media type and build lasting knowledge.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="glass grain rounded-2xl p-6 transition-smooth hover:glow-amber hover:border-primary/30"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
-                  <feature.icon className="h-6 w-6" />
-                </div>
-                <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section className="py-20 px-4 border-t border-border/50">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              How Zist works
-            </h2>
-            <p className="text-muted-foreground text-lg">
-              Four simple steps to capture themes from everything you
-              experience.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {steps.map((step, index) => (
-              <div key={step.step} className="relative">
-                <div className="glass grain rounded-2xl p-6 h-full">
-                  <span className="font-display text-4xl font-bold text-primary/30">
-                    {step.step}
-                  </span>
-                  <h3 className="font-display text-lg font-semibold text-foreground mt-3 mb-2">
-                    {step.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm">
-                    {step.description}
-                  </p>
-                </div>
-                {index < steps.length - 1 && (
-                  <ArrowRight className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 text-muted-foreground/30 h-6 w-6" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 border-t border-border/50">
-        <div className="container mx-auto max-w-3xl text-center">
-          <div className="glass grain rounded-3xl p-8 sm:p-12 glow-soft">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Ready to find themes in everything?
-            </h2>
-            <p className="text-muted-foreground text-lg mb-8">
-              Start capturing insights from movies, shows, music, books, and
-              more. Your media, your learning.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button
-                size="lg"
-                onClick={() => navigate("/signup")}
-                className="gap-2"
-              >
-                <CheckCircle className="h-5 w-5" />
-                Create Free Account
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 px-4 border-t border-border/50">
-        <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img
-              src="/zist logo.png"
-              alt="Zist Logo"
-              className="h-7 w-7 rounded-lg object-contain"
-            />
-            <span className="font-display font-semibold text-foreground">
-              Zist
+          <h1 className="landing-v3-title">
+            <span className="landing-v3-title-line landing-v3-title-line-top">
+              Learn from{" "}
+              <span className="landing-v3-every">
+                every
+                <EveryUnderline />
+              </span>
             </span>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            © 2026 Zist. Every story has themes.
+            <br />
+            <span className="landing-v3-title-line landing-v3-title-line-bottom">
+              media you love
+            </span>
+          </h1>
+
+          <p className="landing-v3-copy">
+            Zist helps you capture and practice themes, vocabulary, and quotes
+            from all your media: movies, TV shows, music, books, podcasts, and
+            games.
           </p>
+
+          <button
+            type="button"
+            className="landing-v3-cta"
+            onClick={() => navigate("/signup")}
+          >
+            Get Started
+          </button>
+        </div>
+
+        <div className="landing-v3-right">
+          <img
+            src={heroImg}
+            alt="Person learning from media"
+            className="landing-v3-hero-img"
+          />
+        </div>
+      </section>
+
+      <section
+        className="landing-v3-section landing-v3-capabilities"
+        id="capabilities"
+      >
+        <p className="landing-v3-section-kicker">Category</p>
+        <h2 className="landing-v3-section-title">What We Can Do Here</h2>
+
+        <div className="landing-v3-cap-grid">
+          {capabilities.map((item) => (
+            <article
+              key={item.title}
+              className={`landing-v3-cap-card ${item.featured ? "landing-v3-cap-card-featured" : ""}`}
+            >
+              <div className="landing-v3-cap-icon-wrap">
+                <item.icon
+                  size={30}
+                  strokeWidth={1.8}
+                  className="landing-v3-cap-icon"
+                />
+              </div>
+              <h3>{item.title}</h3>
+              <p>{item.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="landing-v3-section landing-v3-top-themes"
+        id="top-themes"
+      >
+        <p className="landing-v3-section-kicker">Top Learning Focus</p>
+        <h2 className="landing-v3-section-title">Top Themes</h2>
+
+        <div className="landing-v3-theme-grid">
+          {topThemes.map((theme) => (
+            <article key={theme.title} className="landing-v3-theme-card">
+              <div
+                className={`landing-v3-theme-image ${theme.imageClass}`}
+                aria-hidden="true"
+              />
+              <div className="landing-v3-theme-body">
+                <div className="landing-v3-theme-row">
+                  <h3>{theme.title}</h3>
+                  <span>{theme.count}</span>
+                </div>
+                <div className="landing-v3-theme-meta">
+                  <ArrowUpRight size={14} />
+                  <span>{theme.activity}</span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <footer className="landing-v3-footer">
+        <div className="landing-v3-footer-brand">
+          <img
+            src={logoImg}
+            alt="Zist Logo"
+            className="landing-v3-footer-logo"
+          />
+          <span>ZIST</span>
+        </div>
+        <p>
+          Learn from everything you consume. Capture themes, vocabulary, and
+          quotes in one place.
+        </p>
+        <div className="landing-v3-footer-links">
+          <button type="button" onClick={() => navigate("/login")}>
+            Login
+          </button>
+          <button type="button" onClick={() => navigate("/signup")}>
+            Sign up
+          </button>
+          <a href="#capabilities">What we can do</a>
+          <a href="#top-themes">Top themes</a>
         </div>
       </footer>
     </div>

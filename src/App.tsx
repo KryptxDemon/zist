@@ -18,6 +18,8 @@ import MediaDetail from "./pages/MediaDetail";
 import QuizHub from "./pages/QuizHub";
 import QuizSession from "./pages/QuizSession";
 import Feed from "./pages/Feed";
+import Vocabulary from "./pages/Vocabulary";
+import Insights from "./pages/Insights";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -93,6 +95,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Feed />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/insights"
+                element={
+                  <ProtectedRoute>
+                    <Insights />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/vocabulary"
+                element={
+                  <ProtectedRoute>
+                    <Vocabulary />
                   </ProtectedRoute>
                 }
               />
