@@ -79,7 +79,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Logo */}
           <Link to="/app" className="flex items-center gap-3">
             <img
-              src="/zist logo.png"
+              src="/zistlogo-2.png"
               alt="Zist Logo"
               className="h-10 w-10 rounded-xl object-contain"
             />

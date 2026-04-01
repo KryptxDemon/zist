@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, Check, X, Sun, Moon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
+import "./Signup.css";
+
+const logoImg = "/zistv2-logo.png";
+const stockImg = "/bg.jpg";
 
 function getPasswordStrength(password: string): {
   score: number;
@@ -21,16 +20,15 @@ function getPasswordStrength(password: string): {
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  if (score <= 1) return { score, label: "Weak", color: "bg-destructive" };
-  if (score <= 2) return { score, label: "Fair", color: "bg-rose-500" };
-  if (score <= 3) return { score, label: "Good", color: "bg-primary" };
-  return { score, label: "Strong", color: "bg-purple-600" };
+  if (score <= 1) return { score, label: "Weak", color: "#dc2626" };
+  if (score <= 2) return { score, label: "Fair", color: "#f97316" };
+  if (score <= 3) return { score, label: "Good", color: "#7c6fe0" };
+  return { score, label: "Strong", color: "#9f5ddb" };
 }
 
 export default function Signup() {
   const navigate = useNavigate();
   const { signup } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
 
   const [displayName, setDisplayName] = useState("");
@@ -80,160 +78,163 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background relative">
-      {/* Theme Toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleTheme}
-        className="absolute top-4 right-4 rounded-full"
-        title={
-          theme === "light" ? "Switch to dark mode" : "Switch to light mode"
-        }
-      >
-        {theme === "light" ? (
-          <Moon className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-        ) : (
-          <Sun className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-        )}
-      </Button>
-
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <img
-              src="/zist logo.png"
-              alt="Zist Logo"
-              className="h-12 w-12 rounded-2xl object-contain"
-            />
-          </Link>
-          <h1 className="font-display text-2xl font-bold text-foreground mt-6 mb-2">
-            Create your account
-          </h1>
-          <p className="text-muted-foreground">
-            Start your learning journey today
-          </p>
-        </div>
-
-        {/* Signup Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="glass grain rounded-2xl p-6 sm:p-8 space-y-6"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="displayName">Display name</Label>
-            <Input
-              id="displayName"
-              type="text"
-              placeholder="Your name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              required
-              className="h-11"
-            />
+    <div className="signup-page-v3">
+      <div className="signup-container-v3">
+        {/* Left Side - Form */}
+        <div className="signup-left-v3">
+          <div className="signup-logo-wrap">
+            <img src={logoImg} alt="Zist Logo" className="signup-logo" />
+            <span className="signup-brand">ZIST</span>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="h-11"
-            />
-          </div>
+          <div className="signup-content">
+            <h1 className="signup-title">Create Account</h1>
+            <p className="signup-subtitle">Join us and start learning today</p>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-11 pr-10"
-              />
+            <form onSubmit={handleSubmit} className="signup-form">
+              <div className="signup-field">
+                <label htmlFor="displayName" className="signup-label">
+                  Display Name
+                </label>
+                <input
+                  id="displayName"
+                  type="text"
+                  placeholder="Enter your name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  className="signup-input"
+                />
+              </div>
+
+              <div className="signup-field">
+                <label htmlFor="email" className="signup-label">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="signup-input"
+                />
+              </div>
+
+              <div className="signup-field">
+                <label htmlFor="password" className="signup-label">
+                  Password
+                </label>
+                <div className="signup-password-wrap">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="signup-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="signup-password-toggle"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+
+                {/* Password Strength */}
+                {password && (
+                  <div className="signup-password-strength">
+                    <div className="signup-strength-bar">
+                      <div className="signup-strength-progress">
+                        <div
+                          className="signup-strength-fill"
+                          style={{
+                            width: `${(passwordStrength.score / 5) * 100}%`,
+                            backgroundColor: passwordStrength.color,
+                          }}
+                        />
+                      </div>
+                      <span className="signup-strength-label">
+                        {passwordStrength.label}
+                      </span>
+                    </div>
+                    <div
+                      className="signup-requirements"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, 1fr)",
+                      }}
+                    >
+                      {requirements.map((req) => (
+                        <div
+                          key={req.text}
+                          className={`signup-requirement ${req.met ? "met" : ""}`}
+                        >
+                          <span className="signup-requirement-icon">
+                            {req.met ? <Check size={14} /> : <X size={14} />}
+                          </span>
+                          {req.text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                type="submit"
+                disabled={isLoading}
+                className="signup-btn-signup"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="inline mr-2 animate-spin" />
+                    Creating account...
+                  </>
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  "Sign up"
                 )}
               </button>
+            </form>
+
+            <div className="signup-divider">
+              <span>or</span>
             </div>
 
-            {/* Password Strength */}
-            {password && (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full transition-all duration-300",
-                        passwordStrength.color,
-                      )}
-                      style={{
-                        width: `${(passwordStrength.score / 5) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {passwordStrength.label}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {requirements.map((req) => (
-                    <div
-                      key={req.text}
-                      className={cn(
-                        "flex items-center gap-1.5 text-xs",
-                        req.met ? "text-purple-600" : "text-muted-foreground",
-                      )}
-                    >
-                      {req.met ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <X className="h-3 w-3" />
-                      )}
-                      {req.text}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <button className="signup-btn-google" type="button">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <circle cx="12" cy="12" r="10" opacity="0.2" />
+              </svg>
+              Sign up with Google
+            </button>
+
+            <p className="signup-signin-text">
+              Already have an account?{" "}
+              <Link to="/login" className="signup-signin-link">
+                Sign in
+              </Link>
+            </p>
           </div>
+        </div>
 
-          <Button type="submit" className="w-full h-11" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating account...
-              </>
-            ) : (
-              "Create account"
-            )}
-          </Button>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-primary hover:underline font-medium"
-            >
-              Sign in
-            </Link>
-          </p>
-        </form>
+        {/* Right Side - Image */}
+        <div className="signup-right-v3">
+          <img
+            src={stockImg}
+            alt="Welcome illustration"
+            className="signup-image"
+          />
+          <div className="signup-image-overlay" aria-hidden="true" />
+        </div>
       </div>
     </div>
   );
