@@ -1,18 +1,18 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: ./zist-backend
       dockerfile: Dockerfile
     env_file:
-      - ./backend/.env
+      - ./zist-backend/.env
     ports:
       - "8000:8000"
     restart: unless-stopped
 
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ./zist-frontend
+      dockerfile: Dockerfile
       args:
         VITE_API_URL: /api/v1
     depends_on:
