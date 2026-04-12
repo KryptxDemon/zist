@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { MediaTypeBadge } from "@/components/ui/media-type-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { mediaService } from "@/services/mediaService";
+import { useToast } from "@/hooks/use-toast";
 import { MediaItem, MediaType, MediaStatus } from "@/types";
 import {
   Plus,
@@ -38,12 +39,20 @@ type SortOption = "recent" | "title" | "themes" | "vocab";
 
 export default function Library() {
   const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<MediaType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<MediaStatus | "all">("all");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
+
+  useEffect(() => {
+    const theme = searchParams.get("theme");
+    if (theme) {
+      setSearchQuery(theme);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadMedia() {
@@ -53,22 +62,32 @@ export default function Library() {
         setMedia(data);
       } catch (error) {
         console.error("Failed to load media:", error);
+        toast({
+          title: "Could not load library",
+          description: "Please refresh or try again in a moment.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     }
 
     loadMedia();
-  }, []);
+  }, [toast]);
 
   // Filter and sort media
   const filteredMedia = media
     .filter((item) => {
+      const tags = Array.isArray(item.tags) ? item.tags : [];
+      const title = item.title?.toLowerCase?.() ?? "";
+      const creator = item.creator?.toLowerCase?.() ?? "";
+      const query = searchQuery.trim().toLowerCase();
+
       if (searchQuery) {
-        const query = searchQuery.toLowerCase();
         if (
-          !item.title.toLowerCase().includes(query) &&
-          !item.tags.some((tag) => tag.toLowerCase().includes(query))
+          !title.includes(query) &&
+          !creator.includes(query) &&
+          !tags.some((tag) => tag.toLowerCase().includes(query))
         ) {
           return false;
         }
@@ -115,7 +134,7 @@ export default function Library() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by title or tags..."
+              placeholder="Search by title, creator, or tags..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"

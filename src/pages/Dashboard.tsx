@@ -241,7 +241,9 @@ function SummaryImageCard({
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/15" />
         <div className="relative h-full p-4 sm:p-5 flex flex-col justify-end">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-white/75">{label}</p>
+          <p className="text-[11px] uppercase tracking-[0.14em] text-white/75">
+            {label}
+          </p>
           <p className="mt-1 text-base sm:text-lg font-display font-semibold text-white line-clamp-1">
             {title}
           </p>
@@ -323,8 +325,8 @@ export default function Dashboard() {
 
   const lowerQuery = query.trim().toLowerCase();
 
-  const filteredMedia = useMemo(() => {
-    if (!lowerQuery) return media;
+  const searchMatches = useMemo(() => {
+    if (!lowerQuery) return [] as MediaItem[];
     return media.filter((m) => {
       const inTitle = m.title.toLowerCase().includes(lowerQuery);
       const inCreator = (m.creator || "").toLowerCase().includes(lowerQuery);
@@ -335,22 +337,22 @@ export default function Dashboard() {
 
   const sortedByRecent = useMemo(
     () =>
-      [...filteredMedia].sort(
+      [...media].sort(
         (a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       ),
-    [filteredMedia],
+    [media],
   );
 
   const recentlyAdded = useMemo(
     () =>
-      [...filteredMedia]
+      [...media]
         .sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         )
         .slice(0, 14),
-    [filteredMedia],
+    [media],
   );
 
   const continueLearning = useMemo(() => {
@@ -376,7 +378,7 @@ export default function Dashboard() {
       .split(/\s+/)
       .filter((t) => t.length > 2);
 
-    const scored = filteredMedia
+    const scored = media
       .map((m) => {
         const bag =
           `${m.title} ${m.creator || ""} ${m.tags.join(" ")}`.toLowerCase();
@@ -403,7 +405,7 @@ export default function Dashboard() {
       .map((x) => x.media);
 
     return scored.slice(0, 8);
-  }, [filteredMedia, themes, topTheme]);
+  }, [media, themes, topTheme]);
 
   const themesByMedia = useMemo(() => {
     const map: Record<string, number> = {};
@@ -446,7 +448,8 @@ export default function Dashboard() {
   const lastConceptMedia = lastConcept
     ? media.find((m) => m.id === lastConcept.mediaId)
     : undefined;
-  const quizMedia = continueLearning.find((m) => m.status === "in-progress") || lastOpened;
+  const quizMedia =
+    continueLearning.find((m) => m.status === "in-progress") || lastOpened;
 
   const lastOpenedCover = lastOpened
     ? coverById[lastOpened.id] || TYPE_FALLBACKS[lastOpened.type]
@@ -461,6 +464,9 @@ export default function Dashboard() {
   const continueQuizHref = lastOpened
     ? `/app/quiz/${lastOpened.id}`
     : "/app/quiz";
+  const addMediaHref = query.trim()
+    ? `/app/media/new?q=${encodeURIComponent(query.trim())}`
+    : "/app/media/new";
   const conceptHref = lastConceptMedia
     ? `/app/media/${lastConceptMedia.id}`
     : "/app/library";
@@ -518,12 +524,38 @@ export default function Dashboard() {
                   placeholder="Search titles, creators, tags..."
                   className="pl-9 h-11 rounded-xl bg-white/10 text-white placeholder:text-white/65 border-white/20 focus-visible:ring-white/40"
                 />
+
+                {lowerQuery ? (
+                  <div className="absolute mt-2 w-full rounded-xl border border-white/15 bg-black/80 backdrop-blur-md p-2 space-y-1 shadow-xl z-20">
+                    {searchMatches.length === 0 ? (
+                      <p className="text-xs text-white/75 px-2 py-1">
+                        No matches in your library. You can add this title.
+                      </p>
+                    ) : (
+                      searchMatches.slice(0, 5).map((item) => (
+                        <Link
+                          key={item.id}
+                          to={`/app/media/${item.id}`}
+                          className="block rounded-md px-2 py-2 hover:bg-white/10"
+                        >
+                          <p className="text-sm text-white line-clamp-1">
+                            {item.title}
+                          </p>
+                          <p className="text-[11px] text-white/70">
+                            {item.type.toUpperCase()}
+                            {item.creator ? ` • ${item.creator}` : ""}
+                          </p>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link to="/app/media/new">
+                <Link to={addMediaHref}>
                   <Button className="gap-2 bg-white text-black hover:bg-white/90">
                     <Plus className="h-4 w-4" />
-                    Add Media
+                    {query.trim() ? `Add "${query.trim()}"` : "Add Media"}
                   </Button>
                 </Link>
                 <Link to={continueQuizHref}>
@@ -551,7 +583,11 @@ export default function Dashboard() {
           <SummaryImageCard
             label="Last Concept Viewed"
             title={lastConcept?.title || "No concepts yet"}
-            subtitle={lastConceptMedia ? `From ${lastConceptMedia.title}` : "Keep developing your understanding"}
+            subtitle={
+              lastConceptMedia
+                ? `From ${lastConceptMedia.title}`
+                : "Keep developing your understanding"
+            }
             href={conceptHref}
             image={lastConceptCover}
           />
@@ -657,12 +693,12 @@ export default function Dashboard() {
               </p>
             </Link>
             <Link
-              to="/app/feed"
+              to="/app/library"
               className="rounded-xl bg-background/70 p-4 hover:bg-primary/10 transition-colors"
             >
               <Quote className="h-5 w-5 text-primary" />
               <p className="mt-2 text-sm font-medium text-foreground">
-                Save a Quote
+                Explore Quotes
               </p>
             </Link>
             <Link

@@ -1,13 +1,14 @@
 const STORAGE_KEYS = {
-  USER: 'zist_user',
-  TOKEN: 'zist_token',
-  MEDIA: 'zist_media',
-  THEMES: 'zist_themes',
-  FACTS: 'zist_facts',
-  VOCAB: 'zist_vocab',
-  QUOTES: 'zist_quotes',
-  QUIZZES: 'zist_quizzes',
-  FEED: 'zist_feed',
+  USER: "zist_user",
+  TOKEN: "zist_token",
+  USERS: "zist_users",
+  MEDIA: "zist_media",
+  THEMES: "zist_themes",
+  FACTS: "zist_facts",
+  VOCAB: "zist_vocab",
+  QUOTES: "zist_quotes",
+  QUIZZES: "zist_quizzes",
+  FEED: "zist_feed",
 } as const;
 
 export const storage = {

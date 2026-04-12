@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Library,
   Brain,
-  Rss,
   User,
   LogOut,
   Plus,
@@ -39,7 +38,6 @@ const navItems = [
   { path: "/app", label: "Home" },
   { path: "/app/library", label: "Library" },
   { path: "/app/vocabulary", label: "Vocabulary" },
-  { path: "/app/feed", label: "Feed" },
   { path: "/app/insights", label: "Insights" },
 ];
 
@@ -309,18 +307,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <BookOpen className="h-5 w-5" />
             <span className="text-xs">Vocab</span>
-          </Link>
-          <Link
-            to="/app/feed"
-            className={cn(
-              "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-smooth",
-              location.pathname === "/app/feed"
-                ? "text-primary"
-                : "text-muted-foreground",
-            )}
-          >
-            <Rss className="h-5 w-5" />
-            <span className="text-xs">Feed</span>
           </Link>
           <Link
             to="/app/insights"
