@@ -31,8 +31,9 @@ export const authService = {
     rememberMe: boolean,
   ): Promise<{ user: User; token: string }> {
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const response = await apiClient.post<AuthResponse>("/auth/login", {
-        email,
+        email: normalizedEmail,
         password,
       });
 
@@ -62,8 +63,9 @@ export const authService = {
     displayName: string,
   ): Promise<{ user: User; token: string }> {
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const response = await apiClient.post<AuthResponse>("/auth/signup", {
-        email,
+        email: normalizedEmail,
         password,
         display_name: displayName,
       });
