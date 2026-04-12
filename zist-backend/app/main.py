@@ -43,6 +43,14 @@ def create_application() -> FastAPI:
             "version": settings.VERSION,
         }
 
+    @app.get("/healthz", tags=["Health"])
+    def health_check_probe():
+        return {
+            "status": "ok",
+            "project": settings.PROJECT_NAME,
+            "version": settings.VERSION,
+        }
+
     Base.metadata.create_all(bind=engine)
     return app
 
