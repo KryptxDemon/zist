@@ -17,10 +17,10 @@ import AddMedia from "./pages/AddMedia";
 import MediaDetail from "./pages/MediaDetail";
 import QuizHub from "./pages/QuizHub";
 import QuizSession from "./pages/QuizSession";
-import Feed from "./pages/Feed";
 import Vocabulary from "./pages/Vocabulary";
 import Insights from "./pages/Insights";
 import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -91,14 +91,6 @@ const App = () => (
                 }
               />
               <Route
-                path="/app/feed"
-                element={
-                  <ProtectedRoute>
-                    <Feed />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/app/insights"
                 element={
                   <ProtectedRoute>
@@ -119,6 +111,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/user/:userId"
+                element={
+                  <ProtectedRoute>
+                    <UserProfile />
                   </ProtectedRoute>
                 }
               />

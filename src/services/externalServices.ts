@@ -1,100 +1,214 @@
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+import { apiClient } from "./apiClient";
 
-// Mock Wikipedia/summary service
+interface WikiSummaryResponse {
+  summary: string;
+  source_url: string;
+}
+
+interface DictionaryResponse {
+  definition: string;
+  example: string;
+}
+
+interface ExternalMediaItem {
+  title: string;
+  type: "movie" | "tv" | "book" | "documentary" | "podcast" | "game";
+  year?: number;
+  creator?: string;
+  description?: string;
+  cover_url?: string;
+  external_source?: string;
+  external_id?: string;
+}
+
+interface ExternalSearchResponse {
+  items?: ExternalMediaItem[];
+  grouped?: {
+    movies_tv?: ExternalMediaItem[];
+    books?: ExternalMediaItem[];
+  };
+}
+
+interface GroupedSearchResult {
+  moviesTv: ExternalMediaItem[];
+  books: ExternalMediaItem[];
+}
+
+interface WikiSuggestionsResponse {
+  items?: string[];
+  suggestions?: string[];
+}
+
 export const wikiService = {
-  async getSummaryByTopic(topic: string): Promise<{ summary: string; sourceUrl: string }> {
-    await delay(1200);
-
-    const summaries: Record<string, string> = {
-      mormonism:
-        'The Church of Jesus Christ of Latter-day Saints, often referred to as Mormonism, is a nontrinitarian, Christian restorationist church founded by Joseph Smith in 1830. It is headquartered in Salt Lake City, Utah, and has over 17 million members worldwide.',
-      faith:
-        'Faith is complete trust or confidence in someone or something. In religious contexts, it refers to belief in God or in the doctrines or teachings of religion.',
-      extremism:
-        'Extremism refers to the holding of extreme political or religious views, or the taking of extreme actions on the basis of those views.',
-      isolation:
-        'Social isolation is a state of complete or near-complete lack of contact between an individual and society. It differs from loneliness, which reflects temporary and involuntary lack of contact with other humans.',
-    };
-
-    const lowerTopic = topic.toLowerCase();
-    const matchedKey = Object.keys(summaries).find((key) => lowerTopic.includes(key));
-
-    return {
-      summary:
-        matchedKey !== undefined
-          ? summaries[matchedKey]
-          : `${topic} is a concept that explores fundamental aspects of human experience and understanding. This topic has been discussed extensively in literature, philosophy, and various media.`,
-      sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(topic)}`,
-    };
+  async getSummaryByTopic(
+    topic: string,
+  ): Promise<{ summary: string; sourceUrl: string }> {
+    try {
+      const response = await apiClient.get<WikiSummaryResponse>(
+        "/external/wiki/summary",
+        {
+          params: { topic },
+        },
+      );
+      return {
+        summary: response.summary,
+        sourceUrl: response.source_url,
+      };
+    } catch (error) {
+      console.error("Failed to fetch Wikipedia summary:", error);
+      return {
+        summary: `${topic} is an important concept. Unable to fetch summary at the moment.`,
+        sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(topic)}`,
+      };
+    }
   },
 
   async suggestThemes(mediaTitle: string): Promise<string[]> {
-    await delay(800);
-    
-    // Mock theme suggestions based on common patterns
-    const suggestions = [
-      'Faith and Doubt',
-      'Religious Extremism',
-      'Isolation and Community',
-      'Truth vs Deception',
-      'Family Dynamics',
-      'Moral Ambiguity',
-      'Power and Control',
-      'Identity and Belonging',
-    ];
-
-    return suggestions.slice(0, 5);
+    try {
+      const response = await apiClient.get<WikiSuggestionsResponse>(
+        "/external/wiki/suggestions",
+        {
+          params: { query: mediaTitle },
+        },
+      );
+      return response.items ?? response.suggestions ?? [];
+    } catch (error) {
+      console.error("Failed to fetch theme suggestions:", error);
+      // Fallback suggestions
+      return [
+        "Faith and Doubt",
+        "Religious Extremism",
+        "Isolation and Community",
+        "Truth vs Deception",
+        "Family Dynamics",
+      ];
+    }
   },
 };
 
-// Mock dictionary service
+// Dictionary service
 export const dictionaryService = {
-  async getDefinitionAndExample(word: string): Promise<{ definition: string; example: string }> {
-    await delay(800);
+  async getDefinitionAndExample(
+    word: string,
+  ): Promise<{ definition: string; example: string }> {
+    try {
+      const response = await apiClient.get<DictionaryResponse>(
+        "/external/dictionary/lookup",
+        {
+          params: { word },
+        },
+      );
+      return response;
+    } catch (error) {
+      console.error("Failed to fetch dictionary definition:", error);
+      return {
+        definition: `Unable to fetch definition for "${word}" at the moment.`,
+        example: `The term "${word}" was used in the text.`,
+      };
+    }
+  },
+};
 
-    const dictionary: Record<string, { definition: string; example: string }> = {
-      apostate: {
-        definition: 'A person who renounces a religious or political belief or principle.',
-        example: 'He was labeled an apostate after leaving the church.',
-      },
-      proselytize: {
-        definition: 'To convert or attempt to convert someone from one religion or belief to another.',
-        example: 'Missionaries often proselytize in developing countries.',
-      },
-      dogma: {
-        definition: 'A principle or set of principles laid down by an authority as incontrovertibly true.',
-        example: 'The dogma of the church has remained unchanged for centuries.',
-      },
-      heretic: {
-        definition: 'A person believing in or practicing religious heresy, or holding an opinion at odds with what is generally accepted.',
-        example: 'The scientist was considered a heretic for his revolutionary theories.',
-      },
-    };
+export const mediaSearchService = {
+  async searchMedia(
+    query: string,
+    type?: string,
+  ): Promise<ExternalMediaItem[]> {
+    if (!query.trim()) return [];
 
-    const lowerWord = word.toLowerCase();
-    if (dictionary[lowerWord]) {
-      return dictionary[lowerWord];
+    try {
+      const fetchResponse = async (requestedType?: string) => {
+        const params: Record<string, string> = { query };
+        if (requestedType) params.type = requestedType;
+        return apiClient.get<ExternalSearchResponse>("/external/search/media", {
+          params,
+        });
+      };
+
+      const primary = await fetchResponse(type);
+
+      if (primary.items && primary.items.length > 0) {
+        return primary.items;
+      }
+
+      const groupedPrimary = primary.grouped;
+      if (groupedPrimary) {
+        // Put books first so they are visible in the first rows of suggestions.
+        return [
+          ...(groupedPrimary.books || []),
+          ...(groupedPrimary.movies_tv || []),
+        ];
+      }
+
+      // If typed search returns no items (e.g., wrong selected media type),
+      // retry without type and prefer books in the blended results.
+      if (type) {
+        const fallback = await fetchResponse();
+        if (fallback.grouped) {
+          return [
+            ...(fallback.grouped.books || []),
+            ...(fallback.grouped.movies_tv || []),
+          ];
+        }
+        if (fallback.items) {
+          return fallback.items;
+        }
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Failed to search media externally:", error);
+      return [];
+    }
+  },
+
+  async searchMediaGrouped(query: string): Promise<GroupedSearchResult> {
+    if (!query.trim()) {
+      return { moviesTv: [], books: [] };
     }
 
-    return {
-      definition: `The meaning of "${word}" encompasses various interpretations depending on context.`,
-      example: `The term "${word}" was used frequently throughout the narrative.`,
-    };
+    try {
+      const response = await apiClient.get<ExternalSearchResponse>(
+        "/external/search/media",
+        {
+          params: { query },
+        },
+      );
+
+      if (response.grouped) {
+        return {
+          moviesTv: response.grouped.movies_tv || [],
+          books: response.grouped.books || [],
+        };
+      }
+
+      const items = response.items || [];
+      return {
+        moviesTv: items.filter((item) => item.type !== "book"),
+        books: items.filter((item) => item.type === "book"),
+      };
+    } catch (error) {
+      console.error("Failed to fetch grouped media search:", error);
+      return { moviesTv: [], books: [] };
+    }
   },
 };
 
-// Mock AI service for quote meanings
+// AI service for quote meanings - calls backend API
 export const aiService = {
   async generateQuoteMeaning(quote: string, context?: string): Promise<string> {
-    await delay(1500);
-
-    const meanings = [
-      'This quote suggests a deep exploration of human nature and the complexities of belief systems. It highlights the tension between individual conscience and institutional authority.',
-      'The statement reflects on the nature of truth and how it can be perceived differently based on one\'s perspective and conditioning.',
-      'This passage explores the theme of doubt as a necessary component of genuine faith, suggesting that unexamined belief lacks authenticity.',
-      'The quote examines the psychological dynamics of manipulation and the vulnerability of those seeking meaning or belonging.',
-    ];
-
-    return meanings[Math.floor(Math.random() * meanings.length)];
+    try {
+      const response = await apiClient.post<{ meaning: string }>(
+        "/external/ai/quote-meaning",
+        {
+          quote,
+          context,
+        },
+      );
+      return response.meaning;
+    } catch (error) {
+      console.error("Failed to generate quote meaning:", error);
+      return "This quote invites reflection on the themes and ideas presented in the narrative.";
+    }
   },
 };

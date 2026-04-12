@@ -1,5 +1,11 @@
-export type MediaType = 'movie' | 'tv' | 'book' | 'documentary' | 'podcast' | 'game';
-export type MediaStatus = 'planned' | 'in-progress' | 'completed';
+export type MediaType =
+  | "movie"
+  | "tv"
+  | "book"
+  | "documentary"
+  | "podcast"
+  | "game";
+export type MediaStatus = "planned" | "in-progress" | "completed";
 
 export interface User {
   id: string;
@@ -8,9 +14,17 @@ export interface User {
   avatar?: string;
   bio?: string;
   createdAt: string;
+  followers?: string[]; // User IDs
+  following?: string[]; // User IDs
+  stats?: {
+    mediaItems: number;
+    sharedPosts: number;
+    followers: number;
+    following: number;
+  };
   preferences: {
-    privacy: 'private' | 'public';
-    theme: 'night-cold';
+    privacy: "private" | "public";
+    theme: "night-cold";
   };
 }
 
@@ -44,7 +58,7 @@ export interface ThemeConcept {
 export interface FactItem {
   id: string;
   mediaId: string;
-  category: 'misconception' | 'reference' | 'context';
+  category: "misconception" | "reference" | "context";
   content: string;
   source?: string;
   order: number;
@@ -80,11 +94,11 @@ export interface QuoteItem {
 
 export interface QuizQuestion {
   id: string;
-  type: 'multiple-choice' | 'short-answer';
+  type: "multiple-choice" | "short-answer";
   question: string;
   options?: string[];
   correctAnswer: string;
-  category: 'theme' | 'vocab' | 'quote' | 'fact';
+  category: "theme" | "vocab" | "quote" | "fact";
 }
 
 export interface QuizAttempt {
@@ -103,11 +117,11 @@ export interface FeedPost {
   userId: string;
   authorName: string;
   authorAvatar?: string;
-  type: 'theme' | 'vocab' | 'quote';
+  type: "theme" | "vocab" | "quote";
   contentId: string;
   content: ThemeConcept | VocabItem | QuoteItem;
   caption?: string;
-  visibility: 'friends' | 'global';
+  visibility: "friends" | "global";
   likes: number;
   isLiked: boolean;
   isSaved: boolean;
@@ -120,4 +134,23 @@ export interface MediaStats {
   vocab: number;
   quotes: number;
   quizzes: number;
+}
+
+export interface UserProfile extends User {
+  stats: {
+    mediaItems: number;
+    sharedPosts: number;
+    followers: number;
+    following: number;
+  };
+}
+
+export interface UserInfo {
+  id: string;
+  displayName: string;
+  avatar?: string;
+  bio?: string;
+  followers: number;
+  following: number;
+  mediaItems: number;
 }

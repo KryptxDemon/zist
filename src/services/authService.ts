@@ -1,85 +1,140 @@
-import { User } from '@/types';
-import { storage, STORAGE_KEYS } from './storage';
+import { User } from "@/types";
+import { storage, STORAGE_KEYS } from "./storage";
+import { apiClient } from "./apiClient";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+interface TokenData {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+}
 
-const generateId = () => Math.random().toString(36).substring(2, 15);
+interface AuthResponse {
+  user: User;
+  tokens: TokenData;
+}
+
+interface TokenPayload {
+  email: string;
+  password: string;
+}
+
+interface SignupPayload {
+  email: string;
+  password: string;
+  display_name: string;
+}
 
 export const authService = {
-  async login(email: string, password: string, rememberMe: boolean): Promise<{ user: User; token: string }> {
-    await delay(800);
+  async login(
+    email: string,
+    password: string,
+    rememberMe: boolean,
+  ): Promise<{ user: User; token: string }> {
+    try {
+      const response = await apiClient.post<AuthResponse>("/auth/login", {
+        email,
+        password,
+      });
 
-    if (password.length < 6) {
-      throw new Error('Invalid credentials');
+      const token = response.tokens.access_token;
+
+      if (rememberMe) {
+        localStorage.setItem("auth_token", token);
+        localStorage.setItem("user", JSON.stringify(response.user));
+        sessionStorage.removeItem("auth_token");
+        sessionStorage.removeItem("user");
+      } else {
+        sessionStorage.setItem("auth_token", token);
+        sessionStorage.setItem("user", JSON.stringify(response.user));
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user");
+      }
+
+      return { user: response.user, token };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Login failed");
     }
-
-    const user: User = {
-      id: generateId(),
-      email,
-      displayName: email.split('@')[0],
-      createdAt: new Date().toISOString(),
-      preferences: {
-        privacy: 'public',
-        theme: 'night-cold',
-      },
-    };
-
-    const token = `token_${generateId()}`;
-
-    if (rememberMe) {
-      storage.set(STORAGE_KEYS.USER, user);
-      storage.set(STORAGE_KEYS.TOKEN, token);
-    }
-
-    return { user, token };
   },
 
-  async signup(email: string, password: string, displayName: string): Promise<{ user: User; token: string }> {
-    await delay(1000);
+  async signup(
+    email: string,
+    password: string,
+    displayName: string,
+  ): Promise<{ user: User; token: string }> {
+    try {
+      const response = await apiClient.post<AuthResponse>("/auth/signup", {
+        email,
+        password,
+        display_name: displayName,
+      });
 
-    if (password.length < 8) {
-      throw new Error('Password must be at least 8 characters');
+      const token = response.tokens.access_token;
+
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+      sessionStorage.removeItem("auth_token");
+      sessionStorage.removeItem("user");
+
+      return { user: response.user, token };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Signup failed");
     }
-
-    const user: User = {
-      id: generateId(),
-      email,
-      displayName,
-      createdAt: new Date().toISOString(),
-      preferences: {
-        privacy: 'public',
-        theme: 'night-cold',
-      },
-    };
-
-    const token = `token_${generateId()}`;
-
-    storage.set(STORAGE_KEYS.USER, user);
-    storage.set(STORAGE_KEYS.TOKEN, token);
-
-    return { user, token };
   },
 
   async logout(): Promise<void> {
-    await delay(300);
-    storage.remove(STORAGE_KEYS.USER);
-    storage.remove(STORAGE_KEYS.TOKEN);
+    try {
+      await apiClient.post("/auth/logout");
+    } catch (error) {
+      console.warn("Logout request failed, clearing local data anyway", error);
+    } finally {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      sessionStorage.removeItem("auth_token");
+      sessionStorage.removeItem("user");
+    }
   },
 
   getStoredAuth(): { user: User | null; token: string | null } {
+    const userStr =
+      localStorage.getItem("user") || sessionStorage.getItem("user");
+    const token =
+      localStorage.getItem("auth_token") ||
+      sessionStorage.getItem("auth_token");
+
     return {
-      user: storage.get<User>(STORAGE_KEYS.USER),
-      token: storage.get<string>(STORAGE_KEYS.TOKEN),
+      user: userStr ? JSON.parse(userStr) : null,
+      token,
     };
   },
 
   async updateProfile(updates: Partial<User>): Promise<User> {
-    await delay(500);
-    const currentUser = storage.get<User>(STORAGE_KEYS.USER);
-    if (!currentUser) throw new Error('Not authenticated');
+    try {
+      const response = await apiClient.patch<User>("/auth/me", updates);
+      if (localStorage.getItem("auth_token")) {
+        localStorage.setItem("user", JSON.stringify(response));
+      } else {
+        sessionStorage.setItem("user", JSON.stringify(response));
+      }
+      return response;
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to update profile",
+      );
+    }
+  },
 
-    const updatedUser = { ...currentUser, ...updates };
-    storage.set(STORAGE_KEYS.USER, updatedUser);
-    return updatedUser;
+  async getCurrentUser(): Promise<User> {
+    try {
+      const user = await apiClient.get<User>("/auth/me");
+      localStorage.setItem("user", JSON.stringify(user));
+      return user;
+    } catch (error) {
+      // If fetching current user fails, clear stored auth
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to fetch current user",
+      );
+    }
   },
 };

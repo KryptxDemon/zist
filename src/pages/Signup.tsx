@@ -67,9 +67,10 @@ export default function Signup() {
       });
       navigate("/app");
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Signup failed";
       toast({
         title: "Signup failed",
-        description: "Please try again with a different email.",
+        description: message,
         variant: "destructive",
       });
     } finally {
