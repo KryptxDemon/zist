@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
@@ -22,7 +23,13 @@ router = APIRouter()
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def signup(payload: SignupRequest, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == payload.email).first()
+    normalized_email = str(payload.email).strip().lower()
+
+    existing_user = (
+        db.query(User)
+        .filter(func.lower(User.email) == normalized_email)
+        .first()
+    )
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -30,7 +37,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
         )
 
     user = User(
-        email=payload.email,
+        email=normalized_email,
         hashed_password=get_password_hash(payload.password),
         display_name=payload.display_name,
     )
@@ -54,7 +61,13 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
+    normalized_email = str(payload.email).strip().lower()
+
+    user = (
+        db.query(User)
+        .filter(func.lower(User.email) == normalized_email)
+        .first()
+    )
 
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
