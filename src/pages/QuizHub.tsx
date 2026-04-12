@@ -4,27 +4,48 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MediaTypeBadge } from "@/components/ui/media-type-badge";
-import { mediaService } from "@/services/mediaService";
-import { MediaItem } from "@/types";
 import {
-  Brain,
-  Play,
-  Trophy,
-  BookOpen,
-  Lightbulb,
-  Quote,
-  Info,
-} from "lucide-react";
+  mediaService,
+  themeService,
+  vocabService,
+} from "@/services/mediaService";
+import { apiClient } from "@/services/apiClient";
+import { MediaItem } from "@/types";
+import { Brain, Play, Trophy, BookOpen, Lightbulb, Quote } from "lucide-react";
 
 export default function QuizHub() {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalQuizzes: 0,
+    averageAccuracy: 0,
+    themesTested: 0,
+    wordsReviewed: 0,
+  });
 
   useEffect(() => {
     async function loadMedia() {
       try {
         const data = await mediaService.getAll();
         setMedia(data);
+
+        const [quizStats, themesByMedia, vocabByMedia] = await Promise.all([
+          apiClient.get<{ total_quizzes: number; average_accuracy: number }>(
+            "/quiz/stats",
+          ),
+          Promise.all(data.map((item) => themeService.getByMediaId(item.id))),
+          Promise.all(data.map((item) => vocabService.getByMediaId(item.id))),
+        ]);
+
+        const themeCount = themesByMedia.flat().length;
+        const vocabCount = vocabByMedia.flat().length;
+
+        setStats({
+          totalQuizzes: quizStats.total_quizzes || 0,
+          averageAccuracy: Math.round(quizStats.average_accuracy || 0),
+          themesTested: themeCount,
+          wordsReviewed: vocabCount,
+        });
       } catch (error) {
         console.error("Failed to load media:", error);
       } finally {
@@ -53,12 +74,6 @@ export default function QuizHub() {
       icon: Quote,
       description: "Match quotes to themes",
     },
-    {
-      id: "facts",
-      label: "Fact Check",
-      icon: Info,
-      description: "Identify misconceptions vs truth",
-    },
   ];
 
   return (
@@ -78,27 +93,29 @@ export default function QuizHub() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="glass grain rounded-2xl p-5 text-center">
             <Trophy className="h-6 w-6 text-amber-400 mx-auto mb-2" />
-            <p className="font-display text-2xl font-bold text-foreground">3</p>
+            <p className="font-display text-2xl font-bold text-foreground">
+              {stats.totalQuizzes}
+            </p>
             <p className="text-sm text-muted-foreground">Quizzes Taken</p>
           </div>
           <div className="glass grain rounded-2xl p-5 text-center">
             <Brain className="h-6 w-6 text-primary mx-auto mb-2" />
             <p className="font-display text-2xl font-bold text-foreground">
-              85%
+              {stats.averageAccuracy}%
             </p>
             <p className="text-sm text-muted-foreground">Avg. Score</p>
           </div>
           <div className="glass grain rounded-2xl p-5 text-center">
             <Lightbulb className="h-6 w-6 text-violet-400 mx-auto mb-2" />
             <p className="font-display text-2xl font-bold text-foreground">
-              12
+              {stats.themesTested}
             </p>
             <p className="text-sm text-muted-foreground">Themes Tested</p>
           </div>
           <div className="glass grain rounded-2xl p-5 text-center">
             <BookOpen className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
             <p className="font-display text-2xl font-bold text-foreground">
-              28
+              {stats.wordsReviewed}
             </p>
             <p className="text-sm text-muted-foreground">Words Reviewed</p>
           </div>

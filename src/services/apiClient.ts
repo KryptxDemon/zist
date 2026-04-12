@@ -1,9 +1,5 @@
 const configuredApiUrl = import.meta.env.VITE_API_URL;
-const DEFAULT_API_BASE_URLS = [
-  "/api/v1",
-  "http://127.0.0.1:8000/api/v1",
-  "http://localhost:8000/api/v1",
-];
+const DEFAULT_API_BASE_URLS = ["/api/v1", "http://backend:8000/api/v1"];
 
 const normalizeBaseUrl = (url: string) => url.replace(/\/+$/, "");
 
