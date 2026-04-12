@@ -56,11 +56,15 @@ export default function Login() {
 
           <div className="login-content">
             <h1 className="login-title">Welcome Back</h1>
-            <p className="login-subtitle">Welcome back! Please enter your details.</p>
+            <p className="login-subtitle">
+              Welcome back! Please enter your details.
+            </p>
 
             <form onSubmit={handleSubmit} className="login-form">
               <div className="login-field">
-                <label htmlFor="email" className="login-label">Email</label>
+                <label htmlFor="email" className="login-label">
+                  Email
+                </label>
                 <input
                   id="email"
                   type="email"
@@ -73,7 +77,9 @@ export default function Login() {
               </div>
 
               <div className="login-field">
-                <label htmlFor="password" className="login-label">Password</label>
+                <label htmlFor="password" className="login-label">
+                  Password
+                </label>
                 <div className="login-password-wrap">
                   <input
                     id="password"
@@ -89,11 +95,7 @@ export default function Login() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="login-password-toggle"
                   >
-                    {showPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
@@ -137,7 +139,12 @@ export default function Login() {
             </div>
 
             <button className="login-btn-google" type="button">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
                 <circle cx="12" cy="12" r="10" opacity="0.2" />
               </svg>
               Sign in with Google

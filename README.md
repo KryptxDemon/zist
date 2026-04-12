@@ -51,6 +51,24 @@ The app will be available at `http://localhost:8080`
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
 
+## Docker
+
+Run frontend and backend together:
+
+```sh
+docker compose up --build
+```
+
+Services:
+
+- Frontend: `http://localhost:8080`
+- Backend API: `http://localhost:8000`
+
+Notes:
+
+- Backend reads environment variables from `backend/.env`.
+- Keep secrets in `backend/.env` only (they are not copied into the frontend image).
+
 ## Project Structure
 
 ```
