@@ -318,6 +318,29 @@ export const themeService = {
       );
     }
   },
+
+  async generateForMedia(
+    mediaId: string,
+    count: number = 5,
+  ): Promise<{ created: ThemeConcept[]; updated: ThemeConcept[]; usedAi: boolean }> {
+    try {
+      const response = await apiClient.post<{
+        created?: ApiObject[];
+        updated?: ApiObject[];
+        used_ai?: boolean;
+      }>(`/media/${mediaId}/themes/generate?count=${count}`);
+
+      return {
+        created: (response.created || []).map(mapTheme),
+        updated: (response.updated || []).map(mapTheme),
+        usedAi: Boolean(response.used_ai),
+      };
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to generate themes",
+      );
+    }
+  },
 };
 
 // Fact service
@@ -559,6 +582,27 @@ export const quoteService = {
     } catch (error) {
       throw new Error(
         error instanceof Error ? error.message : "Failed to toggle bookmark",
+      );
+    }
+  },
+
+  async generateForMedia(
+    mediaId: string,
+    count: number = 5,
+  ): Promise<{ created: QuoteItem[]; updated: QuoteItem[] }> {
+    try {
+      const response = await apiClient.post<{
+        created?: ApiObject[];
+        updated?: ApiObject[];
+      }>(`/media/${mediaId}/quotes/generate?count=${count}`);
+
+      return {
+        created: (response.created || []).map(mapQuote),
+        updated: (response.updated || []).map(mapQuote),
+      };
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to generate quotes",
       );
     }
   },
