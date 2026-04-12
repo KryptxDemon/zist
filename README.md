@@ -23,37 +23,39 @@ A personal learning management application to organize, track, and enhance your 
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- npm or bun
+- Python 3.13+
+- Docker Desktop (optional, for containerized run)
 
-### Installation
+### Project Layout
+
+- `zist-frontend/` - React + Vite frontend
+- `zist-backend/` - FastAPI backend
+
+### Run Locally (without Docker)
+
+Frontend:
 
 ```sh
-# Clone the repository
-git clone <YOUR_GIT_URL>
-
-# Navigate to the project directory
-cd zist-your-learning-compass
-
-# Install dependencies
+cd zist-frontend
 npm install
-
-# Start the development server
 npm run dev
 ```
 
-The app will be available at `http://localhost:8080`
+Backend:
 
-## Available Scripts
+```sh
+cd zist-backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run build:dev` - Build for development
-- `npm run lint` - Run ESLint
-- `npm run preview` - Preview production build
+Frontend app runs on `http://localhost:8080` and backend on `http://localhost:8000`.
 
 ## Docker
 
-Run frontend and backend together:
+Run frontend and backend together from repository root:
 
 ```sh
 docker compose up --build
@@ -66,61 +68,29 @@ Services:
 
 Notes:
 
-- Backend reads environment variables from `backend/.env`.
-- Keep secrets in `backend/.env` only (they are not copied into the frontend image).
+- Backend reads environment variables from `zist-backend/.env`.
+- Frontend container is built from `zist-frontend/Dockerfile`.
 
-## Deploy To Vercel (Frontend + Backend Together)
+## Deploy Notes
 
-This repo is configured to deploy both the React frontend and FastAPI backend in one Vercel project:
+After splitting frontend and backend into separate folders, deploy each service independently (or use Docker).
 
-- Frontend is served as static build output (`dist`).
-- Backend is served as a Vercel Python Function via `api/index.py`.
-- API calls use `/api/v1/...` and are routed to FastAPI.
-
-### 1. Import project in Vercel
-
-- Import this repository in Vercel.
-- Framework can stay on auto-detect (build is driven by `vercel.json`).
-
-### 2. Configure Environment Variables (Project Settings -> Environment Variables)
-
-Set at minimum:
-
-- `DATABASE_URL` (your Neon/PostgreSQL URL)
-- `SECRET_KEY`
-- `ALGORITHM` (e.g. `HS256`)
-- `ACCESS_TOKEN_EXPIRE_MINUTES`
-- `REFRESH_TOKEN_EXPIRE_DAYS`
-- `BACKEND_CORS_ORIGINS` (include your Vercel domain)
-
-Optional API integrations:
-
-- `TMDB_API_KEY`
-- `TMDB_BASE_URL`
-- `OPENLIBRARY_BASE_URL`
-- `WIKIPEDIA_API_BASE`
-- `DICTIONARY_API_BASE`
-
-### 3. Deploy
-
-Push to your default branch, or click **Deploy** from Vercel dashboard.
-
-### 4. Verify
-
-- Frontend loads from your Vercel URL.
-- API health endpoint works: `https://<your-vercel-domain>/api/health`
+- Frontend deployment root: `zist-frontend/`
+- Backend deployment root: `zist-backend/`
 
 ## Project Structure
 
 ```
-src/
-├── components/     # Reusable UI components
-├── contexts/       # React context providers
-├── hooks/          # Custom React hooks
-├── lib/            # Utility functions
-├── pages/          # Application pages
-├── services/       # API and data services
-└── types/          # TypeScript type definitions
+zist-frontend/
+├── src/
+├── public/
+├── package.json
+└── vite.config.ts
+
+zist-backend/
+├── app/
+├── requirements.txt
+└── .env
 ```
 
 ## License
