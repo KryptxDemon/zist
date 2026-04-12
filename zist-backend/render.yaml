@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: zist-backend
+    env: python
+    plan: standard
+    buildCommand: |
+      pip install --upgrade pip &&
+      pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: DATABASE_URL
+        scope: build,runtime
+        sync: false
+      - key: SECRET_KEY
+        scope: build,runtime
+        sync: false
+      - key: TMDB_API_KEY
+        scope: build,runtime
+        sync: false
+      - key: BACKEND_CORS_ORIGINS
+        value: https://zist-media.netlify.app,https://your-production-domain.com
+        scope: runtime
+    healthCheckPath: /health
+    disk:
+      - name: zist_data
+        mountPath: /app/data
+        sizeGB: 1
