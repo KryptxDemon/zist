@@ -32,6 +32,8 @@ class Settings(BaseSettings):
 
     TMDB_API_KEY: str | None = None
     TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-1.5-flash"
 
     OPENLIBRARY_BASE_URL: str = "https://openlibrary.org"
 

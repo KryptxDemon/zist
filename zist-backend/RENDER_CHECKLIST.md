@@ -28,6 +28,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ### 4. API Keys
 
 - [ ] TMDB API key obtained
+- [ ] Gemini API key obtained
 - [ ] Add to Render environment variables
 
 ---
@@ -58,6 +59,8 @@ Click **Environment** and add:
 | `DATABASE_URL`         | `postgresql://...`                                                        | Neon Dashboard |
 | `SECRET_KEY`           | (generated production key)                                                | Step 2 above   |
 | `TMDB_API_KEY`         | Your TMDB API key                                                         | TMDB website   |
+| `GEMINI_API_KEY`       | Your Gemini API key                                                       | Google AI      |
+| `GEMINI_MODEL`         | `gemini-1.5-flash`                                                        | Optional       |
 | `BACKEND_CORS_ORIGINS` | `https://zist-media.netlify.app,https://render-service-name.onrender.com` | Your services  |
 
 ### Step 4: Deploy

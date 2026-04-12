@@ -475,6 +475,7 @@ function ThemesTab({
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newTheme, setNewTheme] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [examples, setExamples] = useState<string[]>([]);
   const [isLoadingExamples, setIsLoadingExamples] = useState(false);
 
@@ -559,45 +560,98 @@ function ThemesTab({
     setIsAddOpen(false);
   };
 
+  const handleGenerateThemes = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await themeService.generateForMedia(mediaId, 5);
+      const byId = new Map(themes.map((item) => [item.id, item]));
+      for (const item of result.updated) {
+        byId.set(item.id, item);
+      }
+      for (const item of result.created) {
+        byId.set(item.id, item);
+      }
+
+      setThemes(
+        Array.from(byId.values()).sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        ),
+      );
+
+      toast({
+        title: "Themes generated",
+        description: result.usedAi
+          ? "Generated using TMDb + Gemini"
+          : "Generated using TMDb keyword fallback",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to generate themes",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg font-semibold text-foreground">
           Themes & Concepts
         </h3>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Theme
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Theme</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>Theme Title</Label>
-                <Input
-                  placeholder="e.g., Religious Extremism"
-                  value={newTheme}
-                  onChange={(e) => setNewTheme(e.target.value)}
-                />
-              </div>
-              <Button
-                onClick={handleAddTheme}
-                disabled={isAdding}
-                className="w-full"
-              >
-                {isAdding ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2"
+            onClick={handleGenerateThemes}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate 5 Themes
+          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
                 Add Theme
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Theme</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Theme Title</Label>
+                  <Input
+                    placeholder="e.g., Religious Extremism"
+                    value={newTheme}
+                    onChange={(e) => setNewTheme(e.target.value)}
+                  />
+                </div>
+                <Button
+                  onClick={handleAddTheme}
+                  disabled={isAdding}
+                  className="w-full"
+                >
+                  {isAdding ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Add Theme
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border/60 bg-background/40 p-3">
@@ -1294,6 +1348,7 @@ function QuotesTab({
     userMeaning: "",
   });
   const [isAdding, setIsAdding] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleAddQuote = async () => {
     if (!newQuote.text.trim()) return;
@@ -1325,101 +1380,155 @@ function QuotesTab({
     }
   };
 
+  const handleGenerateQuotes = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await quoteService.generateForMedia(mediaId, 5);
+      const byId = new Map(quotes.map((item) => [item.id, item]));
+      for (const item of result.updated) {
+        byId.set(item.id, item);
+      }
+      for (const item of result.created) {
+        byId.set(item.id, item);
+      }
+
+      setQuotes(
+        Array.from(byId.values()).sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      );
+
+      toast({
+        title: "Quotes generated",
+        description:
+          result.created.length > 0
+            ? `${result.created.length} quotes added from TMDb + Gemini`
+            : "No verified quotes found for this title",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to generate quotes",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg font-semibold text-foreground">
           Quotes & Meaning
         </h3>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Quote
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add New Quote</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>Quote</Label>
-                <Textarea
-                  placeholder="Enter the quote..."
-                  value={newQuote.text}
-                  onChange={(e) =>
-                    setNewQuote({ ...newQuote, text: e.target.value })
-                  }
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Speaker/Character</Label>
-                  <Input
-                    placeholder="Who said it?"
-                    value={newQuote.speaker}
-                    onChange={(e) =>
-                      setNewQuote({ ...newQuote, speaker: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Reference</Label>
-                  <Input
-                    placeholder="Chapter, scene..."
-                    value={newQuote.reference}
-                    onChange={(e) =>
-                      setNewQuote({ ...newQuote, reference: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Related Theme</Label>
-                <Select
-                  value={newQuote.themeId}
-                  onValueChange={(v) =>
-                    setNewQuote({ ...newQuote, themeId: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select theme..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {themes.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id}>
-                        {theme.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>What I Think It Means</Label>
-                <Textarea
-                  placeholder="Your interpretation..."
-                  value={newQuote.userMeaning}
-                  onChange={(e) =>
-                    setNewQuote({ ...newQuote, userMeaning: e.target.value })
-                  }
-                  rows={2}
-                />
-              </div>
-              <Button
-                onClick={handleAddQuote}
-                disabled={isAdding}
-                className="w-full"
-              >
-                {isAdding ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2"
+            onClick={handleGenerateQuotes}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate 5 Quotes
+          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
                 Add Quote
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Add New Quote</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Quote</Label>
+                  <Textarea
+                    placeholder="Enter the quote..."
+                    value={newQuote.text}
+                    onChange={(e) =>
+                      setNewQuote({ ...newQuote, text: e.target.value })
+                    }
+                    rows={3}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Speaker/Character</Label>
+                    <Input
+                      placeholder="Who said it?"
+                      value={newQuote.speaker}
+                      onChange={(e) =>
+                        setNewQuote({ ...newQuote, speaker: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Reference</Label>
+                    <Input
+                      placeholder="Chapter, scene..."
+                      value={newQuote.reference}
+                      onChange={(e) =>
+                        setNewQuote({ ...newQuote, reference: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Related Theme</Label>
+                  <Select
+                    value={newQuote.themeId}
+                    onValueChange={(v) =>
+                      setNewQuote({ ...newQuote, themeId: v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select theme..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {themes.map((theme) => (
+                        <SelectItem key={theme.id} value={theme.id}>
+                          {theme.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>What I Think It Means</Label>
+                  <Textarea
+                    placeholder="Your interpretation..."
+                    value={newQuote.userMeaning}
+                    onChange={(e) =>
+                      setNewQuote({ ...newQuote, userMeaning: e.target.value })
+                    }
+                    rows={2}
+                  />
+                </div>
+                <Button
+                  onClick={handleAddQuote}
+                  disabled={isAdding}
+                  className="w-full"
+                >
+                  {isAdding ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Add Quote
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {quotes.length === 0 ? (

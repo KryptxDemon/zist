@@ -1,0 +1,107 @@
+import json
+import re
+
+import httpx
+
+from app.core.config import settings
+
+
+def _extract_json_block(text: str) -> str:
+    block_match = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", text, flags=re.S | re.I)
+    if block_match:
+        return block_match.group(1)
+
+    array_match = re.search(r"(\[\s*\{.*\}\s*\])", text, flags=re.S)
+    if array_match:
+        return array_match.group(1)
+
+    return text
+
+
+def _normalize_quotes(raw_items: list[dict], count: int) -> list[dict[str, str | None]]:
+    normalized: list[dict[str, str | None]] = []
+    seen: set[str] = set()
+
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+
+        text = str(item.get("text") or item.get("quote") or "").strip()
+        speaker_raw = item.get("speaker")
+        speaker = str(speaker_raw).strip() if speaker_raw is not None else None
+
+        if not text:
+            continue
+
+        key = text.lower()
+        if key in seen:
+            continue
+
+        seen.add(key)
+        normalized.append({"text": text[:1000], "speaker": speaker[:255] if speaker else None})
+
+        if len(normalized) >= count:
+            break
+
+    return normalized
+
+
+async def generate_movie_quotes(
+    title: str,
+    overview: str,
+    keywords: list[str],
+    count: int = 5,
+) -> list[dict[str, str | None]]:
+    if not settings.GEMINI_API_KEY:
+        return []
+
+    prompt = (
+        "You are a movie expert.\n\n"
+        "Given the following movie:\n"
+        f"Title: {title}\n"
+        f"Overview: {overview or 'N/A'}\n"
+        f"Keywords: {', '.join(keywords) if keywords else 'N/A'}\n\n"
+        "Task:\n"
+        f"- Provide {count} memorable quotes from this movie.\n"
+        "- If real quotes are known, use them.\n"
+        "- If there is none, return an empty list.\n\n"
+        "Output rules:\n"
+        "- Return ONLY valid JSON as an array.\n"
+        "- Format: [{\"text\": string, \"speaker\": string|null}]\n"
+        "- Do not add commentary or markdown.\n"
+    )
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+    )
+
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.post(url, json=body)
+            response.raise_for_status()
+        payload = response.json()
+
+        text = (
+            payload.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+
+        json_text = _extract_json_block(text)
+        parsed = json.loads(json_text)
+        if not isinstance(parsed, list):
+            return []
+
+        return _normalize_quotes(parsed, count)
+    except Exception:
+        return []
