@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
@@ -25,6 +26,36 @@ def _get_owned_theme_or_404(db: Session, theme_id: str, user_id: str) -> ThemeCo
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Theme not found")
 	_get_owned_media_or_404(db, theme.media_id, user_id)
 	return theme
+
+
+@router.get("/top", response_model=ThemeListResponse)
+def get_top_themes(
+	limit: int = Query(default=5, ge=1, le=20),
+	db: Session = Depends(get_db),
+):
+	"""Get top themes across all users, sorted by most common themes."""
+	# Group themes by title and count occurrences
+	theme_counts = (
+		db.query(ThemeConcept.title, func.count(ThemeConcept.id).label("count"))
+		.group_by(ThemeConcept.title)
+		.order_by(func.count(ThemeConcept.id).desc())
+		.limit(limit)
+		.all()
+	)
+	
+	# Get the most recent instance of each top theme
+	top_themes = []
+	for title, count in theme_counts:
+		theme = (
+			db.query(ThemeConcept)
+			.filter(ThemeConcept.title == title)
+			.order_by(ThemeConcept.created_at.desc())
+			.first()
+		)
+		if theme:
+			top_themes.append(theme)
+	
+	return ThemeListResponse(items=[ThemeResponse.model_validate(i) for i in top_themes], total=len(top_themes))
 
 
 @router.get("/media/{media_id}/themes", response_model=ThemeListResponse)

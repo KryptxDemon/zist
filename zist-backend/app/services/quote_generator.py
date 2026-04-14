@@ -46,6 +46,52 @@ def _normalize_quotes(raw_items: list[dict], count: int) -> list[dict[str, str |
     return normalized
 
 
+def _parse_text_quotes(raw_text: str, count: int) -> list[dict[str, str | None]]:
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    parsed: list[dict[str, str | None]] = []
+
+    for line in lines:
+        cleaned = re.sub(r"^[-*\d\.)\s]+", "", line).strip()
+        if not cleaned:
+            continue
+
+        quote_match = re.search(r'"([^"]{8,})"', cleaned)
+        if quote_match:
+            text = quote_match.group(1).strip()
+            speaker_match = re.search(r"[-—]\s*([^\-—]+)$", cleaned)
+            speaker = speaker_match.group(1).strip() if speaker_match else None
+            parsed.append({"text": text, "speaker": speaker})
+        elif len(cleaned) >= 12:
+            parsed.append({"text": cleaned, "speaker": None})
+
+        if len(parsed) >= count:
+            break
+
+    return _normalize_quotes(parsed, count)
+
+
+def _parse_gemini_quotes_response(text: str, count: int) -> list[dict[str, str | None]]:
+    if not text.strip():
+        return []
+
+    try:
+        json_text = _extract_json_block(text)
+        parsed = json.loads(json_text)
+
+        if isinstance(parsed, list):
+            return _normalize_quotes(parsed, count)
+
+        if isinstance(parsed, dict):
+            if isinstance(parsed.get("quotes"), list):
+                return _normalize_quotes(parsed["quotes"], count)
+            if isinstance(parsed.get("items"), list):
+                return _normalize_quotes(parsed["items"], count)
+    except Exception:
+        pass
+
+    return _parse_text_quotes(text, count)
+
+
 async def generate_movie_quotes(
     title: str,
     overview: str,
@@ -56,19 +102,10 @@ async def generate_movie_quotes(
         return []
 
     prompt = (
-        "You are a movie expert.\n\n"
-        "Given the following movie:\n"
-        f"Title: {title}\n"
-        f"Overview: {overview or 'N/A'}\n"
-        f"Keywords: {', '.join(keywords) if keywords else 'N/A'}\n\n"
-        "Task:\n"
-        f"- Provide {count} memorable quotes from this movie.\n"
-        "- If real quotes are known, use them.\n"
-        "- If there is none, return an empty list.\n\n"
-        "Output rules:\n"
-        "- Return ONLY valid JSON as an array.\n"
-        "- Format: [{\"text\": string, \"speaker\": string|null}]\n"
-        "- Do not add commentary or markdown.\n"
+        f"Give me {count} quotes of the movie {title}. "
+        "Return ONLY valid JSON as an array with format: "
+        '[{"text": string, "speaker": string|null}]. '
+        "Use widely known lines from the title. Do not add commentary or markdown."
     )
 
     url = (
@@ -97,11 +134,6 @@ async def generate_movie_quotes(
             .get("text", "")
         )
 
-        json_text = _extract_json_block(text)
-        parsed = json.loads(json_text)
-        if not isinstance(parsed, list):
-            return []
-
-        return _normalize_quotes(parsed, count)
+        return _parse_gemini_quotes_response(text, count)
     except Exception:
         return []

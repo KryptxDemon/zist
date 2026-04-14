@@ -140,10 +140,14 @@ async def generate_movie_themes(
         return _fallback_themes(keywords, overview, count), False
 
     prompt = (
-        "Extract core themes for this movie and explain each in depth. "
-        "Return ONLY a JSON array with objects: [{\"title\": string, \"summary\": string}]. "
-        f"Generate exactly {count} themes. Each summary must be 2-3 sentences with specific interpretation, not generic wording. "
-        "Do not use boilerplate phrasing like 'the film explores'. Tie each explanation to character stakes, conflict, and meaning.\n\n"
+        "Identify 5 core themes from this movie. For each, provide a specific, insightful explanation that:\n"
+        "1. Explains how the theme is demonstrated through character actions and plot events\n"
+        "2. Identifies the emotional or philosophical stakes\n"
+        "3. Connects the theme to the movie's central conflict\n"
+        "Avoid generic phrases like 'the film explores' or 'this theme is important'. Be specific about what happens.\n"
+        "\n"
+        "Return ONLY a JSON array with exactly 5 objects: [{\"title\": string, \"summary\": string}]\n"
+        f"Each summary should be 2-3 sentences grounded in specific plot points or character moments.\n\n"
         f"Movie: {title}\n"
         f"Plot: {overview or 'N/A'}\n"
         f"Keywords: {', '.join(keywords) if keywords else 'N/A'}"

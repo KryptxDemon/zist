@@ -113,6 +113,22 @@ export default function MediaDetail() {
         setFacts(factsData);
         setVocab(vocabData);
         setQuotes(quotesData);
+
+        // Auto-generate themes if empty and media type supports it
+        if (
+          themesData.length === 0 &&
+          ["movie", "documentary", "tv"].includes(mediaData.type)
+        ) {
+          try {
+            const result = await themeService.generateForMedia(mediaData.id, 5);
+            const allThemes = [...result.created, ...result.updated];
+            if (allThemes.length > 0) {
+              setThemes(allThemes);
+            }
+          } catch (error) {
+            console.error("Failed to auto-generate themes:", error);
+          }
+        }
       } catch (error) {
         console.error("Failed to load media:", error);
         toast({ title: "Failed to load media", variant: "destructive" });
@@ -1402,9 +1418,9 @@ function QuotesTab({
       toast({
         title: "Quotes generated",
         description:
-          result.created.length > 0
-            ? `${result.created.length} quotes added from TMDb + Gemini`
-            : "No verified quotes found for this title",
+          result.created.length > 0 || result.updated.length > 0
+            ? `${result.created.length + result.updated.length} quotes added or refreshed`
+            : "No new quotes were added. Try another title or add manually.",
       });
     } catch (error) {
       toast({
