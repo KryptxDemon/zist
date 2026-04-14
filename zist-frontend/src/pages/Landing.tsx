@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -7,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import "./Landing.css";
+import { apiClient } from "@/services/apiClient";
 
 const logoImg = "/zistv2-logo.png";
 const heroImg = "/replace.jpg";
@@ -35,7 +37,7 @@ const capabilities = [
   },
 ];
 
-const topThemes = [
+const DEFAULT_TOP_THEMES = [
   {
     title: "Identity & Growth",
     count: "42 insights",
@@ -79,6 +81,32 @@ function EveryUnderline() {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [topThemes, setTopThemes] = useState(DEFAULT_TOP_THEMES);
+
+  useEffect(() => {
+    async function loadTopThemes() {
+      try {
+        const response = await apiClient.get<{
+          items: Array<{ title: string; summary?: string }>;
+        }>("/top?limit=3");
+
+        if (response.items && response.items.length > 0) {
+          const themes = response.items.map((theme, idx) => ({
+            title: theme.title,
+            count: "Community insights",
+            activity: "Explored by users",
+            imageClass: `theme-card-image-${(idx % 3) + 1}`,
+          }));
+          setTopThemes(themes);
+        }
+      } catch (error) {
+        console.error("Failed to load top themes:", error);
+        // Use default themes on error
+      }
+    }
+
+    loadTopThemes();
+  }, []);
 
   return (
     <div className="landing-page-v3">

@@ -322,7 +322,11 @@ export const themeService = {
   async generateForMedia(
     mediaId: string,
     count: number = 5,
-  ): Promise<{ created: ThemeConcept[]; updated: ThemeConcept[]; usedAi: boolean }> {
+  ): Promise<{
+    created: ThemeConcept[];
+    updated: ThemeConcept[];
+    usedAi: boolean;
+  }> {
     try {
       const response = await apiClient.post<{
         created?: ApiObject[];

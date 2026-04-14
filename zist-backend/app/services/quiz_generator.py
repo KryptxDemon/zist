@@ -19,6 +19,35 @@ def _make_question(qid: str, category: str, question: str, options: list[str], a
     }
 
 
+def _get_related_items(target: str, pool: list[str], count: int = 3) -> list[str]:
+    """Get related items that are harder to distinguish from target (similar length, similar starting letters, etc)."""
+    if len(pool) <= count:
+        return pool[:count]
+    
+    # Prioritize items that are similar in length and starting character
+    target_len = len(target)
+    target_start = target[0].lower() if target else ""
+    
+    scored = []
+    for item in pool:
+        if item.lower() == target.lower():
+            continue
+        item_len = len(item)
+        item_start = item[0].lower() if item else ""
+        
+        # Calculate similarity score (we want similar-looking items)
+        length_diff = abs(item_len - target_len)
+        start_match = 1 if item_start == target_start else 0
+        
+        # Lower score is better (more similar)
+        score = length_diff - (start_match * 5)
+        scored.append((score, item))
+    
+    # Sort by similarity and return
+    scored.sort(key=lambda x: x[0])
+    return [item for _, item in scored[:count]]
+
+
 def generate_questions(
     quiz_type: QuizType,
     themes: list[ThemeConcept],
@@ -37,7 +66,7 @@ def generate_questions(
         for idx, t in enumerate(themes):
             if not t.summary:
                 continue
-            wrong = [x for x in titles if x != t.title][:3]
+            wrong = _get_related_items(t.title, [x for x in titles if x != t.title], 3)
             options = [t.title] + wrong
             random.shuffle(options)
             pool.append(_make_question(f"theme-{idx}", "theme", f"Which theme matches this summary: {t.summary}", options, t.title))
@@ -47,7 +76,7 @@ def generate_questions(
         for idx, v in enumerate(vocab_items):
             if not v.definition:
                 continue
-            wrong = [x for x in words if x != v.word][:3]
+            wrong = _get_related_items(v.word, [x for x in words if x != v.word], 3)
             options = [v.word] + wrong
             random.shuffle(options)
             pool.append(_make_question(f"vocab-{idx}", "vocab", f"Which word matches this definition: {v.definition}", options, v.word))
@@ -57,7 +86,7 @@ def generate_questions(
         for idx, q in enumerate(quotes):
             if not q.speaker or not q.text:
                 continue
-            wrong = [x for x in speakers if x != q.speaker][:3]
+            wrong = _get_related_items(q.speaker, [x for x in speakers if x != q.speaker], 3)
             options = [q.speaker] + wrong
             random.shuffle(options)
             pool.append(_make_question(f"quote-{idx}", "quote", f"Who said this quote? {q.text}", options, q.speaker))
@@ -65,7 +94,7 @@ def generate_questions(
     if quiz_type in {QuizType.fact, QuizType.mixed}:
         categories = [f.category for f in facts if f.category]
         for idx, f in enumerate(facts):
-            wrong = [x for x in categories if x != f.category][:3]
+            wrong = _get_related_items(f.category, [x for x in categories if x != f.category], 3)
             options = [f.category] + wrong
             unique_options = list(dict.fromkeys(options))
             random.shuffle(unique_options)
