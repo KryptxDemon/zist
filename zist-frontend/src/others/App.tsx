@@ -36,9 +36,14 @@ const App = () => (
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Landing />} />
+              <Route path="/index.html" element={<Landing />} />
               <Route path="/landing" element={<Landing />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/login.html" element={<Login />} />
+              <Route path="/pages/login.html" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/signup.html" element={<Signup />} />
+              <Route path="/pages/signup.html" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
 
               {/* Protected Routes */}
@@ -51,7 +56,39 @@ const App = () => (
                 }
               />
               <Route
+                path="/app.html"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pages/app.html"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/app/library"
+                element={
+                  <ProtectedRoute>
+                    <Library />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/library.html"
+                element={
+                  <ProtectedRoute>
+                    <Library />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pages/library.html"
                 element={
                   <ProtectedRoute>
                     <Library />
@@ -83,6 +120,22 @@ const App = () => (
                 }
               />
               <Route
+                path="/quiz.html"
+                element={
+                  <ProtectedRoute>
+                    <QuizHub />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pages/quiz.html"
+                element={
+                  <ProtectedRoute>
+                    <QuizHub />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/app/quiz/:mediaId"
                 element={
                   <ProtectedRoute>
@@ -99,6 +152,22 @@ const App = () => (
                 }
               />
               <Route
+                path="/insights.html"
+                element={
+                  <ProtectedRoute>
+                    <Insights />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pages/insights.html"
+                element={
+                  <ProtectedRoute>
+                    <Insights />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/app/vocabulary"
                 element={
                   <ProtectedRoute>
@@ -107,7 +176,39 @@ const App = () => (
                 }
               />
               <Route
+                path="/vocabulary.html"
+                element={
+                  <ProtectedRoute>
+                    <Vocabulary />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pages/vocabulary.html"
+                element={
+                  <ProtectedRoute>
+                    <Vocabulary />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/app/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile.html"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pages/profile.html"
                 element={
                   <ProtectedRoute>
                     <Profile />

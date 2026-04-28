@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import "./Login.css";
+import "@css/pages/Login.css";
 
 const logoImg = "/zistv2-logo.png";
 const stockImg = "/bg.jpg";

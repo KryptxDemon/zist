@@ -7,7 +7,7 @@ import {
   Quote,
   Sparkles,
 } from "lucide-react";
-import "./Landing.css";
+import "@css/pages/Landing.css";
 import { apiClient } from "@/services/apiClient";
 
 const logoImg = "/zistv2-logo.png";
