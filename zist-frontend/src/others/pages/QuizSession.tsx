@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { mediaService, vocabService } from "@/services/mediaService";
+import { apiClient } from "@/services/apiClient";
 import { MediaItem, QuizQuestion, VocabItem } from "@/types";
 import {
   ArrowLeft,
@@ -17,22 +18,114 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function generateQuestions(vocab: VocabItem[]): QuizQuestion[] {
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function pickDistractors(
+  correct: string,
+  candidatePool: string[],
+  count: number = 3,
+): string[] {
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const correctKey = normalize(correct);
+  const picked: string[] = [];
+  const seen = new Set<string>([correctKey]);
+  for (const candidate of shuffle(candidatePool)) {
+    const text = candidate.trim();
+    if (!text) continue;
+    const key = normalize(text);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push(text);
+    if (picked.length >= count) break;
+  }
+
+  return picked.slice(0, count);
+}
+
+async function fetchDictionaryDefinitions(word: string): Promise<string[]> {
+  try {
+    const response = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+    );
+    if (!response.ok) return [];
+    const payload = (await response.json()) as Array<{
+      meanings?: Array<{ definitions?: Array<{ definition?: string }> }>;
+    }>;
+    if (!Array.isArray(payload)) return [];
+
+    const definitions: string[] = [];
+    for (const entry of payload) {
+      for (const meaning of entry.meanings || []) {
+        for (const item of meaning.definitions || []) {
+          const text = (item.definition || "").trim();
+          if (text) {
+            definitions.push(text);
+            if (definitions.length >= 4) {
+              return definitions;
+            }
+          }
+        }
+      }
+    }
+    return definitions;
+  } catch (error) {
+    return [];
+  }
+}
+
+async function buildDistractorPool(vocab: VocabItem[]): Promise<string[]> {
+  const localDefinitions = vocab
+    .map((item) => item.definition?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  const dictionarySeedWords = [
+    "ephemeral",
+    "esoteric",
+    "dogma",
+    "orthodox",
+    "metaphysical",
+    "axiom",
+    "tenet",
+    "dialectic",
+  ];
+
+  const candidateWords = shuffle([
+    ...vocab.map((item) => item.word),
+    ...dictionarySeedWords,
+  ]).slice(0, 8);
+
+  const dictionaryBatches = await Promise.all(
+    candidateWords.map((word) => fetchDictionaryDefinitions(word)),
+  );
+  const dictionaryDefinitions = dictionaryBatches.flat();
+
+  return [...localDefinitions, ...dictionaryDefinitions];
+}
+
+async function generateQuestions(vocab: VocabItem[]): Promise<QuizQuestion[]> {
   const questions: QuizQuestion[] = [];
+  const definitionPool = await buildDistractorPool(vocab);
 
   // Vocabulary questions
-  vocab.slice(0, 4).forEach((word, index) => {
+  shuffle(vocab)
+    .slice(0, 10)
+    .forEach((word, index) => {
     if (word.definition) {
+      const distractors = pickDistractors(word.definition, definitionPool);
+      if (distractors.length < 3) return;
+
       questions.push({
         id: `vocab-${index}`,
         type: "multiple-choice",
         question: `What is the definition of "${word.word}"?`,
-        options: [
-          word.definition,
-          "A type of ancient currency",
-          "A method of preserving food",
-          "A style of architecture",
-        ].sort(() => Math.random() - 0.5),
+        options: shuffle([word.definition, ...distractors]),
         correctAnswer: word.definition,
         category: "vocab",
       });
@@ -41,6 +134,34 @@ function generateQuestions(vocab: VocabItem[]): QuizQuestion[] {
 
   return questions.slice(0, 10);
 }
+
+type ApiQuizQuestion = {
+  id: string;
+  question: string;
+  options: string[];
+  correct_answer?: string;
+  correctAnswer?: string;
+  category?: string;
+};
+
+const toQuizCategory = (
+  category?: string,
+): QuizQuestion["category"] => {
+  const normalized = (category || "").toLowerCase();
+  if (normalized.includes("theme")) return "theme";
+  if (normalized.includes("vocab")) return "vocab";
+  if (normalized.includes("quote")) return "quote";
+  return "fact";
+};
+
+const mapApiQuizQuestion = (q: ApiQuizQuestion): QuizQuestion => ({
+  id: q.id,
+  type: "multiple-choice",
+  question: q.question,
+  options: Array.isArray(q.options) ? q.options : [],
+  correctAnswer: q.correct_answer ?? q.correctAnswer ?? "",
+  category: toQuizCategory(q.category),
+});
 
 export default function QuizSession() {
   const { mediaId } = useParams<{ mediaId: string }>();
@@ -102,12 +223,39 @@ export default function QuizSession() {
         }
 
         setMedia(mediaData);
-        const generatedQuestions = generateQuestions(vocab);
+        let generatedQuestions: QuizQuestion[] = [];
+
+        if (mediaId !== "all") {
+          try {
+            const aiQuiz = await apiClient.get<{ questions: ApiQuizQuestion[] }>(
+              `/media/${mediaId}/quiz`,
+              {
+                params: { type: "mixed" },
+              },
+            );
+            generatedQuestions = (aiQuiz.questions || [])
+              .map(mapApiQuizQuestion)
+              .filter(
+                (q) =>
+                  q.question.trim().length > 0 &&
+                  q.correctAnswer.trim().length > 0 &&
+                  Array.isArray(q.options) &&
+                  q.options.length >= 2,
+              );
+          } catch (error) {
+            console.warn("AI quiz generation failed, using local fallback.", error);
+          }
+        }
+
+        if (generatedQuestions.length === 0) {
+          generatedQuestions = await generateQuestions(vocab);
+        }
 
         if (generatedQuestions.length === 0) {
           toast({
             title: "Not enough content",
-            description: "Add more vocabulary to generate a quiz.",
+            description:
+              "Add themes, facts, quotes, or vocabulary to generate a quiz.",
             variant: "destructive",
           });
           navigate("/app/quiz");

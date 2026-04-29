@@ -24,6 +24,32 @@ interface SignupPayload {
   display_name: string;
 }
 
+type ApiUser = {
+  id: string;
+  email: string;
+  displayName?: string;
+  display_name?: string;
+  avatar?: string;
+  avatarUrl?: string;
+  avatar_url?: string;
+  bio?: string | null;
+  createdAt?: string;
+  created_at?: string;
+};
+
+const mapApiUser = (user: ApiUser, currentUser?: User | null): User => ({
+  id: user.id,
+  email: user.email,
+  displayName: user.displayName ?? user.display_name ?? currentUser?.displayName ?? "User",
+  avatar: user.avatar ?? user.avatarUrl ?? user.avatar_url ?? currentUser?.avatar,
+  bio: user.bio ?? currentUser?.bio,
+  createdAt: user.createdAt ?? user.created_at ?? currentUser?.createdAt ?? new Date().toISOString(),
+  preferences: currentUser?.preferences ?? {
+    privacy: "public",
+    theme: "night-cold",
+  },
+});
+
 export const authService = {
   async login(
     email: string,
@@ -51,7 +77,7 @@ export const authService = {
         localStorage.removeItem("user");
       }
 
-      return { user: response.user, token };
+      return { user: mapApiUser(response.user), token };
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : "Login failed");
     }
@@ -77,7 +103,7 @@ export const authService = {
       sessionStorage.removeItem("auth_token");
       sessionStorage.removeItem("user");
 
-      return { user: response.user, token };
+      return { user: mapApiUser(response.user), token };
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : "Signup failed");
     }
@@ -111,13 +137,29 @@ export const authService = {
 
   async updateProfile(updates: Partial<User>): Promise<User> {
     try {
-      const response = await apiClient.patch<User>("/auth/me", updates);
-      if (localStorage.getItem("auth_token")) {
-        localStorage.setItem("user", JSON.stringify(response));
-      } else {
-        sessionStorage.setItem("user", JSON.stringify(response));
+      const storedUser = this.getStoredAuth().user;
+      if (!storedUser) {
+        throw new Error("You must be logged in to update profile");
       }
-      return response;
+
+      await apiClient.patch(`/users/${storedUser.id}`, {
+        display_name: updates.displayName,
+        bio: updates.bio,
+        avatar_url: updates.avatar,
+      });
+
+      const response = await apiClient.get<ApiUser>("/auth/me");
+      const mapped = mapApiUser(response, {
+        ...storedUser,
+        ...updates,
+      });
+
+      if (localStorage.getItem("auth_token")) {
+        localStorage.setItem("user", JSON.stringify(mapped));
+      } else {
+        sessionStorage.setItem("user", JSON.stringify(mapped));
+      }
+      return mapped;
     } catch (error) {
       throw new Error(
         error instanceof Error ? error.message : "Failed to update profile",
@@ -127,9 +169,11 @@ export const authService = {
 
   async getCurrentUser(): Promise<User> {
     try {
-      const user = await apiClient.get<User>("/auth/me");
-      localStorage.setItem("user", JSON.stringify(user));
-      return user;
+      const current = this.getStoredAuth().user;
+      const user = await apiClient.get<ApiUser>("/auth/me");
+      const mapped = mapApiUser(user, current);
+      localStorage.setItem("user", JSON.stringify(mapped));
+      return mapped;
     } catch (error) {
       // If fetching current user fails, clear stored auth
       localStorage.removeItem("auth_token");

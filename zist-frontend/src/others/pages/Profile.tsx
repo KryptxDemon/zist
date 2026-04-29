@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Settings, Shield, Trash2, Loader2 } from 'lucide-react';
+import { Settings, Shield, Trash2, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,12 +21,18 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function Profile() {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [isPrivate, setIsPrivate] = useState(user?.preferences?.privacy === 'private');
+
+  useEffect(() => {
+    setDisplayName(user?.displayName || '');
+    setBio(user?.bio || '');
+    setIsPrivate(user?.preferences?.privacy === 'private');
+  }, [user]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -34,10 +40,6 @@ export default function Profile() {
       await updateProfile({
         displayName,
         bio,
-        preferences: {
-          privacy: isPrivate ? 'private' : 'public',
-          theme: 'night-cold',
-        },
       });
       toast({ title: 'Profile updated!' });
     } catch (error) {
