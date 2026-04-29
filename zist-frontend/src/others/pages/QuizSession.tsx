@@ -56,17 +56,49 @@ export default function QuizSession() {
 
   useEffect(() => {
     async function loadQuiz() {
-      if (!mediaId) return;
+      if (!mediaId || mediaId === "start") {
+        navigate("/app/quiz");
+        return;
+      }
       setIsLoading(true);
       try {
-        const [mediaData, vocab] = await Promise.all([
-          mediaService.getById(mediaId),
-          vocabService.getByMediaId(mediaId),
-        ]);
+        let mediaData: MediaItem | null = null;
+        let vocab: VocabItem[] = [];
 
-        if (!mediaData) {
-          navigate("/app/quiz");
-          return;
+        if (mediaId === "all") {
+          const mediaList = await mediaService.getAll();
+          if (mediaList.length === 0) {
+            navigate("/app/quiz");
+            return;
+          }
+
+          const vocabLists = await Promise.all(
+            mediaList.map((item) => vocabService.getByMediaId(item.id)),
+          );
+          vocab = vocabLists.flat();
+          mediaData = {
+            id: "all",
+            userId: mediaList[0].userId,
+            title: "All Media",
+            type: "book",
+            tags: [],
+            status: "completed",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        } else {
+          const [mediaById, vocabByMedia] = await Promise.all([
+            mediaService.getById(mediaId),
+            vocabService.getByMediaId(mediaId),
+          ]);
+
+          if (!mediaById) {
+            navigate("/app/quiz");
+            return;
+          }
+
+          mediaData = mediaById;
+          vocab = vocabByMedia;
         }
 
         setMedia(mediaData);
@@ -95,9 +127,12 @@ export default function QuizSession() {
   }, [mediaId, navigate, toast]);
 
   const currentQuestion = questions[currentIndex];
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  const progress = questions.length
+    ? ((currentIndex + 1) / questions.length) * 100
+    : 0;
 
   const handleAnswer = (answer: string) => {
+    if (!currentQuestion) return;
     setAnswers({ ...answers, [currentQuestion.id]: answer });
   };
 
@@ -144,6 +179,26 @@ export default function QuizSession() {
           <div className="text-center">
             <Brain className="h-12 w-12 text-primary animate-pulse mx-auto mb-4" />
             <p className="text-muted-foreground">Generating quiz...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!isLoading && questions.length === 0) {
+    return (
+      <AppLayout>
+        <div className="max-w-2xl mx-auto flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">No questions available yet.</p>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/app/quiz")}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Quiz Hub
+            </Button>
           </div>
         </div>
       </AppLayout>
@@ -268,7 +323,7 @@ export default function QuizSession() {
           </Button>
           <div className="flex-1">
             <h1 className="font-display text-xl font-bold text-foreground">
-              {media?.title} Quiz
+              {media?.title ?? "All Media"} Quiz
             </h1>
             <p className="text-sm text-muted-foreground">
               Question {currentIndex + 1} of {questions.length}
@@ -289,33 +344,35 @@ export default function QuizSession() {
           <span
             className={cn(
               "inline-block px-3 py-1 rounded-full text-xs font-medium mb-4",
-              currentQuestion.category === "theme" &&
+              currentQuestion?.category === "theme" &&
                 "bg-amber-500/20 text-amber-400",
-              currentQuestion.category === "vocab" &&
+              currentQuestion?.category === "vocab" &&
                 "bg-emerald-500/20 text-emerald-400",
-              currentQuestion.category === "quote" &&
+              currentQuestion?.category === "quote" &&
                 "bg-violet-500/20 text-violet-400",
-              currentQuestion.category === "fact" &&
+              currentQuestion?.category === "fact" &&
                 "bg-sky-500/20 text-sky-400",
             )}
           >
-            {currentQuestion.category.charAt(0).toUpperCase() +
-              currentQuestion.category.slice(1)}
+            {currentQuestion
+              ? currentQuestion.category.charAt(0).toUpperCase() +
+                currentQuestion.category.slice(1)
+              : ""}
           </span>
 
           <h2 className="font-display text-xl font-semibold text-foreground mb-6">
-            {currentQuestion.question}
+            {currentQuestion?.question}
           </h2>
 
-          {currentQuestion.type === "multiple-choice" ? (
+          {currentQuestion?.type === "multiple-choice" ? (
             <div className="space-y-3">
-              {currentQuestion.options?.map((option, i) => (
+              {currentQuestion?.options?.map((option, i) => (
                 <button
                   key={i}
                   onClick={() => handleAnswer(option)}
                   className={cn(
                     "w-full p-4 rounded-xl text-left transition-smooth border",
-                    answers[currentQuestion.id] === option
+                    currentQuestion && answers[currentQuestion.id] === option
                       ? "bg-primary/20 border-primary text-foreground"
                       : "bg-accent/30 border-transparent hover:bg-accent hover:border-border text-muted-foreground",
                   )}
@@ -327,7 +384,7 @@ export default function QuizSession() {
           ) : (
             <Input
               placeholder="Type your answer..."
-              value={answers[currentQuestion.id] || ""}
+              value={currentQuestion ? answers[currentQuestion.id] || "" : ""}
               onChange={(e) => handleAnswer(e.target.value)}
               className="h-12"
             />
@@ -347,7 +404,7 @@ export default function QuizSession() {
           </Button>
           <Button
             onClick={handleNext}
-            disabled={!answers[currentQuestion.id]}
+            disabled={!currentQuestion || !answers[currentQuestion.id]}
             className="flex-1 gap-2"
           >
             {currentIndex === questions.length - 1 ? "Finish Quiz" : "Next"}

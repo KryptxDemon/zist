@@ -41,10 +41,7 @@ const navItems = [
   { path: "/app/insights", label: "Insights" },
 ];
 
-const quizItems = [
-  { path: "/app/quiz", label: "Quiz Hub" },
-  { path: "/app/quiz/start", label: "Start Quiz" },
-];
+const quizItems = [{ path: "/app/quiz", label: "Quiz Hub" }];
 
 const mediaTypes = [
   { type: "movie", icon: Film, label: "Movie" },

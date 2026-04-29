@@ -20,7 +20,7 @@ from app.schemas.quiz import (
     QuizSubmitRequest,
     QuizSubmitResponse,
 )
-from app.services.quiz_generator import generate_questions
+from app.services import quiz_generator
 from app.utils.enums import QuizType
 from app.utils.pagination import paginate
 
@@ -35,7 +35,7 @@ def _get_owned_media_or_404(db: Session, media_id: str, user_id: str) -> MediaIt
 
 
 @router.get("/media/{media_id}/quiz", response_model=QuizGenerateResponse)
-def generate_quiz(
+async def generate_quiz(
     media_id: str,
     type: QuizType = QuizType.mixed,
     db: Session = Depends(get_db),
@@ -48,8 +48,18 @@ def generate_quiz(
     vocab_items = db.query(VocabItem).filter(VocabItem.media_id == media_id).all()
     quotes = db.query(QuoteItem).filter(QuoteItem.media_id == media_id).all()
 
-    questions = generate_questions(type, themes, facts, vocab_items, quotes, limit=10)
-    return QuizGenerateResponse(media_id=media_id, quiz_type=type, questions=questions)
+    if not any([themes, facts, vocab_items, quotes]):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No content available to generate a quiz. Add some notes first.")
+
+    questions = await quiz_generator.generate_questions(
+        quiz_type=type,
+        themes=themes,
+        facts=facts,
+        vocab_items=vocab_items,
+        quotes=quotes,
+    )
+
+    return {"questions": questions}
 
 
 @router.post("/quiz/submit", response_model=QuizSubmitResponse)

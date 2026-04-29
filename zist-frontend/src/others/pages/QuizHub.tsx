@@ -172,6 +172,32 @@ export default function QuizHub() {
             />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Link
+                to="/app/quiz/all"
+                className="glass grain rounded-2xl p-5 flex items-center gap-4 transition-smooth hover:glow-amber hover:border-primary/30 group"
+              >
+                <div className="w-16 h-24 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                  <Brain className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display font-semibold text-foreground truncate">
+                    All Media Vocabulary
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Quiz on every saved word in your library
+                  </p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 group-hover:bg-primary group-hover:text-primary-foreground"
+                    >
+                      <Play className="h-3 w-3" />
+                      Start Quiz
+                    </Button>
+                  </div>
+                </div>
+              </Link>
               {media.map((item) => (
                 <Link
                   key={item.id}

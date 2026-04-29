@@ -1,6 +1,10 @@
-import random
+import json
 from typing import Any
 
+import google.generativeai as genai
+from fastapi import HTTPException, status
+
+from app.core.config import settings
 from app.models.fact import FactItem
 from app.models.quote import QuoteItem
 from app.models.theme import ThemeConcept
@@ -8,47 +12,26 @@ from app.models.vocab import VocabItem
 from app.utils.enums import QuizType
 
 
-def _make_question(qid: str, category: str, question: str, options: list[str], answer: str) -> dict[str, Any]:
-    return {
-        "id": qid,
-        "type": "multiple-choice",
-        "category": category,
-        "question": question,
-        "options": options,
-        "correct_answer": answer,
-    }
+def _format_content_for_prompt(
+    themes: list[ThemeConcept],
+    facts: list[FactItem],
+    vocab_items: list[VocabItem],
+    quotes: list[QuoteItem],
+) -> str:
+    """Formats the learning content into a structured string for the AI prompt."""
+    content = []
+    if themes:
+        content.append("Themes:\n" + "\n".join(f"- {t.title}: {t.summary}" for t in themes))
+    if facts:
+        content.append("Facts:\n" + "\n".join(f"- {f.content} (Category: {f.category})" for f in facts))
+    if vocab_items:
+        content.append("Vocabulary:\n" + "\n".join(f"- {v.word}: {v.definition}" for v in vocab_items))
+    if quotes:
+        content.append("Quotes:\n" + "\n".join(f'- "{q.text}" - {q.speaker}' for q in quotes))
+    return "\n\n".join(content)
 
 
-def _get_related_items(target: str, pool: list[str], count: int = 3) -> list[str]:
-    """Get related items that are harder to distinguish from target (similar length, similar starting letters, etc)."""
-    if len(pool) <= count:
-        return pool[:count]
-    
-    # Prioritize items that are similar in length and starting character
-    target_len = len(target)
-    target_start = target[0].lower() if target else ""
-    
-    scored = []
-    for item in pool:
-        if item.lower() == target.lower():
-            continue
-        item_len = len(item)
-        item_start = item[0].lower() if item else ""
-        
-        # Calculate similarity score (we want similar-looking items)
-        length_diff = abs(item_len - target_len)
-        start_match = 1 if item_start == target_start else 0
-        
-        # Lower score is better (more similar)
-        score = length_diff - (start_match * 5)
-        scored.append((score, item))
-    
-    # Sort by similarity and return
-    scored.sort(key=lambda x: x[0])
-    return [item for _, item in scored[:count]]
-
-
-def generate_questions(
+async def generate_questions(
     quiz_type: QuizType,
     themes: list[ThemeConcept],
     facts: list[FactItem],
@@ -56,52 +39,67 @@ def generate_questions(
     quotes: list[QuoteItem],
     limit: int = 5,
 ) -> list[dict[str, Any]]:
-    seed = len(themes) * 17 + len(facts) * 13 + len(vocab_items) * 11 + len(quotes) * 7 + len(quiz_type.value)
-    random.seed(seed)
+    """
+    Generates quiz questions using the Google Gemini AI based on the provided content.
+    """
+    if not settings.GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is not configured.",
+        )
 
-    pool: list[dict[str, Any]] = []
+    genai.configure(api_key=settings.GEMINI_API_KEY)
+    model = genai.GenerativeModel(settings.GEMINI_MODEL)
 
-    if quiz_type in {QuizType.theme, QuizType.mixed}:
-        titles = [t.title for t in themes if t.title]
-        for idx, t in enumerate(themes):
-            if not t.summary:
-                continue
-            wrong = _get_related_items(t.title, [x for x in titles if x != t.title], 3)
-            options = [t.title] + wrong
-            random.shuffle(options)
-            pool.append(_make_question(f"theme-{idx}", "theme", f"Which theme matches this summary: {t.summary}", options, t.title))
+    learning_content = _format_content_for_prompt(themes, facts, vocab_items, quotes)
+    quiz_type_str = "mixed" if quiz_type == QuizType.mixed else quiz_type.value
 
-    if quiz_type in {QuizType.vocab, QuizType.mixed}:
-        words = [v.word for v in vocab_items if v.word]
-        for idx, v in enumerate(vocab_items):
-            if not v.definition:
-                continue
-            wrong = _get_related_items(v.word, [x for x in words if x != v.word], 3)
-            options = [v.word] + wrong
-            random.shuffle(options)
-            pool.append(_make_question(f"vocab-{idx}", "vocab", f"Which word matches this definition: {v.definition}", options, v.word))
+    prompt = f"""
+    Based on the following learning content, generate {limit} multiple-choice quiz questions.
+    The quiz should focus on the '{quiz_type_str}' category if specified, otherwise mix them.
 
-    if quiz_type in {QuizType.quote, QuizType.mixed}:
-        speakers = [q.speaker for q in quotes if q.speaker]
-        for idx, q in enumerate(quotes):
-            if not q.speaker or not q.text:
-                continue
-            wrong = _get_related_items(q.speaker, [x for x in speakers if x != q.speaker], 3)
-            options = [q.speaker] + wrong
-            random.shuffle(options)
-            pool.append(_make_question(f"quote-{idx}", "quote", f"Who said this quote? {q.text}", options, q.speaker))
+    Learning Content:
+    ---
+    {learning_content}
+    ---
 
-    if quiz_type in {QuizType.fact, QuizType.mixed}:
-        categories = [f.category for f in facts if f.category]
-        for idx, f in enumerate(facts):
-            wrong = _get_related_items(f.category, [x for x in categories if x != f.category], 3)
-            options = [f.category] + wrong
-            unique_options = list(dict.fromkeys(options))
-            random.shuffle(unique_options)
-            pool.append(_make_question(f"fact-{idx}", "fact", f"What category best describes this fact: {f.content}", unique_options, f.category))
+    The output must be a valid JSON array of objects. Do not include any text outside of the JSON array.
+    Each object in the array should have the following structure:
+    {{
+      "id": "string (a unique identifier for the question, e.g., 'vocab_1')",
+      "category": "string (e.g., 'Vocabulary', 'Theme', 'Fact', 'Quote')",
+      "question": "string (the question text)",
+      "options": ["string", "string", "string", "string"] (an array of 4 possible answers),
+      "correct_answer": "string (the correct answer, which must be one of the options)"
+    }}
+    """
 
-    if not pool:
-        return []
+    try:
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                response_mime_type="application/json",
+            ),
+        )
+        
+        # Clean the response to ensure it's valid JSON
+        cleaned_response_text = response.text.strip().replace("```json", "").replace("```", "")
+        questions = json.loads(cleaned_response_text)
+        
+        # Basic validation
+        if not isinstance(questions, list):
+            raise ValueError("AI response is not a list.")
+        for q in questions:
+            if not all(k in q for k in ["id", "question", "options", "correct_answer"]):
+                raise ValueError("AI response is missing required keys in a question object.")
 
-    random.shuffle(pool)
-    return pool[: max(1, min(limit, 10))]
+        return questions
+
+    except Exception as e:
+        # In case of AI error or parsing failure, fallback or raise
+        print(f"Error generating AI quiz: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate quiz questions from AI service.",
+        )
+
