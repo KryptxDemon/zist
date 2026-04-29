@@ -27,6 +27,19 @@ def _clean_sentences(text: str) -> list[str]:
     return chunks
 
 
+def _sentence_start_lower(text: str) -> str:
+    if not text:
+        return text
+    return text[0].lower() + text[1:]
+
+
+def _pick_context_sentence(keyword: str, sentences: list[str]) -> str:
+    if not sentences:
+        return ""
+    seed = sum(ord(ch) for ch in keyword)
+    return sentences[seed % len(sentences)]
+
+
 def _fallback_summary_for_keyword(keyword: str, overview: str) -> str:
     lower = keyword.lower()
     explanation = None
@@ -40,17 +53,17 @@ def _fallback_summary_for_keyword(keyword: str, overview: str) -> str:
                 break
 
     overview_sentences = _clean_sentences(overview)
-    contextual_hint = overview_sentences[0] if overview_sentences else ""
+    contextual_hint = _pick_context_sentence(keyword, overview_sentences)
 
     if explanation:
         if contextual_hint:
-            return f"{explanation} In this film, {contextual_hint[0].lower() + contextual_hint[1:]}"
+            return f"{explanation} In this film, {_sentence_start_lower(contextual_hint)}"
         return explanation
 
     if contextual_hint:
         return (
             f'The theme "{keyword}" is reflected in how the narrative develops conflict and character decisions. '
-            f"In this film, {contextual_hint[0].lower() + contextual_hint[1:]}"
+            f"In this film, {_sentence_start_lower(contextual_hint)}"
         )
 
     return (
