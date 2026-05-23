@@ -37,8 +37,8 @@ Go to **Environment** section and add:
 | `DATABASE_URL`         | `postgresql://...`                                                  | From Neon Dashboard       |
 | `SECRET_KEY`           | (generate new)                                                      | **⚠️ DO NOT use dev key** |
 | `TMDB_API_KEY`         | Your TMDB API key                                                   | Required for movie data   |
-| `GEMINI_API_KEY`       | Your Gemini API key                                                 | Required for AI themes    |
-| `GEMINI_MODEL`         | `gemini-1.5-flash`                                                  | Optional override         |
+| `GROQ_API_KEY`         | Your Groq API key                                                   | Required for AI themes    |
+| `GROQ_MODEL`           | `llama-3.3-70b-versatile`                                           | Optional override         |
 | `BACKEND_CORS_ORIGINS` | `https://zist-media.netlify.app,https://your-production-domain.com` | Add all frontend URLs     |
 
 ## Step 4: Deploy

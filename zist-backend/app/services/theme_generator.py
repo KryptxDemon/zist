@@ -2,9 +2,8 @@ import json
 import logging
 import re
 
-import httpx
-
 from app.core.config import settings
+from app.services.groq_client import generate_groq_text
 
 
 logger = logging.getLogger(__name__)
@@ -140,8 +139,8 @@ async def generate_movie_themes(
     keywords: list[str],
     count: int = 5,
 ) -> tuple[list[dict[str, str]], bool, str | None]:
-    if not settings.GEMINI_API_KEY:
-        return _fallback_themes(keywords, overview, count), False, "Gemini API key is not configured"
+    if not settings.GROQ_API_KEY:
+        return _fallback_themes(keywords, overview, count), False, "Groq API key is not configured"
 
     prompt = (
         "Identify 5 core themes from this movie. For each, provide a specific, insightful explanation that:\n"
@@ -157,42 +156,23 @@ async def generate_movie_themes(
         f"Keywords: {', '.join(keywords) if keywords else 'N/A'}"
     )
 
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
-    )
-
-    body = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.3,
-            "responseMimeType": "application/json",
-        },
-    }
+    text, ai_error = await generate_groq_text(prompt, [settings.GROQ_MODEL])
+    if not text:
+        logger.exception("Groq theme generation failed for %s", title)
+        return _fallback_themes(keywords, overview, count), False, ai_error or "Groq request failed"
 
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.post(url, json=body)
-            response.raise_for_status()
-        payload = response.json()
-
-        text = (
-            payload.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text", "")
-        )
 
         json_text = _extract_json_block(text)
         parsed = json.loads(json_text)
         if not isinstance(parsed, list):
-            raise ValueError("Gemini did not return a JSON list")
+            raise ValueError("Groq did not return a JSON list")
 
         ai_themes = _normalize_ai_themes(parsed, count)
         if ai_themes:
             return ai_themes, True, None
     except Exception as exc:
-        logger.exception("Gemini theme generation failed for %s", title)
+        logger.exception("Groq theme parsing failed for %s", title)
         return _fallback_themes(keywords, overview, count), False, str(exc)
 
-    return _fallback_themes(keywords, overview, count), False, "Gemini response could not be parsed"
+    return _fallback_themes(keywords, overview, count), False, "Groq response could not be parsed"
