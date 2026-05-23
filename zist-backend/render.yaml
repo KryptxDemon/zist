@@ -23,7 +23,7 @@ services:
         scope: build,runtime
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-1.5-flash
+        value: gemini-2.5-flash
         scope: runtime
       - key: BACKEND_CORS_ORIGINS
         value: https://zist-media.netlify.app,https://your-production-domain.com
