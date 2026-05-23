@@ -1,9 +1,13 @@
 import json
+import logging
 import re
 
 import httpx
 
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_json_block(text: str) -> str:
@@ -97,9 +101,9 @@ async def generate_movie_quotes(
     overview: str,
     keywords: list[str],
     count: int = 5,
-) -> list[dict[str, str | None]]:
+) -> tuple[list[dict[str, str | None]], bool, str | None]:
     if not settings.GEMINI_API_KEY:
-        return []
+        return [], False, "Gemini API key is not configured"
 
     prompt = (
         f"Give me {count} quotes of the movie {title}. "
@@ -134,6 +138,10 @@ async def generate_movie_quotes(
             .get("text", "")
         )
 
-        return _parse_gemini_quotes_response(text, count)
-    except Exception:
-        return []
+        quotes = _parse_gemini_quotes_response(text, count)
+        if quotes:
+            return quotes, True, None
+        return [], False, "Gemini returned no parseable quotes"
+    except Exception as exc:
+        logger.exception("Gemini quote generation failed for %s", title)
+        return [], False, str(exc)

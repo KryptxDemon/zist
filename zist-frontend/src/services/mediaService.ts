@@ -326,18 +326,21 @@ export const themeService = {
     created: ThemeConcept[];
     updated: ThemeConcept[];
     usedAi: boolean;
+    aiError?: string | null;
   }> {
     try {
       const response = await apiClient.post<{
         created?: ApiObject[];
         updated?: ApiObject[];
         used_ai?: boolean;
+        ai_error?: string | null;
       }>(`/media/${mediaId}/themes/generate?count=${count}`);
 
       return {
         created: (response.created || []).map(mapTheme),
         updated: (response.updated || []).map(mapTheme),
         usedAi: Boolean(response.used_ai),
+        aiError: response.ai_error ?? null,
       };
     } catch (error) {
       throw new Error(
@@ -593,16 +596,25 @@ export const quoteService = {
   async generateForMedia(
     mediaId: string,
     count: number = 5,
-  ): Promise<{ created: QuoteItem[]; updated: QuoteItem[] }> {
+  ): Promise<{
+    created: QuoteItem[];
+    updated: QuoteItem[];
+    usedAi: boolean;
+    aiError?: string | null;
+  }> {
     try {
       const response = await apiClient.post<{
         created?: ApiObject[];
         updated?: ApiObject[];
+        used_ai?: boolean;
+        ai_error?: string | null;
       }>(`/media/${mediaId}/quotes/generate?count=${count}`);
 
       return {
         created: (response.created || []).map(mapQuote),
         updated: (response.updated || []).map(mapQuote),
+        usedAi: Boolean(response.used_ai),
+        aiError: response.ai_error ?? null,
       };
     } catch (error) {
       throw new Error(
