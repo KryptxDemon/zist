@@ -599,7 +599,9 @@ function ThemesTab({
         title: "Themes generated",
         description: result.usedAi
           ? "Generated using TMDb + Gemini"
-          : "Generated using TMDb keyword fallback",
+          : result.aiError
+            ? `Gemini unavailable: ${result.aiError}`
+            : "Generated using TMDb keyword fallback",
       });
     } catch (error) {
       toast({
@@ -1417,9 +1419,12 @@ function QuotesTab({
 
       toast({
         title: "Quotes generated",
-        description:
-          result.created.length > 0 || result.updated.length > 0
+        description: result.usedAi
+          ? result.created.length > 0 || result.updated.length > 0
             ? `${result.created.length + result.updated.length} quotes added or refreshed`
+            : "No new quotes were added. Try another title or add manually."
+          : result.aiError
+            ? `Gemini unavailable: ${result.aiError}`
             : "No new quotes were added. Try another title or add manually.",
       });
     } catch (error) {

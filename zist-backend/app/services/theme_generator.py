@@ -1,9 +1,13 @@
 import json
+import logging
 import re
 
 import httpx
 
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 FALLBACK_THEME_MAP: dict[str, str] = {
@@ -135,9 +139,9 @@ async def generate_movie_themes(
     overview: str,
     keywords: list[str],
     count: int = 5,
-) -> tuple[list[dict[str, str]], bool]:
+) -> tuple[list[dict[str, str]], bool, str | None]:
     if not settings.GEMINI_API_KEY:
-        return _fallback_themes(keywords, overview, count), False
+        return _fallback_themes(keywords, overview, count), False, "Gemini API key is not configured"
 
     prompt = (
         "Identify 5 core themes from this movie. For each, provide a specific, insightful explanation that:\n"
@@ -186,8 +190,9 @@ async def generate_movie_themes(
 
         ai_themes = _normalize_ai_themes(parsed, count)
         if ai_themes:
-            return ai_themes, True
-    except Exception:
-        pass
+            return ai_themes, True, None
+    except Exception as exc:
+        logger.exception("Gemini theme generation failed for %s", title)
+        return _fallback_themes(keywords, overview, count), False, str(exc)
 
-    return _fallback_themes(keywords, overview, count), False
+    return _fallback_themes(keywords, overview, count), False, "Gemini response could not be parsed"

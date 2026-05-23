@@ -71,7 +71,7 @@ async def generate_quotes_for_media(
             detail="Could not find this title on TMDb for quote generation.",
         )
 
-    generated_quotes = await generate_movie_quotes(
+    generated_quotes, used_ai, ai_error = await generate_movie_quotes(
         title=tmdb_payload.get("title") or media.title,
         overview=tmdb_payload.get("overview") or "",
         keywords=tmdb_payload.get("keywords") or [],
@@ -117,6 +117,8 @@ async def generate_quotes_for_media(
 
     return {
         "media_id": media_id,
+        "used_ai": used_ai,
+        "ai_error": ai_error,
         "created": [QuoteResponse.model_validate(item).model_dump() for item in created_items],
         "updated": [QuoteResponse.model_validate(item).model_dump() for item in updated_items],
         "total_generated": len(generated_quotes),

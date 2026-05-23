@@ -112,7 +112,7 @@ async def generate_themes_for_media(
 			detail="Could not find this title on TMDb for theme generation.",
 		)
 
-	themes, used_ai = await generate_movie_themes(
+	themes, used_ai, ai_error = await generate_movie_themes(
 		title=tmdb_payload.get("title") or media.title,
 		overview=tmdb_payload.get("overview") or "",
 		keywords=tmdb_payload.get("keywords") or [],
@@ -165,6 +165,7 @@ async def generate_themes_for_media(
 	return {
 		"media_id": media_id,
 		"used_ai": used_ai,
+		"ai_error": ai_error,
 		"created": [ThemeResponse.model_validate(item).model_dump() for item in created_items],
 		"updated": [ThemeResponse.model_validate(item).model_dump() for item in updated_items],
 		"total_generated": len(themes),
