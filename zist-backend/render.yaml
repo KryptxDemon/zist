@@ -19,11 +19,11 @@ services:
       - key: TMDB_API_KEY
         scope: build,runtime
         sync: false
-      - key: GEMINI_API_KEY
+      - key: GROQ_API_KEY
         scope: build,runtime
         sync: false
-      - key: GEMINI_MODEL
-        value: gemini-2.5-flash
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
         scope: runtime
       - key: BACKEND_CORS_ORIGINS
         value: https://zist-media.netlify.app,https://your-production-domain.com

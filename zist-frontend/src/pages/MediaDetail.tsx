@@ -1417,15 +1417,25 @@ function QuotesTab({
         ),
       );
 
-      toast({
-        title: "Quotes generated",
-        description: result.usedAi
-          ? result.created.length > 0 || result.updated.length > 0
+      const hadChanges = result.created.length > 0 || result.updated.length > 0;
+      const title = result.usedAi
+        ? "Quotes generated"
+        : result.aiError
+          ? "Quotes generated with fallback"
+          : "Quotes generated with fallback";
+      const description = result.usedAi
+        ? hadChanges
+          ? `${result.created.length + result.updated.length} quotes added or refreshed`
+          : "No new quotes were added. Try another title or add manually."
+        : result.aiError
+          ? `Groq unavailable: ${result.aiError}`
+          : hadChanges
             ? `${result.created.length + result.updated.length} quotes added or refreshed`
-            : "No new quotes were added. Try another title or add manually."
-          : result.aiError
-            ? `Gemini unavailable: ${result.aiError}`
-            : "No new quotes were added. Try another title or add manually.",
+            : "No new quotes were added. Try another title or add manually.";
+
+      toast({
+        title,
+        description,
       });
     } catch (error) {
       toast({

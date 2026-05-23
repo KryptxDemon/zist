@@ -135,7 +135,7 @@ async def generate_themes_for_media(
 		if key in existing_by_title:
 			item = existing_by_title[key]
 			item.summary = summary
-			item.source_name = "gemini-tmdb" if used_ai else "tmdb-keywords"
+			item.source_name = "groq-tmdb" if used_ai else "tmdb-keywords"
 			item.source_url = (
 				f"https://www.themoviedb.org/{tmdb_content_type}/{tmdb_payload.get('tmdb_id')}"
 				if tmdb_payload.get("tmdb_id")
@@ -147,7 +147,7 @@ async def generate_themes_for_media(
 				media_id=media_id,
 				title=title,
 				summary=summary,
-				source_name="gemini-tmdb" if used_ai else "tmdb-keywords",
+				source_name="groq-tmdb" if used_ai else "tmdb-keywords",
 				source_url=(
 					f"https://www.themoviedb.org/{tmdb_content_type}/{tmdb_payload.get('tmdb_id')}"
 					if tmdb_payload.get("tmdb_id")

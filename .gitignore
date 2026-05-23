@@ -53,6 +53,7 @@ wheels/
 .env.local
 .env.*.local
 .env.production
+/zist-backend/.env
 
 # Database
 *.db
