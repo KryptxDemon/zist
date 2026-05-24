@@ -51,8 +51,6 @@ function formatJoinedDate(createdAt?: string | null): string {
   }
 
   return formatRelativeTime(createdAt);
-
-  return `Joined ${formatDistanceToNow(parsedDate, { addSuffix: true })}`;
 }
 
 export default function UserProfilePage() {
