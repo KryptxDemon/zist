@@ -71,10 +71,14 @@ async function apiRequest<T>(
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const detailMessage =
+          typeof data?.detail === "string"
+            ? data.detail
+            : data?.detail?.message || data?.message;
         const apiError = new ApiError(
           response.status,
           data,
-          data?.detail || data?.message || `HTTP ${response.status}`,
+          detailMessage || `HTTP ${response.status}`,
         );
 
         // If a base URL is wrong (common with missing dev proxy), try the next base.

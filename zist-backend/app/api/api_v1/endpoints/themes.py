@@ -1,12 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import get_current_user, get_db
 from app.models.media import MediaItem
 from app.models.theme import ThemeConcept
 from app.models.user import User
-from app.schemas.theme import ThemeCreate, ThemeListResponse, ThemeResponse, ThemeUpdate
+from app.schemas.theme import (
+	ThemeCreate,
+	ThemeListResponse,
+	ThemeResponse,
+	ThemeUpdate,
+	TopThemeListResponse,
+	TopThemeResponse,
+	TopThemeMediaResponse,
+)
 from app.services.theme_generator import generate_movie_themes
 from app.services.tmdb import get_movie_themes_payload
 
@@ -28,34 +36,47 @@ def _get_owned_theme_or_404(db: Session, theme_id: str, user_id: str) -> ThemeCo
 	return theme
 
 
-@router.get("/top", response_model=ThemeListResponse)
+@router.get("/top", response_model=TopThemeListResponse)
 def get_top_themes(
 	limit: int = Query(default=5, ge=1, le=20),
 	db: Session = Depends(get_db),
 ):
-	"""Get top themes across all users, sorted by most common themes."""
-	# Group themes by title and count occurrences
+	"""Get the most recent top themes across all users, grouped by title."""
 	theme_counts = (
-		db.query(ThemeConcept.title, func.count(ThemeConcept.id).label("count"))
+		db.query(
+			ThemeConcept.title.label("title"),
+			func.count(ThemeConcept.id).label("count"),
+			func.max(ThemeConcept.created_at).label("latest_created_at"),
+		)
 		.group_by(ThemeConcept.title)
-		.order_by(func.count(ThemeConcept.id).desc())
+		.order_by(func.count(ThemeConcept.id).desc(), func.max(ThemeConcept.created_at).desc())
 		.limit(limit)
 		.all()
 	)
-	
-	# Get the most recent instance of each top theme
-	top_themes = []
-	for title, count in theme_counts:
+
+	top_themes: list[TopThemeResponse] = []
+	for row in theme_counts:
 		theme = (
 			db.query(ThemeConcept)
-			.filter(ThemeConcept.title == title)
+			.options(joinedload(ThemeConcept.media))
+			.filter(ThemeConcept.title == row.title)
 			.order_by(ThemeConcept.created_at.desc())
 			.first()
 		)
-		if theme:
-			top_themes.append(theme)
-	
-	return ThemeListResponse(items=[ThemeResponse.model_validate(i) for i in top_themes], total=len(top_themes))
+		if not theme or not theme.media:
+			continue
+
+		top_themes.append(
+			TopThemeResponse(
+				title=row.title,
+				count=row.count,
+				latest_created_at=row.latest_created_at or theme.created_at,
+				summary=theme.summary,
+				media=TopThemeMediaResponse.model_validate(theme.media),
+			)
+		)
+
+	return TopThemeListResponse(items=top_themes, total=len(top_themes))
 
 
 @router.get("/media/{media_id}/themes", response_model=ThemeListResponse)

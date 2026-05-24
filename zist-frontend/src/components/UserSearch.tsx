@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { UserAvatar } from "@/components/UserAvatar";
 import { User } from "@/types";
 import { userService } from "@/services/userService";
-import { Search, User as UserIcon, Loader2 } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UserSearchProps {
@@ -108,20 +109,22 @@ export function UserSearch({
                   onClick={() => handleSelectUser(user)}
                   className="w-full px-4 py-3 hover:bg-accent text-left transition-colors flex items-center gap-3 border-b border-border last:border-b-0"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-primary">
-                      {user.displayName[0]?.toUpperCase()}
-                    </span>
-                  </div>
+                  <UserAvatar
+                    userId={user.id}
+                    name={user.displayName}
+                    avatarUrl={user.avatar}
+                    clickable={false}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground truncate">
                       {user.displayName}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {user.email}
-                    </p>
+                    {user.bio ? (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {user.bio}
+                      </p>
+                    ) : null}
                   </div>
-                  <UserIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </button>
               ))}
             </div>

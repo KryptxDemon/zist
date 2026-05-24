@@ -4,8 +4,20 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { mediaService, vocabService } from "@/services/mediaService";
-import { MediaItem, QuizQuestion, VocabItem } from "@/types";
+import {
+  mediaService,
+  themeService,
+  quoteService,
+  vocabService,
+} from "@/services/mediaService";
+import { aiService } from "@/services/externalServices";
+import {
+  MediaItem,
+  QuoteItem,
+  QuizQuestion,
+  ThemeConcept,
+  VocabItem,
+} from "@/types";
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,29 +29,132 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function generateQuestions(vocab: VocabItem[]): QuizQuestion[] {
-  const questions: QuizQuestion[] = [];
+function shuffle<T>(items: T[]): T[] {
+  return [...items].sort(() => Math.random() - 0.5);
+}
 
-  // Vocabulary questions
-  vocab.slice(0, 4).forEach((word, index) => {
-    if (word.definition) {
-      questions.push({
-        id: `vocab-${index}`,
-        type: "multiple-choice",
-        question: `What is the definition of "${word.word}"?`,
-        options: [
-          word.definition,
-          "A type of ancient currency",
-          "A method of preserving food",
-          "A style of architecture",
-        ].sort(() => Math.random() - 0.5),
-        correctAnswer: word.definition,
-        category: "vocab",
+async function buildQuizQuestions(
+  vocab: VocabItem[],
+  themes: ThemeConcept[],
+  quotes: QuoteItem[],
+  allMedia: MediaItem[],
+): Promise<QuizQuestion[]> {
+  const mediaTitleById = new Map(allMedia.map((item) => [item.id, item.title]));
+  const themeQuestions = themes
+    .filter((item) => item.title.trim())
+    .slice(0, 4)
+    .map((theme, index) => ({
+      id: `theme-${index}`,
+      type: "multiple-choice" as const,
+      question: `Which theme best matches this idea from ${mediaTitleById.get(theme.mediaId) || "your media"}? \"${theme.summary || theme.title}\"`,
+      correctAnswer: theme.title,
+      category: "theme" as const,
+      context:
+        `${mediaTitleById.get(theme.mediaId) || "Unknown media"}. ${theme.summary || ""}`.trim(),
+      candidateAnswers: themes
+        .filter((item) => item.id !== theme.id)
+        .map((item) => item.title)
+        .filter((value) => value && value !== theme.title),
+    }));
+
+  const vocabQuestions = vocab
+    .filter((item) => item.definition)
+    .slice(0, 4)
+    .map((word, index) => ({
+      id: `vocab-${index}`,
+      type: "multiple-choice" as const,
+      question: `What is the definition of \"${word.word}\"?`,
+      correctAnswer: word.definition as string,
+      category: "vocab" as const,
+      context: [word.exampleSentence, word.whereFound, word.memoryTip]
+        .filter(Boolean)
+        .join(" | "),
+      candidateAnswers: vocab
+        .filter((item) => item.id !== word.id && item.definition)
+        .map((item) => item.definition as string)
+        .slice(0, 8),
+    }));
+
+  const quoteQuestions = quotes
+    .filter((item) => item.text.trim())
+    .slice(0, 4)
+    .map((quote, index) => ({
+      id: `quote-${index}`,
+      type: "multiple-choice" as const,
+      question: `Which media does this quote belong to? \"${quote.text}\"`,
+      correctAnswer: mediaTitleById.get(quote.mediaId) || "Unknown media",
+      category: "quote" as const,
+      context: [
+        quote.speaker,
+        quote.reference,
+        quote.userMeaning,
+        quote.aiMeaning,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+      candidateAnswers: allMedia
+        .filter((item) => item.id !== quote.mediaId)
+        .map((item) => item.title)
+        .slice(0, 8),
+    }));
+
+  const baseQuestions = shuffle([
+    ...themeQuestions,
+    ...vocabQuestions,
+    ...quoteQuestions,
+  ]).slice(0, 10);
+
+  const enrichedQuestions = await Promise.all(
+    baseQuestions.map(async (question) => {
+      const distractors = await aiService.generateQuizDistractors({
+        kind: question.category,
+        question: question.question,
+        correctAnswer: question.correctAnswer,
+        context: question.context,
+        candidateAnswers: question.candidateAnswers,
       });
-    }
-  });
 
-  return questions.slice(0, 10);
+      const fallbackPool =
+        question.candidateAnswers?.filter(
+          (item) =>
+            item.toLowerCase().trim() !==
+            question.correctAnswer.toLowerCase().trim(),
+        ) || [];
+      const fallbackDistractors = fallbackPool.slice(0, 3);
+
+      const options = shuffle([
+        question.correctAnswer,
+        ...distractors,
+        ...fallbackDistractors,
+      ])
+        .filter(
+          (value, index, values) =>
+            values.findIndex((item) => item === value) === index,
+        )
+        .slice(0, 4);
+
+      while (options.length < 4) {
+        const filler =
+          question.category === "quote"
+            ? "I am not sure"
+            : question.category === "theme"
+              ? "A different theme"
+              : "An unrelated idea";
+        if (!options.includes(filler)) {
+          options.push(filler);
+        } else {
+          break;
+        }
+      }
+
+      return {
+        ...question,
+        options: shuffle(options),
+      } as QuizQuestion;
+    }),
+  );
+
+  return enrichedQuestions;
 }
 
 export default function QuizSession() {
@@ -59,23 +174,49 @@ export default function QuizSession() {
       if (!mediaId) return;
       setIsLoading(true);
       try {
-        const [mediaData, vocab] = await Promise.all([
-          mediaService.getById(mediaId),
-          vocabService.getByMediaId(mediaId),
-        ]);
+        const isCollective = mediaId === "collective";
+        const allMedia = isCollective ? await mediaService.getAll() : [];
+        const mediaData = isCollective
+          ? null
+          : await mediaService.getById(mediaId);
 
-        if (!mediaData) {
+        if (!isCollective && !mediaData) {
           navigate("/app/quiz");
           return;
         }
 
+        const [themes, vocab, quotes] = isCollective
+          ? await Promise.all([
+              Promise.all(
+                allMedia.map((item) => themeService.getByMediaId(item.id)),
+              ),
+              Promise.all(
+                allMedia.map((item) => vocabService.getByMediaId(item.id)),
+              ),
+              Promise.all(
+                allMedia.map((item) => quoteService.getByMediaId(item.id)),
+              ),
+            ])
+          : [
+              await themeService.getByMediaId(mediaId),
+              await vocabService.getByMediaId(mediaId),
+              await quoteService.getByMediaId(mediaId),
+            ];
+
         setMedia(mediaData);
-        const generatedQuestions = generateQuestions(vocab);
+        const generatedQuestions = await buildQuizQuestions(
+          themes.flat(),
+          vocab.flat(),
+          quotes.flat(),
+          isCollective ? allMedia : mediaData ? [mediaData] : [],
+        );
 
         if (generatedQuestions.length === 0) {
           toast({
             title: "Not enough content",
-            description: "Add more vocabulary to generate a quiz.",
+            description: isCollective
+              ? "Add more vocabulary across your library to generate a collective quiz."
+              : "Add more vocabulary to generate a quiz.",
             variant: "destructive",
           });
           navigate("/app/quiz");
@@ -95,7 +236,8 @@ export default function QuizSession() {
   }, [mediaId, navigate, toast]);
 
   const currentQuestion = questions[currentIndex];
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  const progress =
+    questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
 
   const handleAnswer = (answer: string) => {
     setAnswers({ ...answers, [currentQuestion.id]: answer });
@@ -183,7 +325,9 @@ export default function QuizSession() {
             <h1 className="font-display text-3xl font-bold text-foreground mb-2">
               Quiz Complete!
             </h1>
-            <p className="text-muted-foreground mb-6">{media?.title}</p>
+            <p className="text-muted-foreground mb-6">
+              {media?.title || "Collective Quiz"}
+            </p>
 
             <div className="text-5xl font-display font-bold text-foreground mb-2">
               {score}/{questions.length}
@@ -268,7 +412,7 @@ export default function QuizSession() {
           </Button>
           <div className="flex-1">
             <h1 className="font-display text-xl font-bold text-foreground">
-              {media?.title} Quiz
+              {media?.title ? `${media.title} Quiz` : "Collective Quiz"}
             </h1>
             <p className="text-sm text-muted-foreground">
               Question {currentIndex + 1} of {questions.length}
@@ -306,6 +450,13 @@ export default function QuizSession() {
           <h2 className="font-display text-xl font-semibold text-foreground mb-6">
             {currentQuestion.question}
           </h2>
+
+          {currentQuestion.category === "quote" &&
+          currentQuestion.correctAnswer ? (
+            <p className="mb-4 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Choose the matching media title
+            </p>
+          ) : null}
 
           {currentQuestion.type === "multiple-choice" ? (
             <div className="space-y-3">

@@ -10,6 +10,18 @@ interface DictionaryResponse {
   example: string;
 }
 
+interface GeneratedVocabularyItem {
+  word: string;
+  part_of_speech?: string | null;
+  definition: string;
+  example_sentence: string;
+  why_relevant?: string | null;
+}
+
+interface GeneratedQuizDistractorsResponse {
+  distractors?: string[];
+}
+
 interface ExternalMediaItem {
   title: string;
   type: "movie" | "tv" | "book" | "documentary" | "podcast" | "game";
@@ -196,6 +208,26 @@ export const mediaSearchService = {
 
 // AI service for quote meanings - calls backend API
 export const aiService = {
+  async generateMediaVocabulary(
+    title: string,
+    overview?: string,
+    count: number = 5,
+  ): Promise<GeneratedVocabularyItem[]> {
+    try {
+      const response = await apiClient.post<{
+        items: GeneratedVocabularyItem[];
+      }>("/external/ai/media-vocabulary", {
+        title,
+        overview,
+        count,
+      });
+      return response.items || [];
+    } catch (error) {
+      console.error("Failed to generate media vocabulary:", error);
+      return [];
+    }
+  },
+
   async generateQuoteMeaning(quote: string, context?: string): Promise<string> {
     try {
       const response = await apiClient.post<{ meaning: string }>(
@@ -209,6 +241,31 @@ export const aiService = {
     } catch (error) {
       console.error("Failed to generate quote meaning:", error);
       return "This quote invites reflection on the themes and ideas presented in the narrative.";
+    }
+  },
+
+  async generateQuizDistractors(input: {
+    kind: "theme" | "vocab" | "quote";
+    question: string;
+    correctAnswer: string;
+    context?: string;
+    candidateAnswers?: string[];
+  }): Promise<string[]> {
+    try {
+      const response = await apiClient.post<GeneratedQuizDistractorsResponse>(
+        "/external/ai/quiz-distractors",
+        {
+          kind: input.kind,
+          question: input.question,
+          correct_answer: input.correctAnswer,
+          context: input.context,
+          candidate_answers: input.candidateAnswers || [],
+        },
+      );
+      return response.distractors || [];
+    } catch (error) {
+      console.error("Failed to generate quiz distractors:", error);
+      return [];
     }
   },
 };

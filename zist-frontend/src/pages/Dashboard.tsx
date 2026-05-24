@@ -8,6 +8,7 @@ import {
   BookOpen,
   Quote,
   Lightbulb,
+  Loader2,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -472,6 +473,27 @@ export default function Dashboard() {
     : "/app/library";
   const quizHref = quizMedia ? `/app/quiz/${quizMedia.id}` : "/app/quiz";
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="min-h-[70vh] flex items-center justify-center px-6 py-16">
+          <div className="flex flex-col items-center gap-4 rounded-3xl border border-border/50 bg-card/80 backdrop-blur-sm px-8 py-10 shadow-xl">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <div className="text-center space-y-1">
+              <p className="font-display text-xl font-semibold text-foreground">
+                Loading your saved library
+              </p>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Pulling in your themes, media, vocabulary, and quotes before the
+                page appears.
+              </p>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="relative max-w-[1600px] mx-auto pb-20 md:pb-0 space-y-9 animate-fade-in">
@@ -600,48 +622,32 @@ export default function Dashboard() {
           />
         </section>
 
-        {isLoading ? (
-          <section className="space-y-3">
-            <div className="h-6 w-48 rounded bg-accent animate-pulse" />
-            <div className="flex gap-4 overflow-x-hidden">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="min-w-[180px] w-[180px] aspect-[2/3] rounded-2xl bg-accent animate-pulse"
-                />
-              ))}
-            </div>
-          </section>
-        ) : (
-          <>
-            <HorizontalRail
-              title="Continue Learning"
-              subtitle="Pick up from your latest in-progress titles"
-              items={continueLearning}
-              coverById={coverById}
-              themesByMedia={themesByMedia}
-              quotesByMedia={quotesByMedia}
-            />
+        <HorizontalRail
+          title="Continue Learning"
+          subtitle="Pick up from your latest in-progress titles"
+          items={continueLearning}
+          coverById={coverById}
+          themesByMedia={themesByMedia}
+          quotesByMedia={quotesByMedia}
+        />
 
-            <HorizontalRail
-              title="Recently Added"
-              subtitle="Fresh entries in your knowledge library"
-              items={recentlyAdded}
-              coverById={coverById}
-              themesByMedia={themesByMedia}
-              quotesByMedia={quotesByMedia}
-            />
+        <HorizontalRail
+          title="Recently Added"
+          subtitle="Fresh entries in your knowledge library"
+          items={recentlyAdded}
+          coverById={coverById}
+          themesByMedia={themesByMedia}
+          quotesByMedia={quotesByMedia}
+        />
 
-            <HorizontalRail
-              title={`Because You Explored \"${topTheme}\"`}
-              subtitle="Recommendations inferred from your current concept focus"
-              items={recommendedForTheme}
-              coverById={coverById}
-              themesByMedia={themesByMedia}
-              quotesByMedia={quotesByMedia}
-            />
-          </>
-        )}
+        <HorizontalRail
+          title={`Because You Explored \"${topTheme}\"`}
+          subtitle="Recommendations inferred from your current concept focus"
+          items={recommendedForTheme}
+          coverById={coverById}
+          themesByMedia={themesByMedia}
+          quotesByMedia={quotesByMedia}
+        />
 
         <section className="rounded-2xl bg-card/70 backdrop-blur-sm p-5 shadow-[0_12px_28px_-18px_rgba(0,0,0,0.7)]">
           <div className="flex items-center justify-between flex-wrap gap-3 mb-4">

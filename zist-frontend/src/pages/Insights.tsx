@@ -4,8 +4,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -127,78 +125,74 @@ export default function Insights() {
     return out;
   }, [vocab]);
 
-  const activityTrendData = useMemo(() => {
-    const counts = new Map<string, number>();
+  const estimatedLearningTimeData = useMemo(() => {
+    const minutesByMedia = new Map<
+      string,
+      {
+        title: string;
+        minutes: number;
+        themeCount: number;
+        vocabCount: number;
+        quoteCount: number;
+        quizCount: number;
+      }
+    >();
 
-    themes.forEach((t) => {
-      const key = toDayKey(t.createdAt);
-      counts.set(key, (counts.get(key) || 0) + 1);
+    const getOrCreate = (mediaId: string, title: string) => {
+      if (!minutesByMedia.has(mediaId)) {
+        minutesByMedia.set(mediaId, {
+          title,
+          minutes: 0,
+          themeCount: 0,
+          vocabCount: 0,
+          quoteCount: 0,
+          quizCount: 0,
+        });
+      }
+      return minutesByMedia.get(mediaId)!;
+    };
+
+    themes.forEach((item) => {
+      const mediaItem = media.find((m) => m.id === item.mediaId);
+      if (!mediaItem) return;
+      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
+      bucket.themeCount += 1;
+      bucket.minutes += 4;
     });
-    vocab.forEach((v) => {
-      const key = toDayKey(v.createdAt);
-      counts.set(key, (counts.get(key) || 0) + 1);
+    vocab.forEach((item) => {
+      const mediaItem = media.find((m) => m.id === item.mediaId);
+      if (!mediaItem) return;
+      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
+      bucket.vocabCount += 1;
+      bucket.minutes += 3;
     });
-    quotes.forEach((q) => {
-      const key = toDayKey(q.createdAt);
-      counts.set(key, (counts.get(key) || 0) + 1);
+    quotes.forEach((item) => {
+      const mediaItem = media.find((m) => m.id === item.mediaId);
+      if (!mediaItem) return;
+      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
+      bucket.quoteCount += 1;
+      bucket.minutes += 2;
     });
-    quizAttempts.forEach((q) => {
-      const key = toDayKey(q.completedAt);
-      counts.set(key, (counts.get(key) || 0) + 1);
+    quizAttempts.forEach((item) => {
+      const mediaItem = media.find((m) => m.id === item.mediaId);
+      if (!mediaItem) return;
+      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
+      bucket.quizCount += 1;
+      bucket.minutes += Math.max(6, Math.round(item.totalQuestions * 1.5));
     });
 
-    const out: { day: string; actions: number }[] = [];
-    const today = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = toDayKey(d.toISOString());
-      out.push({
-        day: d.toLocaleDateString(undefined, { weekday: "short" }),
-        actions: counts.get(key) || 0,
-      });
-    }
+    return [...minutesByMedia.values()]
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 8);
+  }, [media, themes, vocab, quotes, quizAttempts]);
 
-    return out;
-  }, [themes, vocab, quotes, quizAttempts]);
+  const totalEstimatedMinutes = useMemo(
+    () =>
+      estimatedLearningTimeData.reduce((sum, item) => sum + item.minutes, 0),
+    [estimatedLearningTimeData],
+  );
 
-  const heatmapDays = useMemo(() => {
-    const countByDay = new Map<string, number>();
-
-    themes.forEach((e) => {
-      const key = toDayKey(e.createdAt);
-      countByDay.set(key, (countByDay.get(key) || 0) + 1);
-    });
-    vocab.forEach((e) => {
-      const key = toDayKey(e.createdAt);
-      countByDay.set(key, (countByDay.get(key) || 0) + 1);
-    });
-    quotes.forEach((e) => {
-      const key = toDayKey(e.createdAt);
-      countByDay.set(key, (countByDay.get(key) || 0) + 1);
-    });
-    quizAttempts.forEach((e) => {
-      const key = toDayKey(e.completedAt);
-      countByDay.set(key, (countByDay.get(key) || 0) + 1);
-    });
-
-    const result: { key: string; count: number; label: string }[] = [];
-    const today = new Date();
-    for (let i = 27; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = toDayKey(d.toISOString());
-      result.push({
-        key,
-        count: countByDay.get(key) || 0,
-        label: d.toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        }),
-      });
-    }
-    return result;
-  }, [themes, vocab, quotes, quizAttempts]);
+  const topLearningMedia = estimatedLearningTimeData[0];
 
   return (
     <AppLayout>
@@ -211,8 +205,8 @@ export default function Insights() {
             Your Learning Analytics
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Track growth, concept spread, streak patterns, and media influence
-            from a dedicated analytics space.
+            A simpler view of what you’ve spent time learning, what you’ve
+            saved, and which media has taken the most attention.
           </p>
         </section>
 
@@ -226,211 +220,110 @@ export default function Insights() {
             ))}
           </div>
         ) : (
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
+          <>
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
+                <p className="text-sm text-muted-foreground">Media studied</p>
+                <p className="mt-2 font-display text-3xl font-semibold text-foreground">
+                  {media.length}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Combined themes, vocabulary, quotes, and quizzes across your
+                  library.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
+                <p className="text-sm text-muted-foreground">
+                  Estimated learning time
+                </p>
+                <p className="mt-2 font-display text-3xl font-semibold text-foreground">
+                  {totalEstimatedMinutes} min
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Based on themes, vocabulary, quotes, and quiz activity.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
+                <p className="text-sm text-muted-foreground">
+                  Most active media
+                </p>
+                <p className="mt-2 font-display text-2xl font-semibold text-foreground line-clamp-2">
+                  {topLearningMedia?.title || "No media yet"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {topLearningMedia
+                    ? `${topLearningMedia.minutes} min estimated`
+                    : "Add media and start learning."}
+                </p>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
               <h3 className="font-display font-semibold text-foreground mb-3">
-                Concept Distribution
+                Learning Time Per Media
               </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={conceptDistributionData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={60}
-                      outerRadius={92}
-                      paddingAngle={3}
+              {estimatedLearningTimeData.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Add themes, vocabulary, quotes, or quizzes to see this
+                  breakdown.
+                </p>
+              ) : (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={estimatedLearningTimeData}
+                      layout="vertical"
                     >
-                      {conceptDistributionData.map((_, idx) => (
-                        <Cell
-                          key={`c-${idx}`}
-                          fill={CHART_COLORS[idx % CHART_COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
-              <h3 className="font-display font-semibold text-foreground mb-3">
-                Vocabulary Growth
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={vocabGrowthData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                      opacity={0.35}
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tick={{
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: 12,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: 12,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="words"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
-              <h3 className="font-display font-semibold text-foreground mb-3">
-                Learning Streak Graph
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={activityTrendData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                      opacity={0.35}
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tick={{
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: 12,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: 12,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="actions"
-                      stroke="hsl(var(--secondary))"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
-              <h3 className="font-display font-semibold text-foreground mb-3">
-                Themes Per Media Type
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={themesPerMediaTypeData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                      opacity={0.35}
-                    />
-                    <XAxis
-                      dataKey="type"
-                      tick={{
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: 12,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: 12,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="themes"
-                      fill="hsl(var(--primary))"
-                      radius={[8, 8, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </section>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="hsl(var(--border))"
+                        opacity={0.35}
+                      />
+                      <XAxis
+                        type="number"
+                        tick={{
+                          fill: "hsl(var(--muted-foreground))",
+                          fontSize: 12,
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="title"
+                        width={140}
+                        tick={{
+                          fill: "hsl(var(--muted-foreground))",
+                          fontSize: 12,
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        formatter={(value, name, entry) => [
+                          `${value} min`,
+                          entry.payload.title,
+                        ]}
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Bar
+                        dataKey="minutes"
+                        fill="hsl(var(--primary))"
+                        radius={[0, 8, 8, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </section>
+          </>
         )}
-
-        <section className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5">
-          <h3 className="font-display font-semibold text-foreground mb-3">
-            Activity Heatmap
-          </h3>
-          <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
-            {heatmapDays.map((d) => (
-              <div
-                key={d.key}
-                title={`${d.label}: ${d.count} activity`}
-                className="aspect-square rounded-md border border-border/40"
-                style={{
-                  background:
-                    d.count === 0
-                      ? "hsl(var(--accent))"
-                      : `hsl(var(--primary) / ${Math.min(0.25 + d.count * 0.15, 0.9)})`,
-                }}
-              />
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            Darker cells indicate higher activity on that day.
-          </p>
-        </section>
       </div>
     </AppLayout>
   );

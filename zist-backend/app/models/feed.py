@@ -35,6 +35,7 @@ class FeedPost(Base):
     user = relationship("User", back_populates="posts")
     likes = relationship("FeedPostLike", back_populates="post", cascade="all, delete-orphan")
     saves = relationship("FeedPostSave", back_populates="post", cascade="all, delete-orphan")
+    comments = relationship("FeedPostComment", back_populates="post", cascade="all, delete-orphan")
 
 
 class FeedPostLike(Base):
@@ -75,3 +76,28 @@ class FeedPostSave(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     post = relationship("FeedPost", back_populates="saves")
+
+
+class FeedPostComment(Base):
+    __tablename__ = "feed_post_comments"
+
+    id: Mapped[str] = mapped_column(
+        String,
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    post_id: Mapped[str] = mapped_column(
+        ForeignKey("feed_posts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    post = relationship("FeedPost", back_populates="comments")
+    user = relationship("User")
