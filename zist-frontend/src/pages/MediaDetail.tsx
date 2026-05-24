@@ -318,7 +318,13 @@ export default function MediaDetail() {
           </TabsContent>
 
           <TabsContent value="vocab">
-            <VocabTab mediaId={media.id} vocab={vocab} setVocab={setVocab} />
+            <VocabTab
+              mediaId={media.id}
+              mediaTitle={media.title}
+              mediaOverview={media.description}
+              vocab={vocab}
+              setVocab={setVocab}
+            />
           </TabsContent>
 
           <TabsContent value="quotes">
@@ -596,12 +602,7 @@ function ThemesTab({
       );
 
       toast({
-        title: "Themes generated",
-        description: result.usedAi
-          ? "Generated using TMDb + Gemini"
-          : result.aiError
-            ? `Gemini unavailable: ${result.aiError}`
-            : "Generated using TMDb keyword fallback",
+        title: "Successfully generated",
       });
     } catch (error) {
       toast({
@@ -1072,21 +1073,34 @@ function FactsTab({
 
 function VocabTab({
   mediaId,
+  mediaTitle,
+  mediaOverview,
   vocab,
   setVocab,
 }: {
   mediaId: string;
+  mediaTitle: string;
+  mediaOverview?: string | null;
   vocab: VocabItem[];
   setVocab: (vocab: VocabItem[]) => void;
 }) {
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isGeneratingWords, setIsGeneratingWords] = useState(false);
+  const [generatedWords, setGeneratedWords] = useState<
+    {
+      word: string;
+      definition: string;
+      example_sentence: string;
+      why_relevant?: string | null;
+    }[]
+  >([]);
   const [newWord, setNewWord] = useState({
     word: "",
     whereFound: "",
     tags: "",
   });
-  const [isAdding, setIsAdding] = useState(false);
   const [filter, setFilter] = useState<"all" | "learned" | "unlearned">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -1094,10 +1108,8 @@ function VocabTab({
     if (!newWord.word.trim()) return;
     setIsAdding(true);
     try {
-      // Fetch definition
       const { definition, example } =
         await dictionaryService.getDefinitionAndExample(newWord.word);
-
       const word = await vocabService.create({
         mediaId,
         word: newWord.word.trim(),
@@ -1126,6 +1138,59 @@ function VocabTab({
     }
   };
 
+  const handleGenerateWords = async () => {
+    setIsGeneratingWords(true);
+    try {
+      const items = await aiService.generateMediaVocabulary(
+        mediaTitle,
+        mediaOverview || undefined,
+        5,
+      );
+      setGeneratedWords(items);
+      toast({ title: "Successfully generated" });
+    } catch (error) {
+      toast({
+        title: "Failed to generate words",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingWords(false);
+    }
+  };
+
+  const handleAddGeneratedWord = async (item: {
+    word: string;
+    definition: string;
+    example_sentence: string;
+    why_relevant?: string | null;
+  }) => {
+    try {
+      const created = await vocabService.create({
+        mediaId,
+        word: item.word,
+        definition: item.definition,
+        exampleSentence: item.example_sentence,
+        whereFound: item.why_relevant || undefined,
+        tags: ["generated", "media-specific"],
+        isLearned: false,
+      });
+      setVocab([created, ...vocab]);
+      setGeneratedWords((prev) =>
+        prev.filter((word) => word.word !== item.word),
+      );
+      toast({ title: "Successfully generated" });
+    } catch (error) {
+      toast({
+        title: "Failed to add word",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredVocab = vocab
     .filter((v) => {
       if (filter === "learned") return v.isLearned;
@@ -1143,66 +1208,119 @@ function VocabTab({
         <h3 className="font-display text-lg font-semibold text-foreground">
           Vocabulary Tracker
         </h3>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Word
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Word</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>Word</Label>
-                <Input
-                  placeholder="e.g., apostate"
-                  value={newWord.word}
-                  onChange={(e) =>
-                    setNewWord({ ...newWord, word: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Where Found (optional)</Label>
-                <Input
-                  placeholder="e.g., Chapter 3, Scene 5"
-                  value={newWord.whereFound}
-                  onChange={(e) =>
-                    setNewWord({ ...newWord, whereFound: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tags (comma-separated)</Label>
-                <Input
-                  placeholder="religious, philosophy"
-                  value={newWord.tags}
-                  onChange={(e) =>
-                    setNewWord({ ...newWord, tags: e.target.value })
-                  }
-                />
-              </div>
-              <Button
-                onClick={handleAddWord}
-                disabled={isAdding}
-                className="w-full"
-              >
-                {isAdding ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                Add & Fetch Definition
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2"
+            onClick={handleGenerateWords}
+            disabled={isGeneratingWords}
+          >
+            {isGeneratingWords ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate Media Words
+          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Word
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Word</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Word</Label>
+                  <Input
+                    placeholder="e.g., apostate"
+                    value={newWord.word}
+                    onChange={(e) =>
+                      setNewWord({ ...newWord, word: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Where Found (optional)</Label>
+                  <Input
+                    placeholder="e.g., Chapter 3, Scene 5"
+                    value={newWord.whereFound}
+                    onChange={(e) =>
+                      setNewWord({ ...newWord, whereFound: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tags (comma-separated)</Label>
+                  <Input
+                    placeholder="religious, philosophy"
+                    value={newWord.tags}
+                    onChange={(e) =>
+                      setNewWord({ ...newWord, tags: e.target.value })
+                    }
+                  />
+                </div>
+                <Button
+                  onClick={handleAddWord}
+                  disabled={isAdding}
+                  className="w-full"
+                >
+                  {isAdding ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  Add & Fetch Definition
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Filters */}
+      {generatedWords.length > 0 ? (
+        <div className="rounded-xl border border-border/60 bg-background/40 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Generated media words
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Words chosen for this title, with definitions and examples ready
+              to save.
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {generatedWords.map((item) => (
+              <div
+                key={item.word}
+                className="rounded-xl border border-border/60 bg-card/40 p-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground">{item.word}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {item.definition}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {item.example_sentence}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => void handleAddGeneratedWord(item)}
+                >
+                  Add
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex gap-3">
         <Input
           placeholder="Search words..."
@@ -1418,24 +1536,9 @@ function QuotesTab({
       );
 
       const hadChanges = result.created.length > 0 || result.updated.length > 0;
-      const title = result.usedAi
-        ? "Quotes generated"
-        : result.aiError
-          ? "Quotes generated with fallback"
-          : "Quotes generated with fallback";
-      const description = result.usedAi
-        ? hadChanges
-          ? `${result.created.length + result.updated.length} quotes added or refreshed`
-          : "No new quotes were added. Try another title or add manually."
-        : result.aiError
-          ? `Groq unavailable: ${result.aiError}`
-          : hadChanges
-            ? `${result.created.length + result.updated.length} quotes added or refreshed`
-            : "No new quotes were added. Try another title or add manually.";
 
       toast({
-        title,
-        description,
+        title: "Successfully generated",
       });
     } catch (error) {
       toast({
@@ -1630,7 +1733,7 @@ function QuoteCard({
       const aiMeaning = await aiService.generateQuoteMeaning(quote.text);
       const updated = await quoteService.update(quote.id, { aiMeaning });
       setQuotes(quotes.map((q) => (q.id === quote.id ? updated : q)));
-      toast({ title: "AI meaning generated!" });
+      toast({ title: "Successfully generated" });
     } catch (error) {
       toast({ title: "Failed to generate", variant: "destructive" });
     } finally {
@@ -1645,7 +1748,6 @@ function QuoteCard({
           <p className="text-foreground text-lg italic mb-2">"{quote.text}"</p>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             {quote.speaker && <span>— {quote.speaker}</span>}
-            {quote.reference && <span>• {quote.reference}</span>}
           </div>
           {relatedTheme && (
             <span className="inline-block mt-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">

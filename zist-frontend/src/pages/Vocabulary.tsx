@@ -3,8 +3,24 @@ import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { mediaService, vocabService } from "@/services/mediaService";
+import { dictionaryService } from "@/services/externalServices";
 import { MediaItem, VocabItem } from "@/types";
 import {
   BookOpen,
@@ -12,6 +28,8 @@ import {
   CheckCircle2,
   Circle,
   Link as LinkIcon,
+  Loader2,
+  Plus,
 } from "lucide-react";
 
 type VocabWithMedia = VocabItem & {
@@ -23,15 +41,27 @@ type LearnFilter = "all" | "learned" | "unlearned";
 
 export default function Vocabulary() {
   const [isLoading, setIsLoading] = useState(true);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [items, setItems] = useState<VocabWithMedia[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [learnFilter, setLearnFilter] = useState<LearnFilter>("all");
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAutoLoading, setIsAutoLoading] = useState(false);
+  const [newWord, setNewWord] = useState({
+    mediaId: "",
+    word: "",
+    definition: "",
+    exampleSentence: "",
+    tags: "",
+  });
 
   useEffect(() => {
     async function loadVocabulary() {
       setIsLoading(true);
       try {
         const media = await mediaService.getAll();
+        setMediaItems(media);
         const vocabByMedia = await Promise.all(
           media.map(async (m) => {
             const vocab = await vocabService.getByMediaId(m.id);
@@ -60,6 +90,35 @@ export default function Vocabulary() {
 
     loadVocabulary();
   }, []);
+
+  useEffect(() => {
+    const word = newWord.word.trim();
+    if (word.length < 2) {
+      setNewWord((current) => ({
+        ...current,
+        definition: "",
+        exampleSentence: "",
+      }));
+      setIsAutoLoading(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setIsAutoLoading(true);
+      try {
+        const result = await dictionaryService.getDefinitionAndExample(word);
+        setNewWord((current) => ({
+          ...current,
+          definition: result.definition,
+          exampleSentence: result.example,
+        }));
+      } finally {
+        setIsAutoLoading(false);
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [newWord.word]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -104,6 +163,50 @@ export default function Vocabulary() {
     }
   };
 
+  const handleAddVocabulary = async () => {
+    if (!newWord.mediaId || !newWord.word.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const media = mediaItems.find((item) => item.id === newWord.mediaId);
+      const created = await vocabService.create({
+        mediaId: newWord.mediaId,
+        word: newWord.word.trim(),
+        definition: newWord.definition.trim() || undefined,
+        exampleSentence: newWord.exampleSentence.trim() || undefined,
+        whereFound: undefined,
+        tags: newWord.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        userSentence: undefined,
+        memoryTip: undefined,
+        isLearned: false,
+      });
+
+      setItems((prev) => [
+        {
+          ...created,
+          mediaTitle: media?.title || "Unknown media",
+          mediaType: media?.type || "book",
+        },
+        ...prev,
+      ]);
+      setNewWord({
+        mediaId: media?.id || "",
+        word: "",
+        definition: "",
+        exampleSentence: "",
+        tags: "",
+      });
+      setIsAddOpen(false);
+    } catch (error) {
+      console.error("Failed to add vocabulary:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-20 md:pb-0">
@@ -116,9 +219,130 @@ export default function Vocabulary() {
               Track and review all words from your media.
             </p>
           </div>
-          <Link to="/app/library">
-            <Button variant="outline">Go to Library</Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/app/library">
+              <Button variant="outline">Go to Library</Button>
+            </Link>
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Vocabulary
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Vocabulary</DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Media</Label>
+                    <Select
+                      value={newWord.mediaId}
+                      onValueChange={(value) =>
+                        setNewWord((current) => ({
+                          ...current,
+                          mediaId: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose media" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mediaItems.map((media) => (
+                          <SelectItem key={media.id} value={media.id}>
+                            {media.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Word</Label>
+                    <Input
+                      value={newWord.word}
+                      onChange={(e) =>
+                        setNewWord((current) => ({
+                          ...current,
+                          word: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter a word"
+                    />
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      {isAutoLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : null}
+                      Definition and example are pulled automatically from the
+                      dictionary API.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Definition</Label>
+                    <Input
+                      value={newWord.definition}
+                      onChange={(e) =>
+                        setNewWord((current) => ({
+                          ...current,
+                          definition: e.target.value,
+                        }))
+                      }
+                      placeholder="Auto-filled definition"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Example Sentence</Label>
+                    <Input
+                      value={newWord.exampleSentence}
+                      onChange={(e) =>
+                        setNewWord((current) => ({
+                          ...current,
+                          exampleSentence: e.target.value,
+                        }))
+                      }
+                      placeholder="Auto-filled example sentence"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tags</Label>
+                    <Input
+                      value={newWord.tags}
+                      onChange={(e) =>
+                        setNewWord((current) => ({
+                          ...current,
+                          tags: e.target.value,
+                        }))
+                      }
+                      placeholder="separated, by, commas"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsAddOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddVocabulary}
+                      disabled={
+                        isSaving || !newWord.mediaId || !newWord.word.trim()
+                      }
+                    >
+                      {isSaving ? "Saving..." : "Add Word"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

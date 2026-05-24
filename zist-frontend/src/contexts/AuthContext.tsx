@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import { User } from "@/types";
-import { authService } from "@/services/authService";
+import { authService, type OAuthSessionPayload } from "@/services/authService";
 
 interface AuthContextType {
   user: User | null;
@@ -21,7 +21,15 @@ interface AuthContextType {
     email: string,
     password: string,
     displayName: string,
+    firstName: string,
+    lastName: string,
   ) => Promise<void>;
+  completeGoogleAuth: (payload: {
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    user: OAuthSessionPayload["user"];
+  }) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
 }
@@ -54,8 +62,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     displayName: string,
+    firstName: string,
+    lastName: string,
   ) => {
-    const { user } = await authService.signup(email, password, displayName);
+    const { user } = await authService.signup(
+      email,
+      password,
+      displayName,
+      firstName,
+      lastName,
+    );
+    setUser(user);
+  };
+
+  const completeGoogleAuth = async (payload: {
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    user: OAuthSessionPayload["user"];
+  }) => {
+    const { user } = await authService.completeGoogleAuth(payload);
     setUser(user);
   };
 
@@ -77,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         login,
         signup,
+        completeGoogleAuth,
         logout,
         updateProfile,
       }}

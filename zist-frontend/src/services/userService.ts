@@ -1,192 +1,134 @@
-import { User, UserProfile, FeedPost } from "@/types";
-import { storage, STORAGE_KEYS } from "./storage";
+import { User, UserProfile, UserRef } from "@/types";
+import { apiClient } from "./apiClient";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const generateId = () => Math.random().toString(36).substring(2, 15);
+interface BackendUserProfile {
+  id: string;
+  display_name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  website_url?: string | null;
+  instagram_url?: string | null;
+  x_url?: string | null;
+  github_url?: string | null;
+  linkedin_url?: string | null;
+  youtube_url?: string | null;
+  is_active: boolean;
+  created_at: string;
+  email_verified?: boolean;
+  followers_count: number;
+  following_count: number;
+  media_count: number;
+  shared_posts_count?: number;
+  total_upvotes?: number;
+  is_following?: boolean;
+}
 
-const USERS_STORAGE_KEY = "zist_users";
+interface BackendUserRef {
+  id: string;
+  display_name: string;
+  avatar_url?: string | null;
+}
+
+interface BackendUserList {
+  items: BackendUserProfile[];
+  total: number;
+}
+
+function mapUserRef(user: BackendUserRef): UserRef {
+  return {
+    id: user.id,
+    displayName: user.display_name,
+    avatar: user.avatar_url ?? undefined,
+  };
+}
+
+function mapUserProfile(profile: BackendUserProfile): UserProfile {
+  return {
+    id: profile.id,
+    email: "",
+    displayName: profile.display_name,
+    firstName: profile.first_name ?? undefined,
+    lastName: profile.last_name ?? undefined,
+    avatar: profile.avatar_url ?? undefined,
+    bio: profile.bio ?? undefined,
+    websiteUrl: profile.website_url ?? undefined,
+    instagramUrl: profile.instagram_url ?? undefined,
+    xUrl: profile.x_url ?? undefined,
+    githubUrl: profile.github_url ?? undefined,
+    linkedinUrl: profile.linkedin_url ?? undefined,
+    youtubeUrl: profile.youtube_url ?? undefined,
+    createdAt: profile.created_at,
+    emailVerified: profile.email_verified ?? false,
+    preferences: {
+      privacy: "public",
+      theme: "night-cold",
+    },
+    stats: {
+      mediaItems: profile.media_count,
+      sharedPosts: profile.shared_posts_count ?? 0,
+      followers: profile.followers_count,
+      following: profile.following_count,
+      totalUpvotes: profile.total_upvotes ?? 0,
+    },
+    isFollowing: profile.is_following ?? false,
+  };
+}
+
+function mapSearchUser(user: BackendUserProfile): User {
+  return {
+    id: user.id,
+    email: "",
+    displayName: user.display_name,
+    avatar: user.avatar_url ?? undefined,
+    bio: user.bio ?? undefined,
+    createdAt: user.created_at,
+    emailVerified: user.email_verified ?? false,
+    preferences: {
+      privacy: "public",
+      theme: "night-cold",
+    },
+  };
+}
 
 export const userService = {
-  /**
-   * Get all users - useful for directory and search
-   */
-  async getAllUsers(): Promise<User[]> {
-    await delay(200);
-    return storage.get<User[]>(USERS_STORAGE_KEY) || [];
-  },
-
-  /**
-   * Search users by display name
-   */
-  async searchUsers(query: string): Promise<User[]> {
-    await delay(300);
-    const users = await this.getAllUsers();
-    if (!query.trim()) return users;
-
-    const lowerQuery = query.toLowerCase();
-    return users.filter(
-      (user) =>
-        user.displayName.toLowerCase().includes(lowerQuery) ||
-        user.email.toLowerCase().includes(lowerQuery),
-    );
-  },
-
-  /**
-   * Get a specific user by ID with profile stats
-   */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    await delay(200);
-    const users = await this.getAllUsers();
-    const user = users.find((u) => u.id === userId);
-
-    if (!user) return null;
-
-    // Calculate stats
-    const posts = storage.get<FeedPost[]>(STORAGE_KEYS.FEED) || [];
-    const userPosts = posts.filter((p) => p.userId === userId);
-
-    const profile: UserProfile = {
-      ...user,
-      stats: {
-        mediaItems: 0, // Would be calculated from mediaService
-        sharedPosts: userPosts.length,
-        followers: user.followers?.length || 0,
-        following: user.following?.length || 0,
-      },
-    };
-
-    return profile;
+    const profile = await apiClient.get<BackendUserProfile>(`/users/${userId}`);
+    return mapUserProfile(profile);
   },
 
-  /**
-   * Get user's feed posts
-   */
-  async getUserPosts(userId: string): Promise<FeedPost[]> {
-    await delay(200);
-    const posts = storage.get<FeedPost[]>(STORAGE_KEYS.FEED) || [];
-    return posts
-      .filter((p) => p.userId === userId && p.visibility === "global")
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+  async searchUsers(query: string, limit: number = 10): Promise<User[]> {
+    const response = await apiClient.get<BackendUserList>("/users", {
+      params: { search: query, limit, page: 1 },
+    });
+    return response.items.map(mapSearchUser);
   },
 
-  /**
-   * Add a user (usually done during signup)
-   */
-  async addUser(user: User): Promise<User> {
-    await delay(200);
-    const users = storage.get<User[]>(USERS_STORAGE_KEY) || [];
-    const newUser = {
-      ...user,
-      followers: [],
-      following: [],
-      stats: {
-        mediaItems: 0,
-        sharedPosts: 0,
-        followers: 0,
-        following: 0,
-      },
-    };
-    storage.set(USERS_STORAGE_KEY, [...users, newUser]);
-    return newUser;
+  async getFriends(userId: string): Promise<UserRef[]> {
+    const response = await apiClient.get<{
+      items: BackendUserRef[];
+      total: number;
+    }>(`/users/${userId}/following`);
+    return response.items.map(mapUserRef);
   },
 
-  /**
-   * Update user profile
-   */
-  async updateUser(userId: string, updates: Partial<User>): Promise<User> {
-    await delay(200);
-    const users = storage.get<User[]>(USERS_STORAGE_KEY) || [];
-    const index = users.findIndex((u) => u.id === userId);
-    if (index === -1) throw new Error("User not found");
-
-    const updatedUser = { ...users[index], ...updates };
-    users[index] = updatedUser;
-    storage.set(USERS_STORAGE_KEY, users);
-    return updatedUser;
+  async followUser(_currentUserId: string, targetUserId: string): Promise<void> {
+    await apiClient.post(`/users/${targetUserId}/follow`);
   },
 
-  /**
-   * Follow a user
-   */
-  async followUser(currentUserId: string, targetUserId: string): Promise<void> {
-    await delay(200);
-    const users = storage.get<User[]>(USERS_STORAGE_KEY) || [];
-
-    const currentUserIndex = users.findIndex((u) => u.id === currentUserId);
-    const targetUserIndex = users.findIndex((u) => u.id === targetUserId);
-
-    if (currentUserIndex === -1 || targetUserIndex === -1) {
-      throw new Error("User not found");
-    }
-
-    const currentUser = users[currentUserIndex];
-    const targetUser = users[targetUserIndex];
-
-    // Add to current user's following list
-    if (!currentUser.following) currentUser.following = [];
-    if (!currentUser.following.includes(targetUserId)) {
-      currentUser.following.push(targetUserId);
-    }
-
-    // Add to target user's followers list
-    if (!targetUser.followers) targetUser.followers = [];
-    if (!targetUser.followers.includes(currentUserId)) {
-      targetUser.followers.push(currentUserId);
-    }
-
-    storage.set(USERS_STORAGE_KEY, users);
-  },
-
-  /**
-   * Unfollow a user
-   */
   async unfollowUser(
-    currentUserId: string,
+    _currentUserId: string,
     targetUserId: string,
   ): Promise<void> {
-    await delay(200);
-    const users = storage.get<User[]>(USERS_STORAGE_KEY) || [];
-
-    const currentUserIndex = users.findIndex((u) => u.id === currentUserId);
-    const targetUserIndex = users.findIndex((u) => u.id === targetUserId);
-
-    if (currentUserIndex === -1 || targetUserIndex === -1) {
-      throw new Error("User not found");
-    }
-
-    const currentUser = users[currentUserIndex];
-    const targetUser = users[targetUserIndex];
-
-    // Remove from current user's following list
-    if (currentUser.following) {
-      currentUser.following = currentUser.following.filter(
-        (id) => id !== targetUserId,
-      );
-    }
-
-    // Remove from target user's followers list
-    if (targetUser.followers) {
-      targetUser.followers = targetUser.followers.filter(
-        (id) => id !== currentUserId,
-      );
-    }
-
-    storage.set(USERS_STORAGE_KEY, users);
+    await apiClient.delete(`/users/${targetUserId}/unfollow`);
   },
 
-  /**
-   * Check if current user follows target user
-   */
   async isFollowing(
     currentUserId: string,
     targetUserId: string,
   ): Promise<boolean> {
-    await delay(100);
-    const users = await this.getAllUsers();
-    const currentUser = users.find((u) => u.id === currentUserId);
-    return currentUser?.following?.includes(targetUserId) || false;
+    const profile = await this.getUserProfile(targetUserId);
+    return profile?.isFollowing ?? false;
   },
 };

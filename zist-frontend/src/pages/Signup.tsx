@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
+import { authService } from "@/services/authService";
 import "./Signup.css";
 
 const logoImg = "/zistv2-logo.png";
@@ -28,14 +29,91 @@ function getPasswordStrength(password: string): {
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { signup, completeGoogleAuth } = useAuth();
   const { toast } = useToast();
 
   const [displayName, setDisplayName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [displayNameStatus, setDisplayNameStatus] = useState<{
+    available: boolean | null;
+    suggestions: string[];
+    checked: string;
+    loading: boolean;
+  }>({ available: null, suggestions: [], checked: "", loading: false });
+
+  useEffect(() => {
+    if (!displayName.trim()) {
+      setDisplayNameStatus({
+        available: null,
+        suggestions: [],
+        checked: "",
+        loading: false,
+      });
+      return;
+    }
+
+    const handle = window.setTimeout(async () => {
+      setDisplayNameStatus((current) => ({ ...current, loading: true }));
+      try {
+        const result = await authService.checkDisplayName(displayName.trim());
+        setDisplayNameStatus({
+          available: result.available,
+          suggestions: result.suggestions,
+          checked: result.display_name,
+          loading: false,
+        });
+      } catch {
+        setDisplayNameStatus((current) => ({ ...current, loading: false }));
+      }
+    }, 400);
+
+    return () => window.clearTimeout(handle);
+  }, [displayName]);
+
+  useEffect(() => {
+    const backendOrigin = authService.getBackendOrigin();
+
+    const handleMessage = (event: MessageEvent) => {
+      if (
+        backendOrigin !== window.location.origin &&
+        event.origin !== backendOrigin
+      ) {
+        return;
+      }
+
+      if (event.data?.type !== "zist-google-auth" || !event.data?.payload) {
+        return;
+      }
+
+      void (async () => {
+        try {
+          await completeGoogleAuth(event.data.payload);
+          toast({
+            title: "Google account connected",
+            description: "Your account was created and signed in successfully.",
+          });
+          navigate("/app");
+        } catch (error) {
+          toast({
+            title: "Google sign-in failed",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Unable to complete Google sign-in.",
+            variant: "destructive",
+          });
+        }
+      })();
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [completeGoogleAuth, navigate, toast]);
 
   const passwordStrength = getPasswordStrength(password);
   const requirements = [
@@ -60,7 +138,7 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      await signup(email, password, displayName);
+      await signup(email, password, displayName, firstName, lastName);
       toast({
         title: "Welcome to Zist!",
         description: "Your account has been created successfully.",
@@ -75,6 +153,34 @@ export default function Signup() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    const popup = window.open("", "zist-google-signup", "width=520,height=680");
+
+    if (!popup) {
+      toast({
+        title: "Popup blocked",
+        description: "Please allow popups to continue with Google sign-up.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const authUrl = await authService.startGoogleAuth("signup");
+      popup.location.href = authUrl;
+    } catch (error) {
+      popup.close();
+      toast({
+        title: "Google sign-up unavailable",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unable to start Google sign-up.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -93,6 +199,38 @@ export default function Signup() {
             <p className="signup-subtitle">Join us and start learning today</p>
 
             <form onSubmit={handleSubmit} className="signup-form">
+              <div className="signup-name-grid">
+                <div className="signup-field">
+                  <label htmlFor="firstName" className="signup-label">
+                    First Name
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    placeholder="Enter your first name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    className="signup-input"
+                  />
+                </div>
+
+                <div className="signup-field">
+                  <label htmlFor="lastName" className="signup-label">
+                    Last Name
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    placeholder="Enter your last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    className="signup-input"
+                  />
+                </div>
+              </div>
+
               <div className="signup-field">
                 <label htmlFor="displayName" className="signup-label">
                   Display Name
@@ -106,6 +244,30 @@ export default function Signup() {
                   required
                   className="signup-input"
                 />
+                <div className="signup-helper-text">
+                  {displayNameStatus.loading
+                    ? "Checking availability..."
+                    : displayNameStatus.available === true
+                      ? "Display name is available."
+                      : displayNameStatus.available === false
+                        ? "Display name is already taken. Try one of the suggestions below."
+                        : "Use 2-100 characters. Availability will be checked automatically."}
+                </div>
+                {displayNameStatus.suggestions.length > 0 &&
+                displayNameStatus.available === false ? (
+                  <div className="signup-suggestions">
+                    {displayNameStatus.suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => setDisplayName(suggestion)}
+                        className="signup-suggestion-chip"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               <div className="signup-field">
@@ -206,7 +368,11 @@ export default function Signup() {
               <span>or</span>
             </div>
 
-            <button className="signup-btn-google" type="button">
+            <button
+              className="signup-btn-google"
+              type="button"
+              onClick={handleGoogleSignup}
+            >
               <svg
                 width="18"
                 height="18"

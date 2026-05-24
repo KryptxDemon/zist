@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MediaTypeBadge } from "@/components/ui/media-type-badge";
 import {
   mediaService,
   themeService,
@@ -11,7 +10,15 @@ import {
 } from "@/services/mediaService";
 import { apiClient } from "@/services/apiClient";
 import { MediaItem } from "@/types";
-import { Brain, Play, Trophy, BookOpen, Lightbulb, Quote } from "lucide-react";
+import {
+  Brain,
+  Play,
+  Trophy,
+  BookOpen,
+  Sparkles,
+  Lightbulb,
+  Quote,
+} from "lucide-react";
 
 export default function QuizHub() {
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -55,26 +62,7 @@ export default function QuizHub() {
     loadMedia();
   }, []);
 
-  const quizTypes = [
-    {
-      id: "themes",
-      label: "Themes Quiz",
-      icon: Lightbulb,
-      description: "Test your understanding of key themes",
-    },
-    {
-      id: "vocab",
-      label: "Vocabulary Quiz",
-      icon: BookOpen,
-      description: "Practice vocabulary words",
-    },
-    {
-      id: "quotes",
-      label: "Quote Matching",
-      icon: Quote,
-      description: "Match quotes to themes",
-    },
-  ];
+  const collectiveQuizHref = "/app/quiz/collective";
 
   return (
     <AppLayout>
@@ -121,101 +109,66 @@ export default function QuizHub() {
           </div>
         </div>
 
-        {/* Quiz Types */}
-        <div>
-          <h2 className="font-display text-lg font-semibold text-foreground mb-4">
-            Quiz Types
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {quizTypes.map((type) => (
-              <div
-                key={type.id}
-                className="glass grain rounded-2xl p-5 flex items-start gap-4 transition-smooth hover:border-primary/30"
-              >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <type.icon className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-foreground">
-                    {type.label}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {type.description}
-                  </p>
-                </div>
-              </div>
-            ))}
+        <section className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Combined Quiz: Quotes, Themes, and Vocabulary
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              Pull questions from all saved media and mix vocabulary, themes,
+              and quotes into one session with AI-curated distractors.
+            </p>
+          </div>
+          <Link to={collectiveQuizHref}>
+            <Button className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Start Combined Quiz
+            </Button>
+          </Link>
+        </section>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="glass grain rounded-2xl p-5 text-center">
+            <BookOpen className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
+            <p className="font-display text-2xl font-bold text-foreground">
+              {stats.wordsReviewed}
+            </p>
+            <p className="text-sm text-muted-foreground">Vocabulary prompts</p>
+          </div>
+          <div className="glass grain rounded-2xl p-5 text-center">
+            <Lightbulb className="h-6 w-6 text-violet-400 mx-auto mb-2" />
+            <p className="font-display text-2xl font-bold text-foreground">
+              {stats.themesTested}
+            </p>
+            <p className="text-sm text-muted-foreground">Theme prompts</p>
+          </div>
+          <div className="glass grain rounded-2xl p-5 text-center">
+            <Quote className="h-6 w-6 text-sky-400 mx-auto mb-2" />
+            <p className="font-display text-2xl font-bold text-foreground">
+              {media.length}
+            </p>
+            <p className="text-sm text-muted-foreground">Media sources</p>
           </div>
         </div>
 
-        {/* Choose Media */}
-        <div>
-          <h2 className="font-display text-lg font-semibold text-foreground mb-4">
-            Choose Media to Quiz
-          </h2>
-          {isLoading ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="skeleton-shimmer h-32 rounded-2xl" />
-              ))}
-            </div>
-          ) : media.length === 0 ? (
-            <EmptyState
-              icon={Brain}
-              title="No media to quiz"
-              description="Add media to your library first, then come back to test yourself."
-              action={
-                <Link to="/app/media/new">
-                  <Button>Add Media</Button>
-                </Link>
-              }
-            />
-          ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {media.map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/app/quiz/${item.id}`}
-                  className="glass grain rounded-2xl p-5 flex items-center gap-4 transition-smooth hover:glow-amber hover:border-primary/30 group"
-                >
-                  {item.coverUrl ? (
-                    <img
-                      src={item.coverUrl}
-                      alt={item.title}
-                      className="w-16 h-24 object-cover rounded-lg shrink-0"
-                    />
-                  ) : (
-                    <div className="w-16 h-24 bg-accent rounded-lg flex items-center justify-center shrink-0">
-                      <BookOpen className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-semibold text-foreground truncate">
-                      {item.title}
-                    </h3>
-                    <div className="mt-1">
-                      <MediaTypeBadge
-                        type={item.type}
-                        size="sm"
-                        showIcon={false}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1 group-hover:bg-primary group-hover:text-primary-foreground"
-                      >
-                        <Play className="h-3 w-3" />
-                        Start Quiz
-                      </Button>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        {isLoading ? (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-shimmer h-32 rounded-2xl" />
+            ))}
+          </div>
+        ) : media.length === 0 ? (
+          <EmptyState
+            icon={Brain}
+            title="No media to quiz"
+            description="Add media to your library first, then come back to test yourself."
+            action={
+              <Link to="/app/media/new">
+                <Button>Add Media</Button>
+              </Link>
+            }
+          />
+        ) : null}
       </div>
     </AppLayout>
   );

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import { authService } from "@/services/authService";
 import "./Login.css";
 
 const logoImg = "/zistv2-logo.png";
@@ -11,7 +12,7 @@ const stockImg = "/bg.jpg";
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, completeGoogleAuth } = useAuth();
   const { toast } = useToast();
 
   const [email, setEmail] = useState("");
@@ -21,6 +22,46 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   const from = location.state?.from?.pathname || "/app";
+
+  useEffect(() => {
+    const backendOrigin = authService.getBackendOrigin();
+
+    const handleMessage = (event: MessageEvent) => {
+      if (
+        backendOrigin !== window.location.origin &&
+        event.origin !== backendOrigin
+      ) {
+        return;
+      }
+
+      if (event.data?.type !== "zist-google-auth" || !event.data?.payload) {
+        return;
+      }
+
+      void (async () => {
+        try {
+          await completeGoogleAuth(event.data.payload);
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in with Google.",
+          });
+          navigate(from, { replace: true });
+        } catch (error) {
+          toast({
+            title: "Google sign-in failed",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Unable to complete Google sign-in.",
+            variant: "destructive",
+          });
+        }
+      })();
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [completeGoogleAuth, from, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +82,34 @@ export default function Login() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const popup = window.open("", "zist-google-login", "width=520,height=680");
+
+    if (!popup) {
+      toast({
+        title: "Popup blocked",
+        description: "Please allow popups to continue with Google sign-in.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const authUrl = await authService.startGoogleAuth("login");
+      popup.location.href = authUrl;
+    } catch (error) {
+      popup.close();
+      toast({
+        title: "Google sign-in unavailable",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unable to start Google sign-in.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -138,7 +207,11 @@ export default function Login() {
               <span>or</span>
             </div>
 
-            <button className="login-btn-google" type="button">
+            <button
+              className="login-btn-google"
+              type="button"
+              onClick={handleGoogleLogin}
+            >
               <svg
                 width="18"
                 height="18"

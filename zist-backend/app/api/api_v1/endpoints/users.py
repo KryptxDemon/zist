@@ -6,7 +6,9 @@ from app.core.deps import get_current_user, get_db
 from app.models.feed import FeedPost
 from app.models.media import MediaItem
 from app.models.user import User, UserFollow
+from app.schemas.feed import FeedListResponse
 from app.schemas.user import FollowResponse, UserListResponse, UserPublic, UserUpdate
+from app.services.feed_serializer import count_upvotes_received, serialize_feed_post
 from app.utils.pagination import paginate
 
 router = APIRouter()
@@ -20,10 +22,19 @@ def _to_public_user(db: Session, user: User, current_user_id: str | None = None)
     return UserPublic(
         id=user.id,
         display_name=user.display_name,
+        first_name=user.first_name,
+        last_name=user.last_name,
         avatar_url=user.avatar_url,
         bio=user.bio,
+        website_url=user.website_url,
+        instagram_url=user.instagram_url,
+        x_url=user.x_url,
+        github_url=user.github_url,
+        linkedin_url=user.linkedin_url,
+        youtube_url=user.youtube_url,
         is_active=user.is_active,
         created_at=user.created_at,
+        email_verified=user.email_verified,
         followers_count=followers_count,
         following_count=following_count,
         media_count=media_count,
@@ -66,6 +77,8 @@ def get_user_profile(
     followers_count = db.query(UserFollow).filter(UserFollow.following_id == user.id).count()
     following_count = db.query(UserFollow).filter(UserFollow.follower_id == user.id).count()
     media_count = db.query(MediaItem).filter(MediaItem.user_id == user.id).count()
+    shared_posts_count = db.query(FeedPost).filter(FeedPost.user_id == user.id).count()
+    total_upvotes = count_upvotes_received(db, user.id)
     is_following = (
         db.query(UserFollow)
         .filter(UserFollow.follower_id == current_user.id, UserFollow.following_id == user.id)
@@ -76,11 +89,23 @@ def get_user_profile(
     return {
         "id": user.id,
         "display_name": user.display_name,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
         "avatar_url": user.avatar_url,
         "bio": user.bio,
+        "website_url": user.website_url,
+        "instagram_url": user.instagram_url,
+        "x_url": user.x_url,
+        "github_url": user.github_url,
+        "linkedin_url": user.linkedin_url,
+        "youtube_url": user.youtube_url,
+        "email_verified": user.email_verified,
+        "created_at": user.created_at,
         "followers_count": followers_count,
         "following_count": following_count,
         "media_count": media_count,
+        "shared_posts_count": shared_posts_count,
+        "total_upvotes": total_upvotes,
         "is_following": is_following,
     }
 
@@ -127,7 +152,7 @@ def follow_user(
     row = UserFollow(follower_id=current_user.id, following_id=user_id)
     db.add(row)
     db.commit()
-    return FollowResponse(message="Now following user", follower_id=current_user.id, following_id=user_id)
+    return FollowResponse(message="Now friends with user", follower_id=current_user.id, following_id=user_id)
 
 
 @router.delete("/users/{user_id}/unfollow")
@@ -149,7 +174,7 @@ def unfollow_user(
     return {"message": "Unfollowed user"}
 
 
-@router.get("/users/{user_id}/posts")
+@router.get("/users/{user_id}/posts", response_model=FeedListResponse)
 def get_user_posts(
     user_id: str,
     page: int = 1,
@@ -176,24 +201,12 @@ def get_user_posts(
 
     query = query.order_by(FeedPost.created_at.desc())
     paged = paginate(query, page=page, limit=limit)
-    return {
-        "items": [
-            {
-                "id": p.id,
-                "user_id": p.user_id,
-                "post_type": p.post_type,
-                "content_id": p.content_id,
-                "caption": p.caption,
-                "visibility": p.visibility,
-                "created_at": p.created_at,
-                "updated_at": p.updated_at,
-            }
-            for p in paged["items"]
-        ],
-        "total": paged["total"],
-        "page": paged["page"],
-        "limit": paged["limit"],
-    }
+    return FeedListResponse(
+        items=[serialize_feed_post(db, p, current_user.id) for p in paged["items"]],
+        total=paged["total"],
+        page=paged["page"],
+        limit=paged["limit"],
+    )
 
 
 @router.get("/users/{user_id}/followers")

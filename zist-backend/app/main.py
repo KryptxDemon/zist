@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.api_v1.api import api_router
 from app.core.config import settings
-from app.core.database import Base, engine
+from app.core.database import Base, engine, ensure_user_profile_columns
 from app.models import *
 
 
@@ -52,6 +52,7 @@ def create_application() -> FastAPI:
         }
 
     Base.metadata.create_all(bind=engine)
+    ensure_user_profile_columns()
     return app
 
 

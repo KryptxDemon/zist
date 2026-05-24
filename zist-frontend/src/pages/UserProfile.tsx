@@ -1,32 +1,69 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { FeedPostCard } from "@/components/feed/FeedPostCard";
+import { FeedComposeDialog } from "@/components/feed/FeedComposeDialog";
+import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { FeedPostSkeleton } from "@/components/ui/skeleton-cards";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
-import { User, UserProfile, FeedPost } from "@/types";
+import { feedService } from "@/services/feedService";
+import { UserProfile, FeedPost, UserRef } from "@/types";
+import { formatRelativeTime } from "@/lib/time";
 import {
   Users,
   UserPlus,
+  UserMinus,
   Mail,
   Calendar,
   Share2,
   Heart,
-  Bookmark,
+  Globe,
+  Github,
+  Instagram,
+  Linkedin,
+  Youtube,
+  Twitter,
+  Link as LinkIcon,
+  BadgeCheck,
+  Sparkles,
+  BarChart3,
+  Clock3,
+  PencilLine,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { cn } from "@/lib/utils";
+
+const socialFields = [
+  { key: "websiteUrl", label: "Website", icon: Globe },
+  { key: "githubUrl", label: "GitHub", icon: Github },
+  { key: "linkedinUrl", label: "LinkedIn", icon: Linkedin },
+  { key: "instagramUrl", label: "Instagram", icon: Instagram },
+  { key: "xUrl", label: "X", icon: Twitter },
+  { key: "youtubeUrl", label: "YouTube", icon: Youtube },
+] as const;
+
+function formatJoinedDate(createdAt?: string | null): string {
+  if (!createdAt) {
+    return "Joined recently";
+  }
+
+  return formatRelativeTime(createdAt);
+
+  return `Joined ${formatDistanceToNow(parsedDate, { addSuffix: true })}`;
+}
 
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>();
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [friends, setFriends] = useState<UserRef[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoadingFollow, setIsLoadingFollow] = useState(false);
@@ -42,23 +79,17 @@ export default function UserProfilePage() {
   async function loadProfile() {
     setIsLoading(true);
     try {
-      // Get profile data
       const profileData = await userService.getUserProfile(displayUserId!);
       if (profileData) {
         setProfile(profileData);
+        setIsFollowing(profileData.isFollowing ?? false);
 
-        // Get user's posts
-        const userPosts = await userService.getUserPosts(displayUserId!);
-        setPosts(userPosts);
-
-        // Check if current user follows this profile
-        if (currentUser && displayUserId !== currentUser.id) {
-          const following = await userService.isFollowing(
-            currentUser.id,
-            displayUserId!,
-          );
-          setIsFollowing(following);
-        }
+        const [userPosts, friendsList] = await Promise.all([
+          feedService.getUserPosts(displayUserId!, 1, 50),
+          userService.getFriends(displayUserId!),
+        ]);
+        setPosts(userPosts.items);
+        setFriends(friendsList);
       }
     } catch (error) {
       console.error("Failed to load profile:", error);
@@ -77,11 +108,11 @@ export default function UserProfilePage() {
       if (isFollowing) {
         await userService.unfollowUser(currentUser.id, displayUserId);
         setIsFollowing(false);
-        toast({ title: "Unfollowed" });
+        toast({ title: "Removed from friends" });
       } else {
         await userService.followUser(currentUser.id, displayUserId);
         setIsFollowing(true);
-        toast({ title: "Following" });
+        toast({ title: "Friend added!" });
       }
       // Reload profile to update stats
       await loadProfile();
@@ -101,7 +132,9 @@ export default function UserProfilePage() {
     return (
       <AppLayout>
         <div className="max-w-4xl mx-auto space-y-6 pb-20 md:pb-0">
-          <FeedPostSkeleton count={3} />
+          {[1, 2, 3].map((i) => (
+            <FeedPostSkeleton key={i} />
+          ))}
         </div>
       </AppLayout>
     );
@@ -122,87 +155,319 @@ export default function UserProfilePage() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 md:pb-0">
-        {/* Profile Header */}
-        <div className="glass grain rounded-2xl p-6 md:p-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-            {/* Avatar */}
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-gradient-to-br from-primary/40 to-primary/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-4xl md:text-5xl font-display font-bold text-primary">
-                {profile.displayName[0]?.toUpperCase() || "U"}
-              </span>
+        <div className="glass grain relative overflow-hidden rounded-[2rem] p-6 md:p-8 border border-border/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-500/10 pointer-events-none" />
+          <div className="relative flex flex-col lg:flex-row gap-6 lg:items-center">
+            <div className="relative">
+              <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-primary/30 via-cyan-400/20 to-fuchsia-500/20 blur-2xl" />
+              <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-[1.75rem] overflow-hidden border border-white/10 bg-gradient-to-br from-primary/40 to-primary/10 shadow-2xl">
+                {profile.avatar ? (
+                  <img
+                    src={profile.avatar}
+                    alt={profile.displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-4xl md:text-5xl font-display font-bold text-primary">
+                    {profile.displayName[0]?.toUpperCase() || "U"}
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Profile Info */}
-            <div className="flex-1 space-y-3">
-              <div>
-                <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+            <div className="relative flex-1 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="font-display text-3xl md:text-5xl font-bold text-foreground">
                   {profile.displayName}
                 </h1>
-                <p className="text-muted-foreground flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  {profile.email}
-                </p>
+                {profile.emailVerified ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    <BadgeCheck className="h-3.5 w-3.5" /> Verified
+                  </span>
+                ) : null}
+                {isOwnProfile ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5" /> Your profile
+                  </span>
+                ) : null}
               </div>
 
-              {profile.bio && (
-                <p className="text-foreground text-sm md:text-base max-w-lg">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                {isOwnProfile && currentUser?.email ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Mail className="h-4 w-4" />
+                    {currentUser.email}
+                  </span>
+                ) : null}
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {formatJoinedDate(profile.createdAt)}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock3 className="h-4 w-4" />
+                  Learning in progress
+                </span>
+              </div>
+
+              {profile.bio ? (
+                <p className="max-w-2xl text-base md:text-lg text-foreground/90 leading-7">
                   {profile.bio}
                 </p>
+              ) : (
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                  No bio yet. Use edit profile to add one that matches your
+                  vibe.
+                </p>
               )}
 
-              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                Member since {new Date(profile.createdAt).toLocaleDateString()}
+              <div className="flex flex-wrap gap-3 pt-2">
+                {isOwnProfile ? (
+                  <>
+                    <Button
+                      onClick={() => navigate("/app/profile/edit")}
+                      className="gap-2"
+                    >
+                      <PencilLine className="h-4 w-4" />
+                      Edit Profile
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        navigator.clipboard.writeText(window.location.href)
+                      }
+                      className="gap-2"
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                      Copy Link
+                    </Button>
+                  </>
+                ) : currentUser ? (
+                  <Button
+                    onClick={handleFollowToggle}
+                    disabled={isLoadingFollow}
+                    variant={isFollowing ? "outline" : "default"}
+                    className="gap-2"
+                  >
+                    {isFollowing ? (
+                      <UserMinus className="h-4 w-4" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {isFollowing ? "Friends" : "Add Friend"}
+                  </Button>
+                ) : null}
               </div>
-
-              {/* Action Button */}
-              {!isOwnProfile && currentUser && (
-                <Button
-                  onClick={handleFollowToggle}
-                  disabled={isLoadingFollow}
-                  variant={isFollowing ? "outline" : "default"}
-                  className="mt-4"
-                >
-                  {isFollowing ? "Following" : "Follow"}
-                </Button>
-              )}
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-border">
-            <div className="space-y-1">
-              <p className="text-2xl font-bold text-primary">
+          <div className="relative grid gap-4 pt-8 mt-8 border-t border-border/70 md:grid-cols-5">
+            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Media
+              </p>
+              <p className="mt-1 text-3xl font-bold text-primary">
                 {profile.stats?.mediaItems || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Media Items</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Saved titles and collections
+              </p>
             </div>
-            <div className="space-y-1">
-              <p className="text-2xl font-bold text-primary">
+            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Shares
+              </p>
+              <p className="mt-1 text-3xl font-bold text-primary">
                 {profile.stats?.sharedPosts || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Shared Posts</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Posts shared from learning
+              </p>
             </div>
-            <div className="space-y-1">
-              <p className="text-2xl font-bold text-primary">
+            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <Heart className="h-3 w-3" />
+                Upvotes
+              </p>
+              <p className="mt-1 text-3xl font-bold text-primary">
+                {profile.stats?.totalUpvotes || 0}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Total upvotes on shared posts
+              </p>
+            </div>
+            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Followers
+              </p>
+              <p className="mt-1 text-3xl font-bold text-primary">
                 {profile.stats?.followers || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Followers</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                People following your journey
+              </p>
             </div>
-            <div className="space-y-1">
-              <p className="text-2xl font-bold text-primary">
+            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Friends
+              </p>
+              <p className="mt-1 text-3xl font-bold text-primary">
                 {profile.stats?.following || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Following</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                People you are friends with
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Posts Section */}
+        <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  Socials
+                </p>
+                <h2 className="font-display text-2xl font-bold text-foreground">
+                  Connect and share
+                </h2>
+              </div>
+              {isOwnProfile ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/app/profile/edit")}
+                >
+                  Edit links
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {socialFields.map(({ key, label, icon: Icon }) => {
+                const value = profile[key as keyof UserProfile] as
+                  | string
+                  | undefined;
+                if (!value) return null;
+                return (
+                  <a
+                    key={key}
+                    href={value}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-3 transition-all hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {label}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {value}
+                      </p>
+                    </div>
+                  </a>
+                );
+              })}
+
+              {socialFields.every(
+                ({ key }) => !profile[key as keyof UserProfile],
+              ) ? (
+                <div className="rounded-2xl border border-dashed border-border/70 bg-background/50 p-5 text-sm text-muted-foreground sm:col-span-2">
+                  No social links added yet. Add them in edit profile to make
+                  this page feel alive.
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                {isOwnProfile ? "Your friends" : "Friends"}
+              </p>
+              <h2 className="font-display text-2xl font-bold text-foreground">
+                {friends.length} connected
+              </h2>
+            </div>
+
+            {friends.length === 0 ? (
+              <p className="text-sm text-muted-foreground rounded-2xl border border-dashed border-border/70 p-4">
+                {isOwnProfile
+                  ? "No friends yet. Visit profiles and tap Add Friend."
+                  : "No friends to show yet."}
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {friends.map((friend) => (
+                  <button
+                    key={friend.id}
+                    type="button"
+                    onClick={() => navigate(`/app/user/${friend.id}`)}
+                    className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-background/70 px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
+                  >
+                    <UserAvatar
+                      userId={friend.id}
+                      name={friend.displayName}
+                      avatarUrl={friend.avatar}
+                      size="sm"
+                    />
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {friend.displayName}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-border/60">
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                Snapshot
+              </p>
+              <h2 className="font-display text-xl font-bold text-foreground mt-1">
+                Profile energy
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 p-4">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Learning footprint
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile.stats?.mediaItems || 0} media entries tracked
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 p-4">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Account vibe
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile.emailVerified
+                      ? "Verified and ready"
+                      : "Unverified account"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-xl font-bold">Recent Shares</h2>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Share2 className="h-5 w-5 text-primary" />
+              <h2 className="font-display text-xl font-bold">Recent Shares</h2>
+            </div>
+            {isOwnProfile ? (
+              <FeedComposeDialog onPost={loadProfile} showTrigger />
+            ) : null}
           </div>
 
           {posts.length === 0 ? (
@@ -211,84 +476,26 @@ export default function UserProfilePage() {
               title="No shared content yet"
               description={
                 isOwnProfile
-                  ? "Start sharing your learning highlights!"
+                  ? "Share a theme, quote, or vocab item from the feed!"
                   : "This user hasn't shared any content yet."
               }
             />
           ) : (
             <div className="space-y-4">
               {posts.map((post) => (
-                <PostCard key={post.id} post={post} isSaved={post.isSaved} />
+                <FeedPostCard
+                  key={post.id}
+                  post={post}
+                  compact
+                  onDelete={(id) =>
+                    setPosts((prev) => prev.filter((p) => p.id !== id))
+                  }
+                />
               ))}
             </div>
           )}
         </div>
       </div>
     </AppLayout>
-  );
-}
-
-// Helper component for rendering a single post
-function PostCard({ post, isSaved }: { post: FeedPost; isSaved: boolean }) {
-  const getContentPreview = () => {
-    switch (post.type) {
-      case "theme":
-        return {
-          title: (post.content as any).title,
-          text: (post.content as any).summary,
-        };
-      case "vocab":
-        return {
-          title: (post.content as any).word,
-          text: (post.content as any).definition,
-        };
-      case "quote":
-        return {
-          title: "Quote",
-          text: (post.content as any).text,
-        };
-      default:
-        return { title: "Content", text: "" };
-    }
-  };
-
-  const content = getContentPreview();
-
-  return (
-    <div className="glass grain rounded-xl p-4 space-y-3">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-primary uppercase tracking-wide">
-            {post.type}
-          </p>
-          <h3 className="font-semibold text-foreground">{content.title}</h3>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {isSaved && (
-            <Bookmark className="h-4 w-4 fill-primary text-primary" />
-          )}
-        </div>
-      </div>
-
-      {content.text && (
-        <p className="text-sm text-muted-foreground line-clamp-2">
-          {content.text}
-        </p>
-      )}
-
-      {post.caption && (
-        <p className="text-sm text-foreground italic">"{post.caption}"</p>
-      )}
-
-      <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <Heart className="h-4 w-4" />
-          <span>{post.likes}</span>
-        </div>
-        <span>
-          {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-        </span>
-      </div>
-    </div>
   );
 }

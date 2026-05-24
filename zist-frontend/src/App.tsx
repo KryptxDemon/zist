@@ -21,6 +21,7 @@ import Vocabulary from "./pages/Vocabulary";
 import Insights from "./pages/Insights";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
+import Feed from "./pages/Feed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -107,7 +108,23 @@ const App = () => (
                 }
               />
               <Route
+                path="/app/feed"
+                element={
+                  <ProtectedRoute>
+                    <Feed />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/app/profile"
+                element={
+                  <ProtectedRoute>
+                    <UserProfile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/profile/edit"
                 element={
                   <ProtectedRoute>
                     <Profile />

@@ -113,7 +113,9 @@ body {
   font-size: 14px;
   color: #0d0d1a;
   background: #ffffff;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
   box-sizing: border-box;
 }
 
@@ -204,7 +206,9 @@ body {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 160ms ease, transform 160ms ease;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
   display: flex;
   align-items: center;
   justify-content: center;

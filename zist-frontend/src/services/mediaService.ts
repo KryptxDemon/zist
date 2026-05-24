@@ -41,6 +41,7 @@ const mapMediaItem = (item: ApiObject): MediaItem =>
     type: item.type,
     year: item.year,
     creator: item.creator,
+    description: item.description,
     coverUrl: item.coverUrl ?? item.cover_url,
     tags: Array.isArray(item.tags) ? item.tags : [],
     status: item.status,

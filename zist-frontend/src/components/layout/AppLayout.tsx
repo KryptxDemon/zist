@@ -23,6 +23,7 @@ import {
   Sun,
   Moon,
   LineChart,
+  Rss,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -36,6 +37,7 @@ import {
 
 const navItems = [
   { path: "/app", label: "Home" },
+  { path: "/app/feed", label: "Feed" },
   { path: "/app/library", label: "Library" },
   { path: "/app/vocabulary", label: "Vocabulary" },
   { path: "/app/insights", label: "Insights" },
@@ -43,7 +45,7 @@ const navItems = [
 
 const quizItems = [
   { path: "/app/quiz", label: "Quiz Hub" },
-  { path: "/app/quiz/start", label: "Start Quiz" },
+  { path: "/app/quiz/collective", label: "Start Quiz" },
 ];
 
 const mediaTypes = [
@@ -158,9 +160,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-rose-700 to-purple-800">
-                    {user?.photoURL ? (
+                    {user?.avatar ? (
                       <img
-                        src={user.photoURL}
+                        src={user.avatar}
                         alt={user.displayName || "User"}
                         className="h-full w-full object-cover"
                       />
@@ -273,6 +275,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <LayoutDashboard className="h-5 w-5" />
             <span className="text-xs">Home</span>
+          </Link>
+          <Link
+            to="/app/feed"
+            className={cn(
+              "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-smooth",
+              location.pathname === "/app/feed"
+                ? "text-primary"
+                : "text-muted-foreground",
+            )}
+          >
+            <Rss className="h-5 w-5" />
+            <span className="text-xs">Feed</span>
           </Link>
           <Link
             to="/app/library"

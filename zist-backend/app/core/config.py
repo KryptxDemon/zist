@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str | None = None
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    FRONTEND_URL: str = "http://localhost:5173"
+
     OPENLIBRARY_BASE_URL: str = "https://openlibrary.org"
 
     WIKIPEDIA_API_BASE: str = "https://en.wikipedia.org/api/rest_v1"

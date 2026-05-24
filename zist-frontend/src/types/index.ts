@@ -11,9 +11,18 @@ export interface User {
   id: string;
   email: string;
   displayName: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: string;
   bio?: string;
+  websiteUrl?: string;
+  instagramUrl?: string;
+  xUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
+  youtubeUrl?: string;
   createdAt: string;
+  emailVerified?: boolean;
   followers?: string[]; // User IDs
   following?: string[]; // User IDs
   stats?: {
@@ -35,6 +44,7 @@ export interface MediaItem {
   type: MediaType;
   year?: number;
   creator?: string;
+  description?: string;
   coverUrl?: string;
   tags: string[];
   status: MediaStatus;
@@ -112,6 +122,24 @@ export interface QuizAttempt {
   completedAt: string;
 }
 
+export interface FeedComment {
+  id: string;
+  postId: string;
+  userId: string;
+  body: string;
+  authorName: string;
+  authorAvatar?: string;
+  createdAt: string;
+}
+
+export interface ShareableContentItem {
+  id: string;
+  mediaId: string;
+  mediaTitle: string;
+  label: string;
+  postType: "theme" | "vocab" | "quote";
+}
+
 export interface FeedPost {
   id: string;
   userId: string;
@@ -125,6 +153,8 @@ export interface FeedPost {
   likes: number;
   isLiked: boolean;
   isSaved: boolean;
+  commentsCount: number;
+  mediaTitle?: string;
   createdAt: string;
 }
 
@@ -142,14 +172,31 @@ export interface UserProfile extends User {
     sharedPosts: number;
     followers: number;
     following: number;
+    totalUpvotes: number;
   };
+  isFollowing?: boolean;
+}
+
+export interface UserRef {
+  id: string;
+  displayName: string;
+  avatar?: string;
 }
 
 export interface UserInfo {
   id: string;
   displayName: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: string;
   bio?: string;
+  websiteUrl?: string;
+  instagramUrl?: string;
+  xUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
+  youtubeUrl?: string;
+  emailVerified?: boolean;
   followers: number;
   following: number;
   mediaItems: number;

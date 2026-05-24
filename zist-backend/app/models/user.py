@@ -49,9 +49,29 @@ class User(Base):
 
     display_name: Mapped[str] = mapped_column(String, nullable=False)
 
+    first_name: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    last_name: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    google_sub: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
+
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
     bio: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    website_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    instagram_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    x_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    github_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    linkedin_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    youtube_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 

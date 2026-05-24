@@ -3,40 +3,28 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
-from app.models.feed import FeedPost, FeedPostLike, FeedPostSave
+from app.models.feed import FeedPost, FeedPostComment, FeedPostLike, FeedPostSave
+from app.models.media import MediaItem
 from app.models.quote import QuoteItem
 from app.models.theme import ThemeConcept
 from app.models.user import User, UserFollow
 from app.models.vocab import VocabItem
-from app.schemas.feed import FeedListResponse, FeedPostCreate, FeedPostResponse, FeedToggleResponse
+from app.schemas.feed import (
+    FeedCommentCreate,
+    FeedCommentListResponse,
+    FeedCommentResponse,
+    FeedListResponse,
+    FeedPostCreate,
+    FeedPostResponse,
+    FeedToggleResponse,
+    ShareableContentItem,
+    ShareableContentResponse,
+)
+from app.services.feed_serializer import serialize_feed_comment, serialize_feed_post
 from app.utils.enums import FeedFilterVisibility, FeedPostType
 from app.utils.pagination import paginate
 
 router = APIRouter()
-
-
-def _serialize_post(db: Session, post: FeedPost, current_user_id: str) -> FeedPostResponse:
-    likes_count = db.query(FeedPostLike).filter(FeedPostLike.post_id == post.id).count()
-    is_liked = db.query(FeedPostLike).filter(FeedPostLike.post_id == post.id, FeedPostLike.user_id == current_user_id).first() is not None
-    is_saved = db.query(FeedPostSave).filter(FeedPostSave.post_id == post.id, FeedPostSave.user_id == current_user_id).first() is not None
-
-    author = db.query(User).filter(User.id == post.user_id).first()
-
-    return FeedPostResponse(
-        id=post.id,
-        user_id=post.user_id,
-        post_type=post.post_type,
-        content_id=post.content_id,
-        caption=post.caption,
-        visibility=post.visibility,
-        created_at=post.created_at,
-        updated_at=post.updated_at,
-        author_name=author.display_name if author else "Unknown",
-        author_avatar=author.avatar_url if author else None,
-        likes_count=likes_count,
-        is_liked=is_liked,
-        is_saved=is_saved,
-    )
 
 
 def _validate_content_ownership(db: Session, post_type: FeedPostType, content_id: str, user_id: str) -> bool:
@@ -67,7 +55,12 @@ def get_feed(
     if visibility == FeedFilterVisibility.global_:
         query = query.filter(FeedPost.visibility == "global")
     elif visibility == FeedFilterVisibility.friends:
-        query = query.filter(FeedPost.user_id.in_(following_ids), FeedPost.visibility.in_(["friends", "global"]))
+        if not following_ids:
+            return FeedListResponse(items=[], total=0, page=page, limit=limit)
+        query = query.filter(
+            FeedPost.user_id.in_(following_ids),
+            FeedPost.visibility.in_(["friends", "global"]),
+        )
     else:
         friends_part = and_(FeedPost.user_id.in_(following_ids), FeedPost.visibility == "friends")
         query = query.filter(or_(FeedPost.visibility == "global", friends_part))
@@ -76,11 +69,86 @@ def get_feed(
     paged = paginate(query, page=page, limit=limit)
 
     return FeedListResponse(
-        items=[_serialize_post(db, p, current_user.id) for p in paged["items"]],
+        items=[serialize_feed_post(db, p, current_user.id) for p in paged["items"]],
         total=paged["total"],
         page=paged["page"],
         limit=paged["limit"],
     )
+
+
+@router.get("/feed/shareable-content", response_model=ShareableContentResponse)
+def get_shareable_content(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    media_items = (
+        db.query(MediaItem)
+        .filter(MediaItem.user_id == current_user.id)
+        .order_by(MediaItem.updated_at.desc())
+        .limit(50)
+        .all()
+    )
+    media_by_id = {m.id: m.title for m in media_items}
+    media_ids = list(media_by_id.keys())
+
+    themes: list[ShareableContentItem] = []
+    vocab: list[ShareableContentItem] = []
+    quotes: list[ShareableContentItem] = []
+
+    if media_ids:
+        for theme in (
+            db.query(ThemeConcept)
+            .filter(ThemeConcept.media_id.in_(media_ids))
+            .order_by(ThemeConcept.updated_at.desc())
+            .limit(100)
+            .all()
+        ):
+            themes.append(
+                ShareableContentItem(
+                    id=theme.id,
+                    media_id=theme.media_id,
+                    media_title=media_by_id.get(theme.media_id, "Media"),
+                    label=theme.title,
+                    post_type=FeedPostType.theme,
+                )
+            )
+
+        for item in (
+            db.query(VocabItem)
+            .filter(VocabItem.media_id.in_(media_ids))
+            .order_by(VocabItem.created_at.desc())
+            .limit(100)
+            .all()
+        ):
+            vocab.append(
+                ShareableContentItem(
+                    id=item.id,
+                    media_id=item.media_id,
+                    media_title=media_by_id.get(item.media_id, "Media"),
+                    label=item.word,
+                    post_type=FeedPostType.vocab,
+                )
+            )
+
+        for quote in (
+            db.query(QuoteItem)
+            .filter(QuoteItem.media_id.in_(media_ids))
+            .order_by(QuoteItem.created_at.desc())
+            .limit(100)
+            .all()
+        ):
+            preview = quote.text[:80] + ("..." if len(quote.text) > 80 else "")
+            quotes.append(
+                ShareableContentItem(
+                    id=quote.id,
+                    media_id=quote.media_id,
+                    media_title=media_by_id.get(quote.media_id, "Media"),
+                    label=preview,
+                    post_type=FeedPostType.quote,
+                )
+            )
+
+    return ShareableContentResponse(themes=themes, vocab=vocab, quotes=quotes)
 
 
 @router.post("/feed", response_model=FeedPostResponse, status_code=status.HTTP_201_CREATED)
@@ -102,7 +170,7 @@ def create_feed_post(
     db.add(post)
     db.commit()
     db.refresh(post)
-    return _serialize_post(db, post, current_user.id)
+    return serialize_feed_post(db, post, current_user.id)
 
 
 @router.post("/feed/{post_id}/like", response_model=FeedToggleResponse)
@@ -153,6 +221,68 @@ def toggle_save(
     db.commit()
     count = db.query(FeedPostSave).filter(FeedPostSave.post_id == post_id).count()
     return FeedToggleResponse(message=message, active=active, count=count)
+
+
+@router.get("/feed/{post_id}/comments", response_model=FeedCommentListResponse)
+def list_comments(
+    post_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _ = current_user
+    post = db.query(FeedPost).filter(FeedPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
+    rows = (
+        db.query(FeedPostComment)
+        .filter(FeedPostComment.post_id == post_id)
+        .order_by(FeedPostComment.created_at.asc())
+        .all()
+    )
+    return FeedCommentListResponse(
+        items=[serialize_feed_comment(db, row) for row in rows],
+        total=len(rows),
+    )
+
+
+@router.post("/feed/{post_id}/comments", response_model=FeedCommentResponse, status_code=status.HTTP_201_CREATED)
+def create_comment(
+    post_id: str,
+    payload: FeedCommentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    post = db.query(FeedPost).filter(FeedPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
+    comment = FeedPostComment(
+        post_id=post_id,
+        user_id=current_user.id,
+        body=payload.body.strip(),
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return serialize_feed_comment(db, comment)
+
+
+@router.delete("/feed/comments/{comment_id}")
+def delete_comment(
+    comment_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    comment = db.query(FeedPostComment).filter(FeedPostComment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    if comment.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the author can delete this comment")
+
+    db.delete(comment)
+    db.commit()
+    return {"message": "Comment deleted"}
 
 
 @router.delete("/feed/{post_id}")
