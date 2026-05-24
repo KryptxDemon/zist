@@ -41,7 +41,7 @@ async function buildQuizQuestions(
 ): Promise<QuizQuestion[]> {
   const mediaTitleById = new Map(allMedia.map((item) => [item.id, item.title]));
   const themeQuestions = themes
-    .filter((item) => item.title.trim())
+    .filter((item) => item.title?.trim())
     .slice(0, 4)
     .map((theme, index) => ({
       id: `theme-${index}`,
@@ -76,7 +76,7 @@ async function buildQuizQuestions(
     }));
 
   const quoteQuestions = quotes
-    .filter((item) => item.text.trim())
+    .filter((item) => item.text?.trim())
     .slice(0, 4)
     .map((quote, index) => ({
       id: `quote-${index}`,
@@ -205,8 +205,8 @@ export default function QuizSession() {
 
         setMedia(mediaData);
         const generatedQuestions = await buildQuizQuestions(
-          themes.flat(),
           vocab.flat(),
+          themes.flat(),
           quotes.flat(),
           isCollective ? allMedia : mediaData ? [mediaData] : [],
         );

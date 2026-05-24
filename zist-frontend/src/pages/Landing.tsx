@@ -336,7 +336,6 @@ export default function Landing() {
         className="landing-v3-section landing-v3-top-themes"
         id="top-themes"
       >
-        <p className="landing-v3-section-kicker">Fresh from the database</p>
         <h2 className="landing-v3-section-title">Top Themes</h2>
         <p className="landing-v3-section-subtitle">
           Right now this reflects the most recent theme groups captured in the
