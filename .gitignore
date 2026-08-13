@@ -58,6 +58,9 @@ wheels/
 # Local Python virtual environment
 .venv/
 
+# Local backup of the env file (contains secrets) — keep untracked
+zist-backend/.env.local.backup
+
 # Database
 *.db
 *.sqlite
