@@ -45,6 +45,9 @@ class Settings(BaseSettings):
 
     DICTIONARY_API_BASE: str = "https://api.dictionaryapi.dev/api/v2/entries/en"
 
+    # JWKS URL for verifying external JWTs (e.g., Neon Auth)
+    JWKS_URL: str | None = None
+
     @property
     def cors_origins(self) -> list[str]:
         value = self.BACKEND_CORS_ORIGINS.strip()
