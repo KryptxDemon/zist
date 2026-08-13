@@ -3,10 +3,17 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { User } from "@/types";
 import { authService, type OAuthSessionPayload } from "@/services/authService";
+import {
+  clearNeonSessionVerifier,
+  getNeonSession,
+  hasNeonSessionVerifier,
+  persistNeonSession,
+} from "@/lib/neonAuthAdapter";
 
 interface AuthContextType {
   user: User | null;
@@ -24,12 +31,21 @@ interface AuthContextType {
     firstName: string,
     lastName: string,
   ) => Promise<void>;
+  /**
+   * @deprecated Google OAuth is now handled by Neon Auth (see `bootstrapNeonSession`).
+   * Kept for compatibility with the legacy backend popup flow.
+   */
   completeGoogleAuth: (payload: {
     access_token: string;
     refresh_token: string;
     token_type: string;
     user: OAuthSessionPayload["user"];
   }) => Promise<void>;
+  /**
+   * Detect a Neon Auth redirect (Google OAuth callback) and hydrate the
+   * React auth state with the resulting JWT. Safe to call on every mount.
+   */
+  bootstrapNeonSession: () => Promise<User | null>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
 }
@@ -85,6 +101,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   };
 
+  const bootstrapNeonSession = useCallback(async () => {
+    if (!hasNeonSessionVerifier()) return null;
+    try {
+      const snapshot = await getNeonSession();
+      if (!snapshot) return null;
+      persistNeonSession(snapshot);
+      setUser(snapshot.user);
+      clearNeonSessionVerifier();
+      return snapshot.user;
+    } catch (error) {
+      console.error("[auth] failed to bootstrap Neon session", error);
+      clearNeonSessionVerifier();
+      return null;
+    }
+  }, []);
+
   const logout = async () => {
     await authService.logout();
     setUser(null);
@@ -104,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         completeGoogleAuth,
+        bootstrapNeonSession,
         logout,
         updateProfile,
       }}

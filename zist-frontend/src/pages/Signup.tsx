@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import { authService } from "@/services/authService";
+import { startGoogleSignIn } from "@/lib/neonAuthAdapter";
 import "./Signup.css";
 
 const logoImg = "/zistv2-logo.png";
@@ -29,7 +30,7 @@ function getPasswordStrength(password: string): {
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { signup, completeGoogleAuth } = useAuth();
+  const { signup } = useAuth();
   const { toast } = useToast();
 
   const [displayName, setDisplayName] = useState("");
@@ -39,6 +40,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [displayNameStatus, setDisplayNameStatus] = useState<{
     available: boolean | null;
     suggestions: string[];
@@ -74,46 +76,6 @@ export default function Signup() {
 
     return () => window.clearTimeout(handle);
   }, [displayName]);
-
-  useEffect(() => {
-    const backendOrigin = authService.getBackendOrigin();
-
-    const handleMessage = (event: MessageEvent) => {
-      if (
-        backendOrigin !== window.location.origin &&
-        event.origin !== backendOrigin
-      ) {
-        return;
-      }
-
-      if (event.data?.type !== "zist-google-auth" || !event.data?.payload) {
-        return;
-      }
-
-      void (async () => {
-        try {
-          await completeGoogleAuth(event.data.payload);
-          toast({
-            title: "Google account connected",
-            description: "Your account was created and signed in successfully.",
-          });
-          navigate("/app");
-        } catch (error) {
-          toast({
-            title: "Google sign-in failed",
-            description:
-              error instanceof Error
-                ? error.message
-                : "Unable to complete Google sign-in.",
-            variant: "destructive",
-          });
-        }
-      })();
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [completeGoogleAuth, navigate, toast]);
 
   const passwordStrength = getPasswordStrength(password);
   const requirements = [
@@ -157,22 +119,12 @@ export default function Signup() {
   };
 
   const handleGoogleSignup = async () => {
-    const popup = window.open("", "zist-google-signup", "width=520,height=680");
-
-    if (!popup) {
-      toast({
-        title: "Popup blocked",
-        description: "Please allow popups to continue with Google sign-up.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    setIsGoogleLoading(true);
     try {
-      const authUrl = await authService.startGoogleAuth("signup");
-      popup.location.href = authUrl;
+      await startGoogleSignIn({ callbackURL: "/app" });
+      // No success toast here — the browser is redirecting away to Google.
     } catch (error) {
-      popup.close();
+      setIsGoogleLoading(false);
       toast({
         title: "Google sign-up unavailable",
         description:
@@ -372,6 +324,7 @@ export default function Signup() {
               className="signup-btn-google"
               type="button"
               onClick={handleGoogleSignup}
+              disabled={isGoogleLoading}
               aria-label="Sign up with Google"
             >
               <svg
@@ -398,7 +351,7 @@ export default function Signup() {
                   d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"
                 />
               </svg>
-              Sign up with Google
+              {isGoogleLoading ? "Redirecting..." : "Sign up with Google"}
             </button>
 
             <Link to="/neon/auth" className="signup-btn-neon">
