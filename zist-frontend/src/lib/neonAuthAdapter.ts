@@ -1,4 +1,4 @@
-import { neon } from "@/lib/neon";
+import { neonAuth } from "@/lib/neon";
 import type { User } from "@/types";
 
 /**
@@ -96,17 +96,15 @@ export async function startGoogleSignIn(
   // looking like a dead button.
   getNeonAuthUrl();
 
-  const authClient = (neon as unknown as {
-    auth: {
-      signIn: {
-        social: (input: {
-          provider: "google";
-          callbackURL: string;
-          errorCallbackURL?: string;
-        }) => Promise<unknown>;
-      };
+  const authClient = neonAuth as unknown as {
+    signIn: {
+      social: (input: {
+        provider: "google";
+        callbackURL: string;
+        errorCallbackURL?: string;
+      }) => Promise<unknown>;
     };
-  }).auth;
+  };
 
   const result = (await authClient.signIn.social({
     provider: "google",
@@ -129,14 +127,12 @@ export async function startGoogleSignIn(
  * the session, so this is safe to call frequently.
  */
 export async function getNeonSession(): Promise<NeonSessionSnapshot | null> {
-  const authClient = (neon as unknown as {
-    auth: {
-      getSession: () => Promise<{
-        data?: { session?: { token?: string | null } | null; user?: Record<string, unknown> | null } | null;
-        error?: unknown;
-      }>;
-    };
-  }).auth;
+  const authClient = neonAuth as unknown as {
+    getSession: () => Promise<{
+      data?: { session?: { token?: string | null } | null; user?: Record<string, unknown> | null } | null;
+      error?: unknown;
+    }>;
+  };
 
   const result = await authClient.getSession();
   const sessionData = result?.data ?? null;
