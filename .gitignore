@@ -55,6 +55,9 @@ wheels/
 .env.production
 /zist-backend/.env
 
+# Local Python virtual environment
+.venv/
+
 # Database
 *.db
 *.sqlite
