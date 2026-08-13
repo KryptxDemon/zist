@@ -24,8 +24,6 @@ import Insights from "./pages/Insights";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
 import Feed from "./pages/Feed";
-import NeonAuth from "./pages/NeonAuth";
-import NeonAccount from "./pages/NeonAccount";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,15 +60,6 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/neon/auth" element={<NeonAuth />} />
-              <Route
-                path="/neon/account"
-                element={
-                  <ProtectedRoute>
-                    <NeonAccount />
-                  </ProtectedRoute>
-                }
-              />
 
               {/* Protected Routes */}
               <Route

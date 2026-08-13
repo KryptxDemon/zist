@@ -354,9 +354,6 @@ export default function Signup() {
               {isGoogleLoading ? "Redirecting..." : "Sign up with Google"}
             </button>
 
-            <Link to="/neon/auth" className="signup-btn-neon">
-              Sign up with Neon (passwordless)
-            </Link>
 
             <p className="signup-signin-text">
               Already have an account?{" "}
