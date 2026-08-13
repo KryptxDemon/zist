@@ -199,10 +199,18 @@ def get_current_user(
         detail="Could not validate credentials",
     )
 
+    # ``verified_via`` records how the token was validated so we can apply the
+    # right shape rules. Internal HS256 tokens MUST carry ``type=access``;
+    # externally verified JWKS tokens (e.g. Neon Auth) typically don't carry a
+    # ``type`` claim and are accepted as long as a ``sub`` is present.
+    verified_via: str | None = None
     payload = _decode_with_app_secret(token)
-    if payload is None and settings.JWKS_URL:
+    if payload is not None:
+        verified_via = "app_secret"
+    elif settings.JWKS_URL:
         try:
             payload = _verify_with_jwks(token)
+            verified_via = "jwks"
         except HTTPException:
             raise credentials_exception
 
@@ -210,8 +218,15 @@ def get_current_user(
         raise credentials_exception
 
     user_id: str | None = payload.get("sub")
+    if user_id is None:
+        raise credentials_exception
+
     token_type: str | None = payload.get("type")
-    if user_id is None or token_type != "access":
+    if verified_via == "app_secret" and token_type != "access":
+        raise credentials_exception
+    if verified_via == "jwks" and token_type is not None and token_type != "access":
+        # External tokens may declare a type, but refuse anything that is
+        # explicitly *not* an access token (e.g. a refresh token).
         raise credentials_exception
 
     user = db.query(User).filter(User.id == user_id).first()

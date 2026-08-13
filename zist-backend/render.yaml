@@ -28,6 +28,12 @@ services:
       - key: BACKEND_CORS_ORIGINS
         value: https://zist-media.netlify.app,https://your-production-domain.com
         scope: runtime
+      - key: JWKS_URL
+        scope: runtime
+        sync: false
+      - key: NEON_AUTH_ISSUER
+        scope: runtime
+        sync: false
     healthCheckPath: /health
     disk:
       - name: zist_data

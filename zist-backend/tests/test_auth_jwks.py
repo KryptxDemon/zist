@@ -199,3 +199,73 @@ def test_jwks_construct_helper_round_trip() -> None:
     public_jwk, _ = _generate_rsa_keypair()
     key = jwk.construct(public_jwk)
     assert key is not None
+
+
+def test_neon_token_without_type_claim_is_accepted_via_jwks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Neon Auth JWTs do not carry a ``type`` claim. They must still be
+    accepted when verified through JWKS, as long as a ``sub`` is present.
+
+    The same token shape should NOT be accepted via the HS256 app secret
+    path, because that path requires ``type=access`` (and the token is not
+    signed with the app secret anyway).
+    """
+    public_jwk, private_key = _generate_rsa_keypair()
+    monkeypatch.setattr(deps._JWKSCache, "_fetch_keys", _patched_fetch([public_jwk]))
+
+    # Neon-style claim set: ``sub``, ``email``, ``email_verified``, ``iat``,
+    # ``exp``. No ``type`` field.
+    claims = {
+        "sub": "00000000-0000-0000-0000-000000000000",
+        "email": "user@example.com",
+        "email_verified": True,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 300,
+    }
+    token = _sign_token(claims, private_key["pem"], kid=public_jwk["kid"])
+
+    # JWKS path returns the claims successfully even without ``type``.
+    decoded = deps._verify_with_jwks(token)
+    assert decoded["sub"] == claims["sub"]
+    assert "type" not in decoded
+
+
+def test_neon_token_with_explicit_non_access_type_is_rejected_via_jwks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If an external token *does* declare a ``type``, it must be ``access``.
+
+    Defends against accidentally accepting an external refresh token.
+    """
+    public_jwk, private_key = _generate_rsa_keypair()
+    monkeypatch.setattr(deps._JWKSCache, "_fetch_keys", _patched_fetch([public_jwk]))
+
+    claims = _base_claims()
+    claims["type"] = "refresh"
+    token = _sign_token(claims, private_key["pem"], kid=public_jwk["kid"])
+
+    # Signature still verifies; the type gate is enforced in get_current_user.
+    deps._verify_with_jwks(token)
+
+    from fastapi.security import HTTPAuthorizationCredentials
+
+    class _StubUser:
+        id = claims["sub"]
+        is_active = True
+
+    class _StubQuery:
+        def filter(self, *_args: Any, **_kwargs: Any) -> "_StubQuery":
+            return self
+
+        def first(self) -> _StubUser:
+            return _StubUser()
+
+    class _StubDb:
+        def query(self, *_args: Any) -> _StubQuery:
+            return _StubQuery()
+
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+    with pytest.raises(HTTPException) as exc_info:
+        deps.get_current_user(credentials=creds, db=_StubDb())  # type: ignore[arg-type]
+    assert exc_info.value.status_code == 401

@@ -2,6 +2,13 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  # Required: Neon Auth endpoint. Format:
+  #   https://ep-<id>.neonauth.<region>.aws.neon.tech/neondb/auth
+  # Without this, the Google and Neon passwordless flows silently fail.
+  # Set in Netlify UI: Site settings → Environment variables.
+  # VITE_NEON_AUTH_URL = "https://ep-xxx.neonauth.<region>.aws.neon.tech/neondb/auth"
+
 [[redirects]]
   from = "/api/*"
   to = "https://zist-g4h2.onrender.com/api/:splat"

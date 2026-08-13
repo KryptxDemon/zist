@@ -105,7 +105,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!hasNeonSessionVerifier()) return null;
     try {
       const snapshot = await getNeonSession();
-      if (!snapshot) return null;
+      if (!snapshot) {
+        console.warn("[auth] Neon session verifier present but no session returned");
+        clearNeonSessionVerifier();
+        return null;
+      }
+      console.info("[auth] neon session bootstrapped", {
+        userId: snapshot.user.id,
+        email: snapshot.user.email,
+        tokenPresent: Boolean(snapshot.token),
+      });
       persistNeonSession(snapshot);
       setUser(snapshot.user);
       clearNeonSessionVerifier();

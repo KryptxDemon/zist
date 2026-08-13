@@ -38,7 +38,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -47,6 +46,11 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Allow frontend's helper modules under src/lib/ (Python "lib/" rule above is
+# for setuptools build artifacts).
+!zist-frontend/src/lib/
+!zist-frontend/src/lib/**
 
 # Environment variables
 .env
