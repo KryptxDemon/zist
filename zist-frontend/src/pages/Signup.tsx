@@ -121,11 +121,14 @@ export default function Signup() {
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     try {
-      // Use an absolute URL: Better Auth / Neon Auth performs a full-page
-      // redirect to Google and back, so a relative path can resolve against
-      // the wrong origin (or fail the postMessage handshake) after the loop.
-      const callbackURL = window.location.origin + "/app";
-      await startGoogleSignIn({ callbackURL });
+      // Neon Auth (Better Auth) only accepts callbackURLs that match a
+      // registered origin on the project. Sending an absolute URL like
+      // "https://zist-media.netlify.app/app" gets rejected with HTTP 403
+      // INVALID_CALLBACKURL because the production host is not on the
+      // allow-list yet. A relative path like "/app" is always accepted, and
+      // Neon uses the incoming request's Origin header to build the absolute
+      // redirect target after Google completes.
+      await startGoogleSignIn({ callbackURL: "/app" });
       // No success toast here — the browser is redirecting away to Google.
     } catch (error) {
       setIsGoogleLoading(false);
