@@ -3,7 +3,6 @@ import React, {
   useContext,
   useState,
   useEffect,
-  useCallback,
   ReactNode,
 } from "react";
 import { User } from "@/types";
@@ -32,7 +31,7 @@ interface AuthContextType {
     lastName: string,
   ) => Promise<void>;
   /**
-   * @deprecated Google OAuth is now handled by Neon Auth (see `bootstrapNeonSession`).
+   * @deprecated Google OAuth is now handled by Neon Auth during AuthProvider init.
    * Kept for compatibility with the legacy backend popup flow.
    */
   completeGoogleAuth: (payload: {
@@ -41,11 +40,6 @@ interface AuthContextType {
     token_type: string;
     user: OAuthSessionPayload["user"];
   }) => Promise<void>;
-  /**
-   * Detect a Neon Auth redirect (Google OAuth callback) and hydrate the
-   * React auth state with the resulting JWT. Safe to call on every mount.
-   */
-  bootstrapNeonSession: () => Promise<User | null>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
 }
@@ -57,12 +51,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored auth
-    const { user: storedUser } = authService.getStoredAuth();
-    if (storedUser) {
-      setUser(storedUser);
+    let cancelled = false;
+
+    async function init() {
+      // 1. Hydrate from stored auth (synchronous)
+      const { user: storedUser } = authService.getStoredAuth();
+      if (storedUser && !cancelled) {
+        setUser(storedUser);
+      }
+
+      // 2. If we just landed from a Google OAuth redirect, exchange the
+      //    session verifier BEFORE we drop isLoading. This prevents
+      //    ProtectedRoute from redirecting to /login and stripping the
+      //    verifier before it can be consumed.
+      if (hasNeonSessionVerifier()) {
+        try {
+          const snapshot = await getNeonSession();
+          if (snapshot && !cancelled) {
+            console.info("[auth] neon session bootstrapped", {
+              userId: snapshot.user.id,
+              email: snapshot.user.email,
+              tokenPresent: Boolean(snapshot.token),
+            });
+            persistNeonSession(snapshot);
+            setUser(snapshot.user);
+          } else if (!snapshot) {
+            console.warn(
+              "[auth] Neon session verifier present but no session returned",
+            );
+          }
+        } catch (error) {
+          console.error("[auth] failed to bootstrap Neon session", error);
+        } finally {
+          clearNeonSessionVerifier();
+        }
+      }
+
+      // 3. Only now mark loading as done
+      if (!cancelled) {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (
@@ -101,30 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   };
 
-  const bootstrapNeonSession = useCallback(async () => {
-    if (!hasNeonSessionVerifier()) return null;
-    try {
-      const snapshot = await getNeonSession();
-      if (!snapshot) {
-        console.warn("[auth] Neon session verifier present but no session returned");
-        clearNeonSessionVerifier();
-        return null;
-      }
-      console.info("[auth] neon session bootstrapped", {
-        userId: snapshot.user.id,
-        email: snapshot.user.email,
-        tokenPresent: Boolean(snapshot.token),
-      });
-      persistNeonSession(snapshot);
-      setUser(snapshot.user);
-      clearNeonSessionVerifier();
-      return snapshot.user;
-    } catch (error) {
-      console.error("[auth] failed to bootstrap Neon session", error);
-      clearNeonSessionVerifier();
-      return null;
-    }
-  }, []);
+
 
   const logout = async () => {
     await authService.logout();
@@ -145,7 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         completeGoogleAuth,
-        bootstrapNeonSession,
         logout,
         updateProfile,
       }}

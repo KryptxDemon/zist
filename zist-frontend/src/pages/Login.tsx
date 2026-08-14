@@ -49,7 +49,11 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      await startGoogleSignIn({ callbackURL: from });
+      // Use an absolute URL: Better Auth / Neon Auth performs a full-page
+      // redirect to Google and back, so a relative path can resolve against
+      // the wrong origin (or fail the postMessage handshake) after the loop.
+      const callbackURL = window.location.origin + from;
+      await startGoogleSignIn({ callbackURL });
       // No success toast here — the browser is redirecting away to Google.
     } catch (error) {
       setIsGoogleLoading(false);

@@ -1,13 +1,9 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { hasNeonSessionVerifier } from "@/lib/neonAuthAdapter";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -26,29 +22,15 @@ import UserProfile from "./pages/UserProfile";
 import Feed from "./pages/Feed";
 import NotFound from "./pages/NotFound";
 
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+
 const queryClient = new QueryClient();
-
-/**
- * Bridges Neon Auth's post-OAuth redirect into our React auth state.
- * Mounts once inside `<AuthProvider>` and only acts when the URL carries
- * the one-time `?neon_auth_session_verifier=...` parameter.
- */
-function NeonSessionBridge() {
-  const { bootstrapNeonSession } = useAuth();
-
-  useEffect(() => {
-    if (!hasNeonSessionVerifier()) return;
-    void bootstrapNeonSession();
-  }, [bootstrapNeonSession]);
-
-  return null;
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
-        <NeonSessionBridge />
         <TooltipProvider>
           <Toaster />
           <Sonner />
