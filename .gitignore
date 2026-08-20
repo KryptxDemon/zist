@@ -77,3 +77,15 @@ zist-backend/.env.local.backup
 # OS
 .DS_Store
 Thumbs.db
+
+# Tooling caches
+.cph/
+.puku/
+
+# Stray scaffold / scratch
+/backend/
+/commit_msg.txt
+/zist logo.png
+
+# Pytest cache
+.pytest_cache/
