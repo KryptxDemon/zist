@@ -58,6 +58,8 @@ def ensure_user_profile_columns() -> None:
         statements.append("ALTER TABLE users ADD COLUMN last_name VARCHAR")
     if "google_sub" not in existing_columns:
         statements.append("ALTER TABLE users ADD COLUMN google_sub VARCHAR")
+    if "neon_auth_user_id" not in existing_columns:
+        statements.append("ALTER TABLE users ADD COLUMN neon_auth_user_id VARCHAR")
     if "email_verified" not in existing_columns:
         statements.append("ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT FALSE")
     if "website_url" not in existing_columns:
@@ -73,12 +75,14 @@ def ensure_user_profile_columns() -> None:
     if "youtube_url" not in existing_columns:
         statements.append("ALTER TABLE users ADD COLUMN youtube_url VARCHAR")
 
-    if not statements:
-        unique_indexes = {index["name"] for index in inspector.get_indexes("users")}
-        if "ix_users_google_sub" not in unique_indexes:
-            statements.append("CREATE UNIQUE INDEX ix_users_google_sub ON users (google_sub)")
-        else:
-            return
+    needs_index_check = not statements
+    unique_indexes = {index["name"] for index in inspector.get_indexes("users")}
+    if "ix_users_google_sub" not in unique_indexes:
+        statements.append("CREATE UNIQUE INDEX ix_users_google_sub ON users (google_sub)")
+    if "ix_users_neon_auth_user_id" not in unique_indexes:
+        statements.append("CREATE UNIQUE INDEX ix_users_neon_auth_user_id ON users (neon_auth_user_id)")
+    if needs_index_check and not statements:
+        return
 
     with engine.begin() as connection:
         for statement in statements:

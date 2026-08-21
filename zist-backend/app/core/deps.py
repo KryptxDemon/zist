@@ -27,8 +27,11 @@ from jose import JWTError, jwk, jwt
 from jose.utils import base64url_decode
 from sqlalchemy.orm import Session
 
+from sqlalchemy import func, or_
+
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.security import get_password_hash
 from app.models.user import User
 
 
@@ -180,6 +183,79 @@ def _decode_with_app_secret(token: str) -> dict[str, Any] | None:
         return None
 
 
+def upsert_zist_user_from_neon_claims(claims, db):
+    neon_user_id = claims.get("sub")
+    if not neon_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing subject claim",
+        )
+    email_raw = claims.get("email")
+    email = email_raw.strip().lower() if isinstance(email_raw, str) and email_raw.strip() else None
+    email_verified = bool(claims.get("email_verified"))
+    user = db.query(User).filter(User.neon_auth_user_id == neon_user_id).first()
+    if user is None and email and email_verified:
+        user = db.query(User).filter(func.lower(User.email) == email).first()
+        if user is not None:
+            user.neon_auth_user_id = neon_user_id
+    if user is not None:
+        upstream_name = _sanitize_display_name(claims.get("name")) or _sanitize_display_name(claims.get("preferred_username"))
+        if upstream_name and not user.display_name:
+            user.display_name = _next_available_display_name(db, upstream_name)
+        upstream_avatar = claims.get("picture") or claims.get("avatar_url")
+        if isinstance(upstream_avatar, str) and upstream_avatar and not user.avatar_url:
+            user.avatar_url = upstream_avatar
+        if email and not user.email:
+            user.email = email
+        db.commit()
+        db.refresh(user)
+        return user
+    preferred = _sanitize_display_name(claims.get("name")) or email or "reader"
+    display_name = _next_available_display_name(db, preferred)
+    # ``email`` is NOT NULL on the users table. When the upstream token
+    # doesn't carry one, synthesize a deterministic placeholder so the row
+    # is created without lying about contact info.
+    fallback_email = email or f"{neon_user_id}@neon.placeholder.local"
+    new_user = User(
+        neon_auth_user_id=neon_user_id,
+        email=fallback_email,
+        display_name=display_name,
+        avatar_url=claims.get("picture") or claims.get("avatar_url"),
+        hashed_password=get_password_hash(__import__("secrets").token_urlsafe(32)),
+        is_active=True,
+        email_verified=email_verified,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+def _sanitize_display_name(raw):
+    if not raw:
+        return None
+    cleaned = raw.strip()
+    if not cleaned:
+        return None
+    return cleaned[:64]
+
+
+def _is_display_name_taken(db, name):
+    return db.query(User.id).filter(func.lower(User.display_name) == name.lower()).first() is not None
+
+
+def _next_available_display_name(db, preferred):
+    if not _is_display_name_taken(db, preferred):
+        return preferred
+    base = preferred[:60]
+    n = 2
+    while True:
+        candidate = f"{base}#{n}"
+        if not _is_display_name_taken(db, candidate):
+            return candidate
+        n += 1
+
+
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
@@ -229,7 +305,14 @@ def get_current_user(
         # explicitly *not* an access token (e.g. a refresh token).
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
+    if verified_via == "jwks":
+        # External Neon Auth tokens identify the upstream user by their
+        # ``sub`` claim, which is NOT our internal ``User.id``. Upsert by
+        # Neon user id (with email-verified linking) to find or create the
+        # matching Zist profile.
+        user = upsert_zist_user_from_neon_claims(payload, db)
+    else:
+        user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_active:
         raise credentials_exception
     return user

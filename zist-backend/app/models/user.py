@@ -55,6 +55,9 @@ class User(Base):
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
 
     google_sub: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
+    # Provider-independent identifier issued by Neon Auth (sub claim).
+    # This is the canonical link between a Neon session JWT and a Zist user row.
+    neon_auth_user_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
 
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 

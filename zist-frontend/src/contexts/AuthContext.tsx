@@ -74,7 +74,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               tokenPresent: Boolean(snapshot.token),
             });
             persistNeonSession(snapshot);
-            setUser(snapshot.user);
+            // Force a backend upsert so the canonical Zist profile is
+            // available before ProtectedRoute checks it. This guarantees
+            // the Neon user id is mapped (or migrated by email) into the
+            // ``users`` table on first sign-in. ``getCurrentUser`` maps
+            // the backend snake_case payload to the frontend User shape
+            // and persists it to localStorage so reloads stay in sync.
+            try {
+              const me = await authService.getCurrentUser();
+              if (!cancelled) {
+                setUser(me);
+              }
+            } catch (meError) {
+              console.error(
+                "[auth] /auth/me sync failed; falling back to Neon snapshot",
+                meError,
+              );
+              if (!cancelled) {
+                setUser(snapshot.user);
+              }
+            }
           } else if (!snapshot) {
             console.warn(
               "[auth] Neon session verifier present but no session returned",
