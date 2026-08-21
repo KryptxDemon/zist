@@ -21,10 +21,10 @@ from collections.abc import Generator
 from typing import Any
 
 import httpx
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwk, jwt
-from jose.utils import base64url_decode
+from jwt.exceptions import InvalidTokenError, PyJWKClientError
 from sqlalchemy.orm import Session
 
 from sqlalchemy import func, or_
@@ -39,7 +39,22 @@ security = HTTPBearer()
 
 
 # Algorithms accepted for publicly-signed tokens (verified via JWKS).
-JWKS_ALGORITHMS: tuple[str, ...] = ("RS256", "RS384", "RS512", "ES256", "ES384")
+# Neon Auth signs tokens with EdDSA (Ed25519), which python-jose 3.5.0 does
+# not support but PyJWT does. Keep the asymmetric set here so we still reject
+# ``none`` and HS* tokens issued with a shared secret.
+JWKS_ALGORITHMS: tuple[str, ...] = (
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES256K",
+    "ES384",
+    "ES512",
+    "EdDSA",
+)
 
 
 class _JWKSCache:
@@ -122,7 +137,7 @@ def _verify_with_jwks(token: str) -> dict[str, Any]:
     """
     try:
         unverified_header = jwt.get_unverified_header(token)
-    except JWTError as exc:
+    except InvalidTokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token header",
@@ -149,23 +164,26 @@ def _verify_with_jwks(token: str) -> dict[str, Any]:
         )
 
     try:
-        constructed = jwk.construct(key)
-        signing_input, encoded_sig = token.rsplit(".", 1)
-        sig = base64url_decode(encoded_sig.encode("utf-8"))
-        if not constructed.verify(signing_input.encode("utf-8"), sig):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token signature",
-            )
-    except HTTPException:
-        raise
-    except JWTError as exc:
+        signing_key = jwt.PyJWK(key).key
+    except (PyJWKClientError, InvalidTokenError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Failed to load signing key",
+        ) from exc
+
+    try:
+        claims: dict[str, Any] = jwt.decode(
+            token,
+            signing_key,
+            algorithms=list(JWKS_ALGORITHMS),
+            options={"require": ["exp", "sub"]},
+        )
+    except InvalidTokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Failed to verify token",
         ) from exc
 
-    claims = jwt.get_unverified_claims(token)
     exp = claims.get("exp")
     if exp is not None and time.time() > float(exp):
         raise HTTPException(
@@ -179,7 +197,7 @@ def _decode_with_app_secret(token: str) -> dict[str, Any] | None:
     """Decode app-issued tokens. Returns ``None`` on failure instead of raising."""
     try:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except JWTError:
+    except InvalidTokenError:
         return None
 
 
