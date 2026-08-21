@@ -1,17 +1,19 @@
 from fastapi import APIRouter
 
 from app.api.api_v1.endpoints import (
-	auth,
-	external,
-	facts,
-	feed,
-	insights,
-	media,
-	quotes,
-	quiz,
-	themes,
-	users,
-	vocab,
+        auth,
+        external,
+        facts,
+        feed,
+        friends,
+        insights,
+        media,
+        notifications,
+        quotes,
+        quiz,
+        themes,
+        users,
+        vocab,
 )
 
 api_router = APIRouter()
@@ -26,3 +28,5 @@ api_router.include_router(feed.router, tags=["Feed"])
 api_router.include_router(quiz.router, tags=["Quiz"])
 api_router.include_router(external.router, tags=["External"])
 api_router.include_router(insights.router, tags=["Insights"])
+api_router.include_router(friends.router, tags=["Friends"])
+api_router.include_router(notifications.router, tags=["Notifications"])

@@ -20,9 +20,11 @@ import Insights from "./pages/Insights";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
 import Feed from "./pages/Feed";
+import Friends from "./pages/Friends";
 import NotFound from "./pages/NotFound";
 
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -35,7 +37,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
+            <NotificationsProvider>
+              <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Landing />} />
               <Route path="/landing" element={<Landing />} />
@@ -140,9 +143,18 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/app/friends"
+                element={
+                  <ProtectedRoute>
+                    <Friends />
+                  </ProtectedRoute>
+                }
+              />
 
               <Route path="*" element={<NotFound />} />
-            </Routes>
+              </Routes>
+            </NotificationsProvider>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

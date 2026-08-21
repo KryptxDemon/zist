@@ -22,6 +22,7 @@ import {
 import { mediaService, vocabService } from "@/services/mediaService";
 import { dictionaryService } from "@/services/externalServices";
 import { MediaItem, VocabItem } from "@/types";
+import { parseTimestamp } from "@/lib/time";
 import {
   BookOpen,
   Search,
@@ -77,7 +78,8 @@ export default function Vocabulary() {
           .flat()
           .sort(
             (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+              parseTimestamp(b.createdAt)?.getTime() ??
+                0 - (parseTimestamp(a.createdAt)?.getTime() ?? 0),
           );
 
         setItems(flattened);

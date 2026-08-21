@@ -31,6 +31,7 @@ import {
   QuoteItem,
   MediaStats,
 } from "@/types";
+import { parseTimestamp } from "@/lib/time";
 import {
   ArrowLeft,
   Plus,
@@ -597,7 +598,9 @@ function ThemesTab({
       setThemes(
         Array.from(byId.values()).sort(
           (a, b) =>
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+            parseTimestamp(b.updatedAt)?.getTime() ??
+              0 -
+              (parseTimestamp(a.updatedAt)?.getTime() ?? 0),
         ),
       );
 
@@ -1531,7 +1534,9 @@ function QuotesTab({
       setQuotes(
         Array.from(byId.values()).sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            parseTimestamp(b.createdAt)?.getTime() ??
+              0 -
+              (parseTimestamp(a.createdAt)?.getTime() ?? 0),
         ),
       );
 

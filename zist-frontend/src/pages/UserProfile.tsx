@@ -13,10 +13,9 @@ import { userService } from "@/services/userService";
 import { feedService } from "@/services/feedService";
 import { UserProfile, FeedPost, UserRef } from "@/types";
 import { formatRelativeTime } from "@/lib/time";
+import { FriendActionButton } from "@/components/friends/FriendActionButton";
 import {
   Users,
-  UserPlus,
-  UserMinus,
   Mail,
   Calendar,
   Share2,
@@ -34,7 +33,6 @@ import {
   Clock3,
   PencilLine,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 
 const socialFields = [
   { key: "websiteUrl", label: "Website", icon: Globe },
@@ -63,8 +61,6 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [friends, setFriends] = useState<UserRef[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isLoadingFollow, setIsLoadingFollow] = useState(false);
 
   // If no userId provided and user is logged in, show their own profile
   const displayUserId = userId || currentUser?.id;
@@ -80,7 +76,6 @@ export default function UserProfilePage() {
       const profileData = await userService.getUserProfile(displayUserId!);
       if (profileData) {
         setProfile(profileData);
-        setIsFollowing(profileData.isFollowing ?? false);
 
         const [userPosts, friendsList] = await Promise.all([
           feedService.getUserPosts(displayUserId!, 1, 50),
@@ -96,33 +91,6 @@ export default function UserProfilePage() {
       setIsLoading(false);
     }
   }
-
-  const handleFollowToggle = async () => {
-    if (!currentUser || !displayUserId || displayUserId === currentUser.id)
-      return;
-
-    setIsLoadingFollow(true);
-    try {
-      if (isFollowing) {
-        await userService.unfollowUser(currentUser.id, displayUserId);
-        setIsFollowing(false);
-        toast({ title: "Removed from friends" });
-      } else {
-        await userService.followUser(currentUser.id, displayUserId);
-        setIsFollowing(true);
-        toast({ title: "Friend added!" });
-      }
-      // Reload profile to update stats
-      await loadProfile();
-    } catch (error) {
-      toast({
-        title: "Failed to update follow status",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingFollow(false);
-    }
-  };
 
   const isOwnProfile = currentUser?.id === displayUserId;
 
@@ -240,19 +208,11 @@ export default function UserProfilePage() {
                     </Button>
                   </>
                 ) : currentUser ? (
-                  <Button
-                    onClick={handleFollowToggle}
-                    disabled={isLoadingFollow}
-                    variant={isFollowing ? "outline" : "default"}
-                    className="gap-2"
-                  >
-                    {isFollowing ? (
-                      <UserMinus className="h-4 w-4" />
-                    ) : (
-                      <UserPlus className="h-4 w-4" />
-                    )}
-                    {isFollowing ? "Friends" : "Add Friend"}
-                  </Button>
+                  <FriendActionButton
+                    targetUserId={displayUserId!}
+                    targetUserName={profile.displayName}
+                    onChange={loadProfile}
+                  />
                 ) : null}
               </div>
             </div>

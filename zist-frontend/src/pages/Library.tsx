@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { mediaService } from "@/services/mediaService";
 import { useToast } from "@/hooks/use-toast";
 import { MediaItem, MediaType, MediaStatus } from "@/types";
+import { parseTimestamp } from "@/lib/time";
 import {
   Plus,
   Search,
@@ -103,7 +104,8 @@ export default function Library() {
         case "recent":
         default:
           return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            parseTimestamp(b.createdAt)?.getTime() ??
+              0 - (parseTimestamp(a.createdAt)?.getTime() ?? 0)
           );
       }
     });

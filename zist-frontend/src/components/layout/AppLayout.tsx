@@ -26,6 +26,7 @@ import {
   Rss,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotificationsBell } from "@/components/notifications/NotificationsBell";
 import { useState } from "react";
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ const navItems = [
   { path: "/app/library", label: "Library" },
   { path: "/app/vocabulary", label: "Vocabulary" },
   { path: "/app/insights", label: "Insights" },
+  { path: "/app/friends", label: "Friends" },
 ];
 
 const quizItems = [
@@ -155,6 +157,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </Button>
 
+            {/* Notifications Bell */}
+            <NotificationsBell />
+
             {/* User Avatar */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -181,6 +186,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <User className="h-4 w-4" />
                   Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate("/app/friends")}
+                  className="gap-2"
+                >
+                  <User className="h-4 w-4" />
+                  Friends
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

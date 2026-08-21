@@ -201,3 +201,93 @@ export interface UserInfo {
   following: number;
   mediaItems: number;
 }
+
+export type FriendRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+/**
+ * Lightweight user shape embedded in friend payloads.
+ *
+ * NOTE: Backend Pydantic serializes with snake_case field names. We mirror
+ * that exactly so consumers can index by JSON key without any conversion.
+ */
+export interface FriendRequestUser {
+  id: string;
+  display_name: string;
+  avatar_url?: string | null;
+}
+
+export interface FriendRequest {
+  id: string;
+  requester_id: string;
+  recipient_id: string;
+  status: FriendRequestStatus;
+  created_at: string;
+  responded_at?: string | null;
+  requester?: FriendRequestUser | null;
+  recipient?: FriendRequestUser | null;
+}
+
+export interface FriendRequestListResponse {
+  items: FriendRequest[];
+  total: number;
+}
+
+export interface FriendListResponse {
+  items: FriendRequestUser[];
+  total: number;
+}
+
+export type FriendRelationshipState =
+  | "self"
+  | "none"
+  | "outgoing_pending"
+  | "incoming_pending"
+  | "friends";
+
+export interface FriendRelationship {
+  state: FriendRelationshipState;
+  request_id?: string | null;
+  requester_id?: string | null;
+  recipient_id?: string | null;
+}
+
+/**
+ * Notification types emitted by the backend (see
+ * ``app/schemas/notification.py``).
+ */
+export type NotificationType =
+  | "friend_request"
+  | "friend_accepted"
+  | "post_like"
+  | "post_comment";
+
+export interface NotificationActor {
+  id: string;
+  display_name: string;
+  avatar_url?: string | null;
+}
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  message?: string | null;
+  data?: Record<string, unknown> | null;
+  read: boolean;
+  created_at: string;
+  actor?: NotificationActor | null;
+}
+
+export interface NotificationListResponse {
+  items: Notification[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface NotificationUnreadCount {
+  count: number;
+}
+
+export interface NotificationMessageResponse {
+  message: string;
+}

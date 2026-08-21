@@ -21,6 +21,7 @@ from app.schemas.feed import (
     ShareableContentResponse,
 )
 from app.services.feed_serializer import serialize_feed_comment, serialize_feed_post
+from app.services import notification_service
 from app.utils.enums import FeedFilterVisibility, FeedPostType
 from app.utils.pagination import paginate
 
@@ -192,6 +193,15 @@ def toggle_like(
         db.add(FeedPostLike(post_id=post_id, user_id=current_user.id))
         active = True
         message = "Post liked"
+        # Best-effort notification: never break the like action if it fails.
+        notification_service.create_notification(
+            db,
+            recipient_id=post.user_id,
+            actor_id=current_user.id,
+            type="post_like",
+            message=f"{current_user.display_name} liked your post",
+            data={"post_id": post.id},
+        )
 
     db.commit()
     count = db.query(FeedPostLike).filter(FeedPostLike.post_id == post_id).count()
@@ -263,6 +273,16 @@ def create_comment(
         body=payload.body.strip(),
     )
     db.add(comment)
+    db.flush()
+    # Best-effort notification: never break the comment action if it fails.
+    notification_service.create_notification(
+        db,
+        recipient_id=post.user_id,
+        actor_id=current_user.id,
+        type="post_comment",
+        message=f"{current_user.display_name} commented on your post",
+        data={"post_id": post.id, "comment_id": comment.id},
+    )
     db.commit()
     db.refresh(comment)
     return serialize_feed_comment(db, comment)

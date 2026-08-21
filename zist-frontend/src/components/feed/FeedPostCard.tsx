@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { formatDistanceToNow } from "date-fns";
+import { formatRelativeTime } from "@/lib/time";
 import {
   Heart,
   Bookmark,
@@ -13,6 +13,8 @@ import {
   Users,
   Loader2,
   Send,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
@@ -51,10 +53,18 @@ export function FeedPostCard({
   const [commentText, setCommentText] = useState("");
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [captionOverflows, setCaptionOverflows] = useState(false);
+  const captionRef = useRef<HTMLParagraphElement | null>(null);
 
   const config = typeConfig[localPost.type];
   const Icon = config.icon;
   const isOwner = user?.id === localPost.userId;
+
+  useLayoutEffect(() => {
+    const el = captionRef.current;
+    setCaptionOverflows(el ? el.scrollHeight - el.clientHeight > 1 : false);
+  }, [localPost.caption, localPost.type]);
 
   const updatePost = (next: FeedPost) => {
     setLocalPost(next);
@@ -163,9 +173,7 @@ export function FeedPostCard({
           </button>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>
-              {formatDistanceToNow(new Date(localPost.createdAt), {
-                addSuffix: true,
-              })}
+              {formatRelativeTime(localPost.createdAt)}
             </span>
             {localPost.mediaTitle ? (
               <>
@@ -203,7 +211,39 @@ export function FeedPostCard({
       </div>
 
       {localPost.caption ? (
-        <p className="text-foreground mb-4 leading-relaxed">{localPost.caption}</p>
+        <div className="mb-4">
+          <p
+            ref={captionRef}
+            className={cn(
+              "text-foreground leading-relaxed",
+              !expanded && "line-clamp-6",
+            )}
+          >
+            {localPost.caption}
+          </p>
+          {captionOverflows ? (
+            <div className="mt-1 flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                className="text-primary hover:text-primary/80 gap-1 h-7 px-2"
+              >
+                {expanded ? (
+                  <>
+                    See less <ChevronUp className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    See more <ChevronDown className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="bg-accent/30 rounded-xl p-4 mb-4">
@@ -330,9 +370,7 @@ export function FeedPostCard({
                     </div>
                     <div className="flex items-center gap-2 mt-1 px-1">
                       <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(comment.createdAt), {
-                          addSuffix: true,
-                        })}
+                        {formatRelativeTime(comment.createdAt)}
                       </span>
                       {user?.id === comment.userId ? (
                         <button

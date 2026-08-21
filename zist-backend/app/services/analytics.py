@@ -10,6 +10,7 @@ from app.models.quote import QuoteItem
 from app.models.theme import ThemeConcept
 from app.models.user import UserFollow
 from app.models.vocab import VocabItem
+from app.utils.time import utcnow
 
 
 def get_recent_activity(db: Session, user_id: str) -> list[dict]:
@@ -80,7 +81,7 @@ def get_dashboard_stats(db: Session, user_id: str) -> dict:
     total_facts = db.query(FactItem).filter(FactItem.media_id.in_(media_ids_subquery)).count()
     total_quizzes = db.query(QuizAttempt).filter(QuizAttempt.user_id == user_id).count()
 
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = utcnow() - timedelta(days=7)
     vocabulary_growth = db.query(VocabItem).join(MediaItem, MediaItem.id == VocabItem.media_id).filter(
         MediaItem.user_id == user_id,
         VocabItem.created_at >= week_ago,

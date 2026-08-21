@@ -26,6 +26,7 @@ import {
   ThemeConcept,
   VocabItem,
 } from "@/types";
+import { toLocalDayKey } from "@/lib/time";
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -36,8 +37,7 @@ const CHART_COLORS = [
 ];
 
 function toDayKey(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return toLocalDayKey(iso);
 }
 
 function themeCategory(title: string): string {

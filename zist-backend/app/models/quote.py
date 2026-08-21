@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.utils.time import utcnow
 
 
 class QuoteItem(Base):
@@ -27,11 +28,11 @@ class QuoteItem(Base):
     user_meaning: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_meaning: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_bookmarked: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     media = relationship("MediaItem", back_populates="quotes")

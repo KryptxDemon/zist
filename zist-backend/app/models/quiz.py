@@ -5,6 +5,7 @@ from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.utils.time import utcnow
 
 
 class QuizAttempt(Base):
@@ -32,7 +33,7 @@ class QuizAttempt(Base):
     question_payload: Mapped[str] = mapped_column(Text, nullable=False)
     answers_payload: Mapped[str] = mapped_column(Text, nullable=False)
     result_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user = relationship("User", back_populates="quiz_attempts")
     media = relationship("MediaItem", back_populates="quiz_attempts")

@@ -53,6 +53,20 @@ from app.schemas.feed import (
     FeedListResponse,
     FeedToggleResponse,
 )
+from app.schemas.friend import (
+    FriendRequestCreate,
+    FriendRequestRead,
+    FriendRequestListResponse,
+    FriendListResponse,
+    FriendMessageResponse,
+    FriendRequestUser,
+)
+from app.schemas.notification import (
+    NotificationRead,
+    NotificationListResponse,
+    NotificationUnreadCount,
+    NotificationMessageResponse,
+)
 from app.schemas.quiz import (
     QuizQuestion,
     QuizGenerateResponse,

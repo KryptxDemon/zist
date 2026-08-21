@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.utils.enums import FeedVisibility
+from app.utils.time import utcnow
 
 
 class FeedPost(Base):
@@ -25,11 +26,11 @@ class FeedPost(Base):
     content_id: Mapped[str] = mapped_column(String, nullable=False)
     caption: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[str] = mapped_column(String, nullable=False, default=FeedVisibility.global_.value)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     user = relationship("User", back_populates="posts")
@@ -53,7 +54,7 @@ class FeedPostLike(Base):
         nullable=False,
         index=True,
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     post = relationship("FeedPost", back_populates="likes")
 
@@ -73,7 +74,7 @@ class FeedPostSave(Base):
         nullable=False,
         index=True,
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     post = relationship("FeedPost", back_populates="saves")
 
@@ -97,7 +98,7 @@ class FeedPostComment(Base):
         index=True,
     )
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     post = relationship("FeedPost", back_populates="comments")
     user = relationship("User")

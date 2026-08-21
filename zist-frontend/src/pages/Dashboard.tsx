@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Search,
   Sparkles,
   Plus,
   Play,
@@ -11,9 +10,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { MediaDiscoverySearch } from "@/components/feed/MediaDiscoverySearch";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   mediaService,
   quoteService,
@@ -21,6 +20,7 @@ import {
   vocabService,
 } from "@/services/mediaService";
 import { MediaItem, QuoteItem, ThemeConcept, VocabItem } from "@/types";
+import { isWithinLastDays, parseTimestamp } from "@/lib/time";
 
 const TYPE_FALLBACKS: Record<string, string> = {
   movie:
@@ -34,11 +34,12 @@ const TYPE_FALLBACKS: Record<string, string> = {
   game: "https://images.unsplash.com/photo-1551103782-8ab07afd45c1?auto=format&fit=crop&w=900&q=80",
 };
 
-function toDayCount(days: number, dateIso: string): boolean {
-  const now = new Date();
-  const d = new Date(dateIso);
-  const ms = now.getTime() - d.getTime();
-  return ms <= days * 24 * 60 * 60 * 1000;
+function toDayCount(days: number, dateIso: string | null | undefined): boolean {
+  return isWithinLastDays(dateIso, days);
+}
+
+function epoch(value: string | null | undefined): number {
+  return parseTimestamp(value)?.getTime() ?? 0;
 }
 
 function themeCategory(title: string): string {
@@ -324,23 +325,11 @@ export default function Dashboard() {
     };
   }, [media]);
 
-  const lowerQuery = query.trim().toLowerCase();
-
-  const searchMatches = useMemo(() => {
-    if (!lowerQuery) return [] as MediaItem[];
-    return media.filter((m) => {
-      const inTitle = m.title.toLowerCase().includes(lowerQuery);
-      const inCreator = (m.creator || "").toLowerCase().includes(lowerQuery);
-      const inTags = m.tags.some((t) => t.toLowerCase().includes(lowerQuery));
-      return inTitle || inCreator || inTags;
-    });
-  }, [media, lowerQuery]);
-
   const sortedByRecent = useMemo(
     () =>
       [...media].sort(
         (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+          epoch(b.updatedAt) - epoch(a.updatedAt),
       ),
     [media],
   );
@@ -350,7 +339,7 @@ export default function Dashboard() {
       [...media]
         .sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            epoch(b.createdAt) - epoch(a.createdAt),
         )
         .slice(0, 14),
     [media],
@@ -400,8 +389,8 @@ export default function Dashboard() {
       .sort(
         (a, b) =>
           b.score - a.score ||
-          new Date(b.media.updatedAt).getTime() -
-            new Date(a.media.updatedAt).getTime(),
+          epoch(b.media.updatedAt) -
+            epoch(a.media.updatedAt),
       )
       .map((x) => x.media);
 
@@ -441,8 +430,8 @@ export default function Dashboard() {
     () =>
       [...themes].sort(
         (a, b) =>
-          new Date(b.updatedAt || b.createdAt).getTime() -
-          new Date(a.updatedAt || a.createdAt).getTime(),
+          epoch(b.updatedAt || b.createdAt) -
+          epoch(a.updatedAt || a.createdAt),
       )[0],
     [themes],
   );
@@ -538,41 +527,12 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-3">
-              <div className="relative">
-                <Search className="h-4 w-4 text-white/70 absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search titles, creators, tags..."
-                  className="pl-9 h-11 rounded-xl bg-white/10 text-white placeholder:text-white/65 border-white/20 focus-visible:ring-white/40"
-                />
-
-                {lowerQuery ? (
-                  <div className="absolute mt-2 w-full rounded-xl border border-white/15 bg-black/80 backdrop-blur-md p-2 space-y-1 shadow-xl z-20">
-                    {searchMatches.length === 0 ? (
-                      <p className="text-xs text-white/75 px-2 py-1">
-                        No matches in your library. You can add this title.
-                      </p>
-                    ) : (
-                      searchMatches.slice(0, 5).map((item) => (
-                        <Link
-                          key={item.id}
-                          to={`/app/media/${item.id}`}
-                          className="block rounded-md px-2 py-2 hover:bg-white/10"
-                        >
-                          <p className="text-sm text-white line-clamp-1">
-                            {item.title}
-                          </p>
-                          <p className="text-[11px] text-white/70">
-                            {item.type.toUpperCase()}
-                            {item.creator ? ` • ${item.creator}` : ""}
-                          </p>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                ) : null}
-              </div>
+              <MediaDiscoverySearch
+                value={query}
+                onQueryChange={setQuery}
+                placeholder="Search movies, books, TV shows…"
+                className="w-full"
+              />
               <div className="flex flex-wrap gap-2">
                 <Link to={addMediaHref}>
                   <Button className="gap-2 bg-white text-black hover:bg-white/90">

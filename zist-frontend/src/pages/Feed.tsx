@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FeedComposeDialog } from "@/components/feed/FeedComposeDialog";
 import { FeedPostCard } from "@/components/feed/FeedPostCard";
-import { UserSearch } from "@/components/UserSearch";
-import { Button } from "@/components/ui/button";
-import { FeedPostSkeleton } from "@/components/ui/skeleton-cards";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MediaDiscoverySearch } from "@/components/feed/MediaDiscoverySearch";
 import { feedService } from "@/services/feedService";
 import { FeedPost } from "@/types";
 import { Plus, Rss, Users, Globe } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FeedPostSkeleton } from "@/components/ui/skeleton-cards";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 
 export default function Feed() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
@@ -46,7 +46,7 @@ export default function Feed() {
     <AppLayout>
       <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-20 md:pb-0">
         <div>
-          <div className="flex items-center justify-between mb-4 gap-3">
+          <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">
                 Feed
@@ -61,7 +61,10 @@ export default function Feed() {
               onPost={loadPosts}
             />
           </div>
-          <UserSearch placeholder="Find people to add as friends..." className="max-w-sm" />
+          <MediaDiscoverySearch
+            placeholder="Search movies, books, TV shows…"
+            className="w-full"
+          />
         </div>
 
         <Tabs

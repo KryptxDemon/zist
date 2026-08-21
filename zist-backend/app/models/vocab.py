@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.utils.time import utcnow
 
 
 class VocabItem(Base):
@@ -29,11 +30,11 @@ class VocabItem(Base):
     user_sentence: Mapped[str | None] = mapped_column(Text, nullable=True)
     memory_tip: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_learned: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     media = relationship("MediaItem", back_populates="vocab_items")
