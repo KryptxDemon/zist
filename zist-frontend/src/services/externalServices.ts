@@ -31,6 +31,11 @@ interface ExternalMediaItem {
   cover_url?: string;
   external_source?: string;
   external_id?: string;
+  work_id?: string;
+  edition_keys?: string[];
+  genres?: string[];
+  subjects?: string[];
+  rating?: number;
 }
 
 interface ExternalSearchResponse {
