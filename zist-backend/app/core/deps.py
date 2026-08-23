@@ -183,14 +183,17 @@ def _verify_with_jwks(token: str) -> dict[str, Any]:
         # ``iss`` claim, which is the standard defence against
         # cross-JWKS token confusion. When it is not configured we leave
         # PyJWT to skip the check (``issuer=None`` is a no-op).
+        # We also enforce audience to match the issuer since Neon sets it to the same value.
         claims: dict[str, Any] = jwt.decode(
             token,
             signing_key,
             algorithms=list(JWKS_ALGORITHMS),
             options={"require": ["exp", "sub"]},
             issuer=settings.NEON_AUTH_ISSUER,
+            audience=settings.NEON_AUTH_ISSUER,
         )
     except InvalidTokenError as exc:
+        logger.warning(f"auth.jwks_failed: {exc}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Failed to verify token",
@@ -327,13 +330,7 @@ def get_current_user(
             # Surface the real category in logs so operators can tell
             # ``jwks_not_loaded`` from ``unsupported_algorithm`` from
             # ``kid_not_found`` etc. without having to attach a debugger.
-            logger.warning(
-                "auth.jwks_failed",
-                extra={
-                    "auth_error_category": exc.detail,
-                    "token_prefix": token[:12],
-                },
-            )
+            logger.warning(f"auth.jwks_failed: {exc.detail}")
             raise credentials_exception
     else:
         # ``JWKS_URL`` is unset in this deployment. The app-secret decode
