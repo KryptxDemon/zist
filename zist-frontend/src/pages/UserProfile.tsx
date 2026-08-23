@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
 import { feedService } from "@/services/feedService";
+import { ApiError } from "@/services/apiClient";
 import { UserProfile, FeedPost, UserRef } from "@/types";
 import { formatRelativeTime } from "@/lib/time";
 import { FriendActionButton } from "@/components/friends/FriendActionButton";
@@ -32,6 +33,7 @@ import {
   BarChart3,
   Clock3,
   PencilLine,
+  RefreshCcw,
 } from "lucide-react";
 
 const socialFields = [
@@ -61,6 +63,13 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [friends, setFriends] = useState<UserRef[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Discriminated failure mode so we can show a useful empty/retry state.
+  type LoadFailure =
+    | { kind: "not_found" }
+    | { kind: "auth" }
+    | { kind: "transient"; message: string };
+  const [loadFailure, setLoadFailure] = useState<LoadFailure | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // If no userId provided and user is logged in, show their own profile
   const displayUserId = userId || currentUser?.id;
@@ -68,25 +77,76 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (!displayUserId) return;
     loadProfile();
-  }, [displayUserId]);
+    // reloadKey is included so the "Retry" button below can force a re-run.
+  }, [displayUserId, reloadKey]);
 
   async function loadProfile() {
     setIsLoading(true);
+    setLoadFailure(null);
+    const targetId = displayUserId;
+    if (!targetId) {
+      setIsLoading(false);
+      return;
+    }
     try {
-      const profileData = await userService.getUserProfile(displayUserId!);
-      if (profileData) {
-        setProfile(profileData);
+      const profileData = await userService.getUserProfile(targetId);
+      setProfile(profileData);
 
-        const [userPosts, friendsList] = await Promise.all([
-          feedService.getUserPosts(displayUserId!, 1, 50),
-          userService.getFriends(displayUserId!),
-        ]);
-        setPosts(userPosts.items);
-        setFriends(friendsList);
-      }
+      const [userPosts, friendsList] = await Promise.all([
+        feedService.getUserPosts(targetId, 1, 50),
+        userService.getFriends(targetId),
+      ]);
+      setPosts(userPosts.items);
+      setFriends(friendsList);
     } catch (error) {
       console.error("Failed to load profile:", error);
-      toast({ title: "Failed to load profile", variant: "destructive" });
+
+      if (error instanceof ApiError) {
+        if (error.status === 401) {
+          // Token rejected — bounce to login rather than rendering a stale
+          // empty state.
+          toast({
+            title: "Session expired",
+            description: "Please sign in again to view profiles.",
+            variant: "destructive",
+          });
+          navigate("/login", { replace: true });
+          return;
+        }
+        if (error.status === 404) {
+          setLoadFailure({ kind: "not_found" });
+          toast({
+            title: "Profile not found",
+            description:
+              "This user profile doesn't exist or hasn't finished syncing yet.",
+            variant: "destructive",
+          });
+          return;
+        }
+        // 5xx — render a retry affordance.
+        setLoadFailure({
+          kind: "transient",
+          message: error.message || `Server error (${error.status})`,
+        });
+        toast({
+          title: "Couldn't load profile",
+          description: "Our servers hiccuped. Try again in a moment.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Network or unknown failure.
+      setLoadFailure({
+        kind: "transient",
+        message:
+          error instanceof Error ? error.message : "Network request failed",
+      });
+      toast({
+        title: "Network error",
+        description: "Check your connection and try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -107,12 +167,48 @@ export default function UserProfilePage() {
   }
 
   if (!profile) {
+    if (loadFailure?.kind === "not_found") {
+      return (
+        <AppLayout>
+          <EmptyState
+            icon={Users}
+            title="User not found"
+            description="This profile doesn't exist or its account was deleted."
+          />
+        </AppLayout>
+      );
+    }
+
+    if (loadFailure?.kind === "transient") {
+      return (
+        <AppLayout>
+          <EmptyState
+            icon={RefreshCcw}
+            title="Couldn't load this profile"
+            description={
+              loadFailure.message ||
+              "Our servers hiccuped. Try again in a moment."
+            }
+            action={
+              <Button
+                onClick={() => setReloadKey((n) => n + 1)}
+                className="gap-2"
+              >
+                <RefreshCcw className="h-4 w-4" />
+                Try again
+              </Button>
+            }
+          />
+        </AppLayout>
+      );
+    }
+
     return (
       <AppLayout>
         <EmptyState
           icon={Users}
-          title="User not found"
-          description="This user profile doesn't exist or has been deleted."
+          title="Profile unavailable"
+          description="We couldn't load this profile right now."
         />
       </AppLayout>
     );

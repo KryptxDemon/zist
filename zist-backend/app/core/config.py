@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # JWKS URL for verifying external JWTs (e.g., Neon Auth)
     JWKS_URL: str | None = None
 
+    # Optional issuer to require on externally-verified JWTs (Neon Auth).
+    # When set, ``_verify_with_jwks`` enforces ``claims["iss"] == this``.
+    NEON_AUTH_ISSUER: str | None = None
+
     @property
     def cors_origins(self) -> list[str]:
         value = self.BACKEND_CORS_ORIGINS.strip()

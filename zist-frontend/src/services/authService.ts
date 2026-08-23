@@ -1,5 +1,5 @@
 import { User } from "@/types";
-import { apiClient } from "./apiClient";
+import { ApiError, apiClient } from "./apiClient";
 
 interface TokenData {
   access_token: string;
@@ -7,7 +7,7 @@ interface TokenData {
   token_type: string;
 }
 
-interface BackendAuthUser {
+export interface BackendAuthUser {
   id: string;
   email: string;
   display_name: string;
@@ -80,6 +80,20 @@ function persistSession(user: User, token: string, rememberMe: boolean): void {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
   }
+}
+
+/**
+ * Wipe the persisted session from both storage tiers. Called by the auth
+ * provider when it determines the session is no longer trustworthy (e.g.
+ * /auth/me returns 401 after a Neon verifier exchange). NOT called on
+ * transient errors — those retry instead so a brief network blip doesn't
+ * log the user out.
+ */
+function clearStoredSession(): void {
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("user");
+  sessionStorage.removeItem("auth_token");
+  sessionStorage.removeItem("user");
 }
 
 export const authService = {
@@ -178,12 +192,11 @@ export const authService = {
     } catch (error) {
       console.warn("Logout request failed, clearing local data anyway", error);
     } finally {
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("user");
-      sessionStorage.removeItem("auth_token");
-      sessionStorage.removeItem("user");
+      clearStoredSession();
     }
   },
+
+  clearStoredSession,
 
   getStoredAuth(): { user: User | null; token: string | null } {
     const userStr =
@@ -242,16 +255,24 @@ export const authService = {
       const user = mapBackendUser(
         await apiClient.get<BackendAuthUser>("/auth/me"),
       );
-      localStorage.setItem("user", JSON.stringify(user));
+      // Persist under the same storage tier that already holds the token.
+      if (localStorage.getItem("auth_token")) {
+        localStorage.setItem("user", JSON.stringify(user));
+      } else {
+        sessionStorage.setItem("user", JSON.stringify(user));
+      }
       return user;
     } catch (error) {
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("user");
-      sessionStorage.removeItem("auth_token");
-      sessionStorage.removeItem("user");
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to fetch current user",
-      );
+      // Only treat a definitive 401 as "session is dead". Transient failures
+      // (network errors, 5xx) bubble up so the caller can retry; we must NOT
+      // wipe storage on those, otherwise a flaky Render cold start would
+      // log the user out mid-bootstrap.
+      if (error instanceof ApiError && error.status === 401) {
+        clearStoredSession();
+      }
+      throw error instanceof Error
+        ? error
+        : new Error("Failed to fetch current user");
     }
   },
 };

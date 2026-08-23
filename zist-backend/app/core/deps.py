@@ -15,6 +15,7 @@ hold requests open.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Generator
@@ -34,8 +35,7 @@ from app.core.database import SessionLocal
 from app.core.security import get_password_hash
 from app.models.user import User
 
-
-security = HTTPBearer()
+logger = logging.getLogger("zist.auth")
 
 
 # Algorithms accepted for publicly-signed tokens (verified via JWKS).
@@ -124,6 +124,8 @@ def _select_jwk(keys: list[dict[str, Any]], kid: str | None) -> dict[str, Any] |
         # ``None`` here lets the caller trigger a single refresh instead of
         # silently accepting an unrelated key.
         return None
+    # No ``kid`` in the token header (some Neon JWTs omit it). When there is
+    # exactly one published key, that is unambiguously the right one to use.
     if len(keys) == 1:
         return keys[0]
     return None
@@ -172,11 +174,16 @@ def _verify_with_jwks(token: str) -> dict[str, Any]:
         ) from exc
 
     try:
+        # When ``NEON_AUTH_ISSUER`` is configured we also enforce the
+        # ``iss`` claim, which is the standard defence against
+        # cross-JWKS token confusion. When it is not configured we leave
+        # PyJWT to skip the check (``issuer=None`` is a no-op).
         claims: dict[str, Any] = jwt.decode(
             token,
             signing_key,
             algorithms=list(JWKS_ALGORITHMS),
             options={"require": ["exp", "sub"]},
+            issuer=settings.NEON_AUTH_ISSUER,
         )
     except InvalidTokenError as exc:
         raise HTTPException(
@@ -305,20 +312,27 @@ def get_current_user(
         try:
             payload = _verify_with_jwks(token)
             verified_via = "jwks"
-        except HTTPException:
+        except HTTPException as exc:
+            # Surface the real category in logs so operators can tell
+            # ``jwks_not_loaded`` from ``unsupported_algorithm`` from
+            # ``kid_not_found`` etc. without having to attach a debugger.
+            logger.warning(
+                "auth.jwks_failed",
+                extra={
+                    "auth_error_category": exc.detail,
+                    "token_prefix": token[:12],
+                },
+            )
             raise credentials_exception
-
-    if payload is None:
-        raise credentials_exception
-
-    user_id: str | None = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
-
-    token_type: str | None = payload.get("type")
-    if verified_via == "app_secret" and token_type != "access":
-        raise credentials_exception
-    if verified_via == "jwks" and token_type is not None and token_type != "access":
+    else:
+        # ``JWKS_URL`` is unset in this deployment. The app-secret decode
+        # already returned ``None``, so the only way the request could have
+        # succeeded is if the frontend had been configured to issue HS256
+        # tokens with the backend ``SECRET_KEY`` -- but it isn't.
+        logger.warning(
+            "auth.no_jwks_configured",
+            extra={"token_prefix": token[:12]},
+        )
         # External tokens may declare a type, but refuse anything that is
         # explicitly *not* an access token (e.g. a refresh token).
         raise credentials_exception
