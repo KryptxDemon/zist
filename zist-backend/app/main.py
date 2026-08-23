@@ -1,10 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import logging
 
 from app.api.api_v1.api import api_router
 from app.core.config import settings
 from app.core.database import Base, engine, ensure_user_profile_columns
 from app.models import *
+
+logger = logging.getLogger("zist.server")
 
 
 def create_application() -> FastAPI:
@@ -24,6 +28,20 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        # Log the full traceback so Render/operators can see the *real* failure
+        # instead of an opaque 500. Return a generic 500 to the client so we
+        # don't leak internal paths or claim shapes.
+        logger.exception(
+            "unhandled_exception",
+            extra={"path": request.url.path, "method": request.method},
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+        )
 
     app.include_router(api_router, prefix=settings.API_V1_STR)
 

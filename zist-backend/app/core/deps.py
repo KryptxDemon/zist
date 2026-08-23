@@ -246,11 +246,17 @@ def upsert_zist_user_from_neon_claims(claims, db):
     # doesn't carry one, synthesize a deterministic placeholder so the row
     # is created without lying about contact info.
     fallback_email = email or f"{neon_user_id}@neon.placeholder.local"
+    # ``avatar_url`` is nullable on the model but only accepts strings. Some
+    # identity providers return a non-string ``picture`` (e.g. a list of URLs
+    # or a dict) — coerce to None so we don't crash the insert.
+    raw_avatar = claims.get("picture") or claims.get("avatar_url")
+    if not isinstance(raw_avatar, str) or not raw_avatar:
+        raw_avatar = None
     new_user = User(
         neon_auth_user_id=neon_user_id,
         email=fallback_email,
         display_name=display_name,
-        avatar_url=claims.get("picture") or claims.get("avatar_url"),
+        avatar_url=raw_avatar,
         hashed_password=get_password_hash(__import__("secrets").token_urlsafe(32)),
         is_active=True,
         email_verified=email_verified,
@@ -349,6 +355,12 @@ def get_current_user(
         # matching Zist profile.
         user = upsert_zist_user_from_neon_claims(payload, db)
     else:
+        # App-secret (HS256) tokens issued by the backend carry the internal
+        # ``User.id`` as their ``sub`` claim.
+        user_id = payload.get("sub")
+        if not user_id:
+            logger.warning("auth.app_secret_missing_sub", extra={"token_prefix": token[:12]})
+            raise credentials_exception
         user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_active:
         raise credentials_exception
