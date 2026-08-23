@@ -37,6 +37,11 @@ from app.models.user import User
 
 logger = logging.getLogger("zist.auth")
 
+# Shared bearer-token scheme reused by FastAPI dependencies.
+# auto_error=True returns 403 "Not authenticated" when the header is missing,
+# so the /auth/me endpoint surfaces a clear client error instead of 422.
+security = HTTPBearer()
+
 
 # Algorithms accepted for publicly-signed tokens (verified via JWKS).
 # Neon Auth signs tokens with EdDSA (Ed25519), which python-jose 3.5.0 does
