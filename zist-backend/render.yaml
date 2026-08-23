@@ -23,7 +23,10 @@ services:
         scope: build,runtime
         sync: false
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-120b
+        scope: runtime
+      - key: GROQ_MODEL_FALLBACKS
+        value: qwen/qwen3.6-27b,groq/compound-mini,openai/gpt-oss-20b
         scope: runtime
       - key: BACKEND_CORS_ORIGINS
         value: https://zist-media.netlify.app,https://your-production-domain.com
