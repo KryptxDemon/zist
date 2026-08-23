@@ -65,6 +65,19 @@ wheels/
 # Local backup of the env file (contains secrets) — keep untracked
 zist-backend/.env.local.backup
 
+# Throwaway scratch / debug files at the repo root. Never commit these —
+# past tmp_dotenv.txt leaked a Groq API key and blocked pushes.
+/tmp_*.txt
+/tmp_*.log
+/tmp_*.err
+/tmp_*.py
+/tmp_*.ts
+/tmp_*.js
+/tmp_*.mjs
+/tmp_*.cjs
+/tmp_*.json
+/tmp_*.md
+
 # Database
 *.db
 *.sqlite
