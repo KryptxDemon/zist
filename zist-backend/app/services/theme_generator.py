@@ -138,9 +138,9 @@ async def generate_movie_themes(
     overview: str,
     keywords: list[str],
     count: int = 5,
-) -> tuple[list[dict[str, str]], bool, str | None]:
+) -> tuple[list[dict[str, str]], bool, str | None, str | None]:
     if not settings.GROQ_API_KEY:
-        return _fallback_themes(keywords, overview, count), False, "Groq API key is not configured"
+        return _fallback_themes(keywords, overview, count), False, None, "Groq API key is not configured"
 
     prompt = (
         "Identify 5 core themes from this movie. For each, provide a specific, insightful explanation that:\n"
@@ -156,10 +156,10 @@ async def generate_movie_themes(
         f"Keywords: {', '.join(keywords) if keywords else 'N/A'}"
     )
 
-    text, ai_error = await generate_groq_text(prompt, [settings.GROQ_MODEL])
+    text, used_model, ai_error = await generate_groq_text(prompt)
     if not text:
         logger.exception("Groq theme generation failed for %s", title)
-        return _fallback_themes(keywords, overview, count), False, ai_error or "Groq request failed"
+        return _fallback_themes(keywords, overview, count), False, None, ai_error or "Groq request failed"
 
     try:
 
@@ -170,9 +170,9 @@ async def generate_movie_themes(
 
         ai_themes = _normalize_ai_themes(parsed, count)
         if ai_themes:
-            return ai_themes, True, None
+            return ai_themes, True, used_model, None
     except Exception as exc:
         logger.exception("Groq theme parsing failed for %s", title)
-        return _fallback_themes(keywords, overview, count), False, str(exc)
+        return _fallback_themes(keywords, overview, count), False, None, str(exc)
 
-    return _fallback_themes(keywords, overview, count), False, "Groq response could not be parsed"
+    return _fallback_themes(keywords, overview, count), False, None, "Groq response could not be parsed"

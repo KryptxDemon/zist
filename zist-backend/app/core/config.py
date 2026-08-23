@@ -33,7 +33,23 @@ class Settings(BaseSettings):
     TMDB_API_KEY: str | None = None
     TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
     GROQ_API_KEY: str | None = None
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # Groq rotates/decommissions models regularly. Use a comma-separated chain so
+    # the service has automatic fallbacks if the primary model is removed.
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+    GROQ_MODEL_FALLBACKS: str = "qwen/qwen3.6-27b,groq/compound-mini,openai/gpt-oss-20b"
+
+    @property
+    def groq_model_chain(self) -> list[str]:
+        """Ordered list of Groq models to try, primary first."""
+        candidates: list[str] = []
+        for raw in (self.GROQ_MODEL, self.GROQ_MODEL_FALLBACKS):
+            if not raw:
+                continue
+            for piece in str(raw).split(","):
+                name = piece.strip()
+                if name and name not in candidates:
+                    candidates.append(name)
+        return candidates
 
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None

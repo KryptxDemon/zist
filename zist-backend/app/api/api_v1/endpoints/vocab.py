@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -7,6 +7,8 @@ from app.models.media import MediaItem
 from app.models.user import User
 from app.models.vocab import VocabItem
 from app.schemas.vocab import VocabCreate, VocabListResponse, VocabResponse, VocabUpdate
+from app.services.tmdb import get_movie_themes_payload
+from app.services.vocab_generator import generate_movie_vocab
 from app.utils.pagination import paginate
 
 router = APIRouter()
@@ -185,3 +187,86 @@ def list_cross_media_vocab(
         page=result["page"],
         limit=result["limit"],
     )
+
+@router.post('/media/{media_id}/vocab/generate')
+async def generate_vocab_for_media(
+    media_id: str,
+    count: int = Query(default=8, ge=1, le=12),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    media = _get_owned_media_or_404(db, media_id, current_user.id)
+
+    if media.type not in {'movie', 'documentary', 'tv', 'book'}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Automatic vocabulary generation is only supported for movies, documentaries, TV shows, and books.',
+        )
+
+    tmdb_payload = await get_movie_themes_payload(
+        query=media.title,
+        tmdb_id=media.external_id if media.external_source == 'tmdb' else None,
+    )
+    overview = (tmdb_payload or {}).get('overview') or ''
+    keywords = (tmdb_payload or {}).get('keywords') or []
+
+    items, used_ai, used_model, ai_error = await generate_movie_vocab(
+        title=tmdb_payload.get('title') if tmdb_payload else media.title,
+        overview=overview,
+        keywords=keywords,
+        count=count,
+    )
+
+    existing_words = {
+        v.word.strip().lower(): v for v in db.query(VocabItem).filter(VocabItem.media_id == media_id).all()
+    }
+    created_items: list[VocabItem] = []
+    updated_items: list[VocabItem] = []
+
+    for generated in items:
+        word = (generated.get('word') or '').strip()
+        if not word:
+            continue
+
+        definition = (generated.get('definition') or '').strip()
+        part_of_speech = generated.get('part_of_speech')
+        example = generated.get('example_sentence')
+
+        key = word.lower()
+        if key in existing_words:
+            item = existing_words[key]
+            if not item.definition and definition:
+                item.definition = definition
+            if not item.part_of_speech and part_of_speech:
+                item.part_of_speech = part_of_speech
+            if not item.example_sentence and example:
+                item.example_sentence = example
+            item.where_found = (item.where_found or 'AI generated')
+            updated_items.append(item)
+            continue
+
+        item = VocabItem(
+            media_id=media_id,
+            word=word,
+            part_of_speech=part_of_speech,
+            definition=definition,
+            example_sentence=example,
+            where_found='AI generated' if used_ai else 'fallback',
+            tags=None,
+        )
+        db.add(item)
+        created_items.append(item)
+
+    db.commit()
+    for item in created_items + updated_items:
+        db.refresh(item)
+
+    return {
+        'media_id': media_id,
+        'used_ai': used_ai,
+        'used_model': used_model,
+        'ai_error': ai_error,
+        'created': [_serialize_vocab(i).model_dump() for i in created_items],
+        'updated': [_serialize_vocab(i).model_dump() for i in updated_items],
+        'total_generated': len(items),
+    }

@@ -42,20 +42,33 @@ async def _generate_once(prompt: str, model_name: str) -> str:
     return str(content or "").strip()
 
 
-async def generate_groq_text(prompt: str, model_names: list[str]) -> tuple[str | None, str | None]:
+async def generate_groq_text(
+    prompt: str,
+    model_names: list[str] | None = None,
+) -> tuple[str | None, str | None, str | None]:
+    """Call Groq with an ordered list of models, returning the first successful content.
+
+    Returns ``(text, used_model, error)``. ``used_model`` is the model that
+    produced ``text`` (or None on failure). ``error`` is a human-readable string
+    if every candidate failed.
+    """
     if not settings.GROQ_API_KEY:
-        return None, "Groq API key is not configured"
+        return None, None, "Groq API key is not configured"
+
+    candidates = list(model_names) if model_names else settings.groq_model_chain
+    if not candidates:
+        return None, None, "No Groq models configured"
 
     errors: list[str] = []
 
-    for model_name in model_names:
+    for model_name in candidates:
         try:
             text = await _generate_once(prompt, model_name)
             if text:
-                return text, None
+                return text, model_name, None
             errors.append(f"{model_name}: empty response")
         except Exception as exc:
             logger.exception("Groq request failed for model %s", model_name)
             errors.append(f"{model_name}: {exc}")
 
-    return None, "; ".join(errors) if errors else "Groq request failed"
+    return None, None, "; ".join(errors) if errors else "Groq request failed"

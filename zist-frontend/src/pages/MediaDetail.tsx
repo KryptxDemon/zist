@@ -605,7 +605,13 @@ function ThemesTab({
       );
 
       toast({
-        title: "Successfully generated",
+        title: result.usedAi ? "Successfully generated" : "Generated with fallback",
+        description: result.usedAi
+          ? `Created ${result.created.length}, updated ${result.updated.length}`
+          : result.aiError
+            ? `AI unavailable: ${result.aiError}. Showing fallback content.`
+            : "Showing fallback content because AI generation is unavailable.",
+        variant: result.usedAi ? "default" : "destructive",
       });
     } catch (error) {
       toast({
@@ -1543,7 +1549,13 @@ function QuotesTab({
       const hadChanges = result.created.length > 0 || result.updated.length > 0;
 
       toast({
-        title: "Successfully generated",
+        title: result.usedAi ? "Successfully generated" : "Generation failed",
+        description: result.usedAi
+          ? `Created ${result.created.length}, updated ${result.updated.length}`
+          : result.aiError
+            ? `AI unavailable: ${result.aiError}. No quotes were created.`
+            : "AI generation returned no quotes. Try again in a moment.",
+        variant: result.usedAi ? "default" : "destructive",
       });
     } catch (error) {
       toast({

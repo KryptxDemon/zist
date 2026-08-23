@@ -61,7 +61,7 @@ def _parse_text_quotes(raw_text: str, count: int) -> list[dict[str, str | None]]
         quote_match = re.search(r'"([^"]{8,})"', cleaned)
         if quote_match:
             text = quote_match.group(1).strip()
-            speaker_match = re.search(r"[-—]\s*([^\-—]+)$", cleaned)
+            speaker_match = re.search(r"[-â€”]\s*([^\-â€”]+)$", cleaned)
             speaker = speaker_match.group(1).strip() if speaker_match else None
             parsed.append({"text": text, "speaker": speaker})
         elif len(cleaned) >= 12:
@@ -100,9 +100,9 @@ async def generate_movie_quotes(
     overview: str,
     keywords: list[str],
     count: int = 5,
-) -> tuple[list[dict[str, str | None]], bool, str | None]:
+) -> tuple[list[dict[str, str | None]], bool, str | None, str | None]:
     if not settings.GROQ_API_KEY:
-        return [], False, "Groq API key is not configured"
+        return [], False, None, "Groq API key is not configured"
 
     prompt = (
         f"Give me {count} quotes of the movie {title}. "
@@ -111,15 +111,15 @@ async def generate_movie_quotes(
         "Use widely known lines from the title. Do not add commentary or markdown."
     )
 
-    text, ai_error = await generate_groq_text(prompt, [settings.GROQ_MODEL])
+    text, used_model, ai_error = await generate_groq_text(prompt)
     if not text:
-        return [], False, ai_error or "Groq request failed"
+        return [], False, None, ai_error or "Groq request failed"
 
     try:
         quotes = _parse_gemini_quotes_response(text, count)
         if quotes:
-            return quotes, True, None
-        return [], False, "Groq returned no parseable quotes"
+            return quotes, True, used_model, None
+        return [], False, None, "Groq returned no parseable quotes"
     except Exception as exc:
         logger.exception("Groq quote parsing failed for %s", title)
-        return [], False, str(exc)
+        return [], False, None, str(exc)

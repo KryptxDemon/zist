@@ -511,6 +511,36 @@ export const vocabService = {
       );
     }
   },
+
+  async generateForMedia(
+    mediaId: string,
+    count: number = 8,
+  ): Promise<{
+    created: VocabItem[];
+    updated: VocabItem[];
+    usedAi: boolean;
+    aiError?: string | null;
+  }> {
+    try {
+      const response = await apiClient.post<{
+        created?: ApiObject[];
+        updated?: ApiObject[];
+        used_ai?: boolean;
+        ai_error?: string | null;
+      }>(`/media/${mediaId}/vocab/generate?count=${count}`);
+
+      return {
+        created: (response.created || []).map(mapVocab),
+        updated: (response.updated || []).map(mapVocab),
+        usedAi: Boolean(response.used_ai),
+        aiError: response.ai_error ?? null,
+      };
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to generate vocab",
+      );
+    }
+  },
 };
 
 // Quote service
