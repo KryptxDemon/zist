@@ -1097,6 +1097,7 @@ function VocabTab({
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isGeneratingWords, setIsGeneratingWords] = useState(false);
+  const [isGeneratingAndSaving, setIsGeneratingAndSaving] = useState(false);
   const [generatedWords, setGeneratedWords] = useState<
     {
       word: string;
@@ -1169,6 +1170,41 @@ function VocabTab({
     }
   };
 
+  const handleGenerateAndSaveWords = async () => {
+    setIsGeneratingAndSaving(true);
+    try {
+      const result = await vocabService.generateForMedia(mediaId, 8);
+      const merged = new Map(vocab.map((item) => [item.id, item]));
+      for (const item of result.updated) merged.set(item.id, item);
+      for (const item of result.created) merged.set(item.id, item);
+      setVocab(Array.from(merged.values()));
+
+      const totalAdded = result.created.length + result.updated.length;
+      toast({
+        title: result.usedAi
+          ? totalAdded > 0
+            ? `Added ${totalAdded} words`
+            : "No new words to add"
+          : "Generation failed",
+        description: result.usedAi
+          ? `Created ${result.created.length}, updated ${result.updated.length}.`
+          : result.aiError
+            ? `AI unavailable: ${result.aiError}. Try again in a moment.`
+            : "AI generation is unavailable right now.",
+        variant: result.usedAi && totalAdded > 0 ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to generate words",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingAndSaving(false);
+    }
+  };
+
   const handleAddGeneratedWord = async (item: {
     word: string;
     definition: string;
@@ -1223,7 +1259,7 @@ function VocabTab({
             variant="secondary"
             className="gap-2"
             onClick={handleGenerateWords}
-            disabled={isGeneratingWords}
+            disabled={isGeneratingWords || isGeneratingAndSaving}
           >
             {isGeneratingWords ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1231,6 +1267,21 @@ function VocabTab({
               <Sparkles className="h-4 w-4" />
             )}
             Generate Media Words
+          </Button>
+          <Button
+            size="sm"
+            variant="default"
+            className="gap-2"
+            onClick={handleGenerateAndSaveWords}
+            disabled={isGeneratingWords || isGeneratingAndSaving}
+            title="Generate themed vocabulary and save it directly to this media"
+          >
+            {isGeneratingAndSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate & Save Words
           </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>

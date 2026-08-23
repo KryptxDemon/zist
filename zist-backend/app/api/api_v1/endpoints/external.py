@@ -99,7 +99,7 @@ async def quote_meaning(payload: QuoteMeaningRequest):
         f"{context_part}"
     )
 
-    text, error = await generate_groq_text(prompt, [settings.GROQ_MODEL])
+    text, _used_model, error = await generate_groq_text(prompt, settings.groq_model_chain)
     if not text:
         return {"meaning": "This quote suggests a deeper emotional or thematic idea in the story.", "ai_error": error}
 
@@ -119,7 +119,7 @@ async def media_vocabulary(payload: MediaVocabularyRequest):
         f"Overview: {payload.overview or 'N/A'}\n"
     )
 
-    text, error = await generate_groq_text(prompt, [settings.GROQ_MODEL])
+    text, _used_model, error = await generate_groq_text(prompt, settings.groq_model_chain)
     if not text:
         return {"items": [], "ai_error": error}
 
@@ -173,7 +173,7 @@ async def quiz_distractors(payload: QuizDistractorsRequest):
         f"Context: {payload.context or 'N/A'}\n"
     )
 
-    text, error = await generate_groq_text(prompt, [settings.GROQ_MODEL])
+    text, _used_model, error = await generate_groq_text(prompt, settings.groq_model_chain)
     if not text:
         return {"distractors": [], "ai_error": error}
 
