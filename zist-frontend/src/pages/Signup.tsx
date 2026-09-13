@@ -364,7 +364,6 @@ export default function Signup() {
               {isGoogleLoading ? "Redirecting..." : "Sign up with Google"}
             </button>
 
-
             <p className="signup-signin-text">
               Already have an account?{" "}
               <Link to="/login" className="signup-signin-link">
