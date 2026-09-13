@@ -25,6 +25,10 @@ A personal learning management application to organize, track, and enhance your 
 - **Neon Serverless Postgres** - Managed database
 - **JWT / JWKS** - Token verification (RS256 via JWKS, HS256 via app secret)
 
+## Architecture
+
+See [`docs/ARCHITECTURE_DIAGRAMS.md`](docs/ARCHITECTURE_DIAGRAMS.md) for the system context diagram and representative sequence diagrams.
+
 ## Getting Started
 
 ### Prerequisites
