@@ -381,7 +381,6 @@ export default function Landing() {
 
         <section className="landing-about" id="about">
           <div className="landing-container landing-about-grid">
-            <span className="landing-mono">The point</span>
             <div>
               <h2>
                 Your attention

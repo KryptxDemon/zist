@@ -1,15 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Boldonse&family=Inter+Tight:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
 
 :root {
-  --auth-bg: #090a09;
-  --auth-panel: #111311;
-  --auth-card: #171a17;
-  --auth-paper: #f3f4ed;
-  --auth-soft: #b9bdb1;
-  --auth-muted: #72786d;
-  --auth-line: rgba(243, 244, 237, 0.14);
-  --auth-lime: #d3ff3b;
-  --auth-lime-soft: #e3ff7c;
+  --auth-bg: #080909;
+  --auth-panel: #0e1011;
+  --auth-card: #141617;
+  --auth-paper: #f2f2f0;
+  --auth-soft: #8d9294;
+  --auth-muted: #8d9294;
+  --auth-line: #242729;
+  --auth-lime: #55c7f2;
+  --auth-lime-soft: #8ddcff;
   --auth-display: "Boldonse", "Inter Tight", sans-serif;
   --auth-body: "Inter Tight", sans-serif;
   --auth-mono: "Geist Mono", monospace;
@@ -28,7 +28,7 @@ body {
   background:
     radial-gradient(
       700px 500px at 85% 10%,
-      rgba(211, 255, 59, 0.1),
+      rgba(85, 199, 242, 0.12),
       transparent 62%
     ),
     var(--auth-bg);
