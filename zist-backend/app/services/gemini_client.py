@@ -47,8 +47,6 @@ async def generate_gemini_text(
     """Call Gemini with an ordered model list and return the first response."""
     if not settings.GEMINI_API_KEY:
         return None, None, "Gemini API key is not configured"
-    if not settings.GEMINI_API_KEY.startswith("AIza"):
-        return None, None, "GEMINI_API_KEY does not look like a Google AI Studio key; replace the old Groq key"
 
     candidates = list(model_names) if model_names else settings.gemini_model_chain
     if not candidates:
