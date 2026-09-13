@@ -5,11 +5,12 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 ENV_FILE_PATH = BASE_DIR / ".env"
+ROOT_ENV_FILE_PATH = BASE_DIR.parent / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(ENV_FILE_PATH),
+        env_file=(str(ROOT_ENV_FILE_PATH), str(ENV_FILE_PATH)),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
@@ -32,17 +33,16 @@ class Settings(BaseSettings):
 
     TMDB_API_KEY: str | None = None
     TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
-    GROQ_API_KEY: str | None = None
-    # Groq rotates/decommissions models regularly. Use a comma-separated chain so
-    # the service has automatic fallbacks if the primary model is removed.
-    GROQ_MODEL: str = "openai/gpt-oss-120b"
-    GROQ_MODEL_FALLBACKS: str = "qwen/qwen3.6-27b,groq/compound-mini,openai/gpt-oss-20b"
+    GEMINI_API_KEY: str | None = None
+    GEMINI_API_URL: str = "https://generativelanguage.googleapis.com/v1beta/models"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL_FALLBACKS: str = "gemini-2.0-flash"
 
     @property
-    def groq_model_chain(self) -> list[str]:
-        """Ordered list of Groq models to try, primary first."""
+    def gemini_model_chain(self) -> list[str]:
+        """Ordered list of Gemini models to try, primary first."""
         candidates: list[str] = []
-        for raw in (self.GROQ_MODEL, self.GROQ_MODEL_FALLBACKS):
+        for raw in (self.GEMINI_MODEL, self.GEMINI_MODEL_FALLBACKS):
             if not raw:
                 continue
             for piece in str(raw).split(","):

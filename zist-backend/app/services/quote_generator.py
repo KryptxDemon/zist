@@ -3,7 +3,7 @@ import logging
 import re
 
 from app.core.config import settings
-from app.services.groq_client import generate_groq_text
+from app.services.gemini_client import generate_gemini_text
 
 
 logger = logging.getLogger(__name__)
@@ -101,8 +101,8 @@ async def generate_movie_quotes(
     keywords: list[str],
     count: int = 5,
 ) -> tuple[list[dict[str, str | None]], bool, str | None, str | None]:
-    if not settings.GROQ_API_KEY:
-        return [], False, None, "Groq API key is not configured"
+    if not settings.GEMINI_API_KEY:
+        return [], False, None, "Gemini API key is not configured"
 
     prompt = (
         f"Give me {count} quotes of the movie {title}. "
@@ -111,15 +111,15 @@ async def generate_movie_quotes(
         "Use widely known lines from the title. Do not add commentary or markdown."
     )
 
-    text, used_model, ai_error = await generate_groq_text(prompt)
+    text, used_model, ai_error = await generate_gemini_text(prompt)
     if not text:
-        return [], False, None, ai_error or "Groq request failed"
+        return [], False, None, ai_error or "Gemini request failed"
 
     try:
         quotes = _parse_gemini_quotes_response(text, count)
         if quotes:
             return quotes, True, used_model, None
-        return [], False, None, "Groq returned no parseable quotes"
+        return [], False, None, "Gemini returned no parseable quotes"
     except Exception as exc:
-        logger.exception("Groq quote parsing failed for %s", title)
+        logger.exception("Gemini quote parsing failed for %s", title)
         return [], False, None, str(exc)

@@ -363,7 +363,11 @@ export default function Landing() {
                       />
                     ) : (
                       <img
-                        src={themePlaceholderImages[index % themePlaceholderImages.length]}
+                        src={
+                          themePlaceholderImages[
+                            index % themePlaceholderImages.length
+                          ]
+                        }
                         alt={`${theme.title} placeholder artwork`}
                         className="landing-theme-placeholder"
                       />

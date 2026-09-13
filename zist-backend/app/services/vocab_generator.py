@@ -1,6 +1,6 @@
 """Vocab generation service.
 
-Selects salient vocabulary from a media title + overview using Groq and returns
+Selects salient vocabulary from a media title + overview using Gemini and returns
 structured entries. Falls back to a deterministic curated wordlist drawn from
 the overview when no API key, no parseable response, or when every candidate
 model fails.
@@ -14,7 +14,7 @@ import re
 from typing import Any
 
 from app.core.config import settings
-from app.services.groq_client import generate_groq_text
+from app.services.gemini_client import generate_gemini_text
 
 
 logger = logging.getLogger(__name__)
@@ -133,8 +133,8 @@ async def generate_movie_vocab(
     keywords = keywords or []
     safe_count = max(1, min(count, 12))
 
-    if not settings.GROQ_API_KEY:
-        return _fallback_vocab(overview, safe_count), False, None, "Groq API key is not configured"
+    if not settings.GEMINI_API_KEY:
+        return _fallback_vocab(overview, safe_count), False, None, "Gemini API key is not configured"
 
     prompt = (
         f"Identify up to {safe_count} interesting, uncommon, or thematic vocabulary words "
@@ -151,22 +151,22 @@ async def generate_movie_vocab(
         f"Keywords: {', '.join(keywords) if keywords else 'N/A'}"
     )
 
-    text, used_model, ai_error = await generate_groq_text(prompt)
+    text, used_model, ai_error = await generate_gemini_text(prompt)
     if not text:
-        logger.warning("Groq vocab generation failed for %s: %s", title, ai_error)
-        return _fallback_vocab(overview, safe_count), False, None, ai_error or "Groq request failed"
+        logger.warning("Gemini vocab generation failed for %s: %s", title, ai_error)
+        return _fallback_vocab(overview, safe_count), False, None, ai_error or "Gemini request failed"
 
     try:
         json_text = _extract_json_block(text)
         parsed = json.loads(json_text)
         if not isinstance(parsed, list):
-            raise ValueError("Groq did not return a JSON list")
+            raise ValueError("Gemini did not return a JSON list")
 
         items = _normalize_items(parsed, safe_count)
         if items:
             return items, True, used_model, None
     except Exception as exc:
-        logger.exception("Groq vocab parsing failed for %s", title)
+        logger.exception("Gemini vocab parsing failed for %s", title)
         return _fallback_vocab(overview, safe_count), False, None, str(exc)
 
-    return _fallback_vocab(overview, safe_count), False, None, "Groq response could not be parsed"
+    return _fallback_vocab(overview, safe_count), False, None, "Gemini response could not be parsed"

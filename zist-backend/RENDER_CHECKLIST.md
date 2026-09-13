@@ -28,7 +28,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ### 4. API Keys
 
 - [ ] TMDB API key obtained
-- [ ] Groq API key obtained
+- [ ] Gemini API key obtained
 - [ ] Add to Render environment variables
 
 ---
@@ -59,8 +59,9 @@ Click **Environment** and add:
 | `DATABASE_URL`         | `postgresql://...`                                                        | Neon Dashboard |
 | `SECRET_KEY`           | (generated production key)                                                | Step 2 above   |
 | `TMDB_API_KEY`         | Your TMDB API key                                                         | TMDB website   |
-| `GROQ_API_KEY`         | Your Groq API key                                                         | Groq           |
-| `GROQ_MODEL`           | `llama-3.3-70b-versatile`                                                 | Optional       |
+| `GEMINI_API_KEY`       | Your Google AI Studio API key                                             | Gemini         |
+| `GEMINI_API_URL`       | `https://generativelanguage.googleapis.com/v1beta/models`                 | Optional       |
+| `GEMINI_MODEL`         | `gemini-2.5-flash`                                                        | Optional       |
 | `BACKEND_CORS_ORIGINS` | `https://zist-media.netlify.app,https://render-service-name.onrender.com` | Your services  |
 
 ### Step 4: Deploy

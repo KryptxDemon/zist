@@ -3,7 +3,7 @@ import logging
 import re
 
 from app.core.config import settings
-from app.services.groq_client import generate_groq_text
+from app.services.gemini_client import generate_gemini_text
 
 
 logger = logging.getLogger(__name__)
@@ -139,8 +139,8 @@ async def generate_movie_themes(
     keywords: list[str],
     count: int = 5,
 ) -> tuple[list[dict[str, str]], bool, str | None, str | None]:
-    if not settings.GROQ_API_KEY:
-        return _fallback_themes(keywords, overview, count), False, None, "Groq API key is not configured"
+    if not settings.GEMINI_API_KEY:
+        return _fallback_themes(keywords, overview, count), False, None, "Gemini API key is not configured"
 
     prompt = (
         "Identify 5 core themes from this movie. For each, provide a specific, insightful explanation that:\n"
@@ -156,23 +156,23 @@ async def generate_movie_themes(
         f"Keywords: {', '.join(keywords) if keywords else 'N/A'}"
     )
 
-    text, used_model, ai_error = await generate_groq_text(prompt)
+    text, used_model, ai_error = await generate_gemini_text(prompt)
     if not text:
-        logger.exception("Groq theme generation failed for %s", title)
-        return _fallback_themes(keywords, overview, count), False, None, ai_error or "Groq request failed"
+        logger.exception("Gemini theme generation failed for %s", title)
+        return _fallback_themes(keywords, overview, count), False, None, ai_error or "Gemini request failed"
 
     try:
 
         json_text = _extract_json_block(text)
         parsed = json.loads(json_text)
         if not isinstance(parsed, list):
-            raise ValueError("Groq did not return a JSON list")
+            raise ValueError("Gemini did not return a JSON list")
 
         ai_themes = _normalize_ai_themes(parsed, count)
         if ai_themes:
             return ai_themes, True, used_model, None
     except Exception as exc:
-        logger.exception("Groq theme parsing failed for %s", title)
+        logger.exception("Gemini theme parsing failed for %s", title)
         return _fallback_themes(keywords, overview, count), False, None, str(exc)
 
-    return _fallback_themes(keywords, overview, count), False, None, "Groq response could not be parsed"
+    return _fallback_themes(keywords, overview, count), False, None, "Gemini response could not be parsed"

@@ -104,7 +104,7 @@ async def generate_quotes_for_media(
             media_id=media_id,
             text=text,
             speaker=speaker_text,
-            reference="TMDb + Groq",
+            reference="TMDb + Gemini",
             is_bookmarked=False,
         )
         db.add(item)

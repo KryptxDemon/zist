@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.services.dictionary import lookup_word
-from app.services.groq_client import generate_groq_text
+from app.services.gemini_client import generate_gemini_text
 from app.services.openlibrary import search_books
 from app.services.tmdb import search_movies, search_multi, search_tv
 from app.services.wikipedia import get_suggestions, get_summary
@@ -99,7 +99,7 @@ async def quote_meaning(payload: QuoteMeaningRequest):
         f"{context_part}"
     )
 
-    text, _used_model, error = await generate_groq_text(prompt, settings.groq_model_chain)
+    text, _used_model, error = await generate_gemini_text(prompt, settings.gemini_model_chain)
     if not text:
         return {"meaning": "This quote suggests a deeper emotional or thematic idea in the story.", "ai_error": error}
 
@@ -119,7 +119,7 @@ async def media_vocabulary(payload: MediaVocabularyRequest):
         f"Overview: {payload.overview or 'N/A'}\n"
     )
 
-    text, _used_model, error = await generate_groq_text(prompt, settings.groq_model_chain)
+    text, _used_model, error = await generate_gemini_text(prompt, settings.gemini_model_chain)
     if not text:
         return {"items": [], "ai_error": error}
 
@@ -173,7 +173,7 @@ async def quiz_distractors(payload: QuizDistractorsRequest):
         f"Context: {payload.context or 'N/A'}\n"
     )
 
-    text, _used_model, error = await generate_groq_text(prompt, settings.groq_model_chain)
+    text, _used_model, error = await generate_gemini_text(prompt, settings.gemini_model_chain)
     if not text:
         return {"distractors": [], "ai_error": error}
 

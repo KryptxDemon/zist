@@ -19,14 +19,17 @@ services:
       - key: TMDB_API_KEY
         scope: build,runtime
         sync: false
-      - key: GROQ_API_KEY
+      - key: GEMINI_API_KEY
         scope: build,runtime
         sync: false
-      - key: GROQ_MODEL
-        value: openai/gpt-oss-120b
+      - key: GEMINI_API_URL
+        value: https://generativelanguage.googleapis.com/v1beta/models
         scope: runtime
-      - key: GROQ_MODEL_FALLBACKS
-        value: qwen/qwen3.6-27b,groq/compound-mini,openai/gpt-oss-20b
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+        scope: runtime
+      - key: GEMINI_MODEL_FALLBACKS
+        value: gemini-2.0-flash
         scope: runtime
       - key: BACKEND_CORS_ORIGINS
         value: https://zist-media.netlify.app,https://your-production-domain.com
