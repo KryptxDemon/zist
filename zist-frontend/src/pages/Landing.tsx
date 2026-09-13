@@ -79,6 +79,12 @@ const defaultThemes: LandingThemeItem[] = [
   },
 ];
 
+const themePlaceholderImages = [
+  "/theme-identity.jpg",
+  "/theme-power.jpg",
+  "/theme-faith.jpg",
+];
+
 const socials = [
   { label: "Instagram", href: "https://www.instagram.com/_asif.anwar_/" },
   {
@@ -356,9 +362,11 @@ export default function Landing() {
                         alt={`${theme.media.title} artwork`}
                       />
                     ) : (
-                      <div className="landing-theme-placeholder">
-                        <span>{String(index + 1).padStart(2, "0")}</span>
-                      </div>
+                      <img
+                        src={themePlaceholderImages[index % themePlaceholderImages.length]}
+                        alt={`${theme.title} placeholder artwork`}
+                        className="landing-theme-placeholder"
+                      />
                     )}
                     <span className="landing-theme-type">
                       {theme.media.type}
