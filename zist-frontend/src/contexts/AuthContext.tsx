@@ -30,6 +30,8 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+let verifierExchangePromise: Promise<any> | null = null;
+
 function isTransientSyncError(err: unknown): boolean {
   if (!(err instanceof Error)) return true;
   // Network failures (no status) and 5xx are recoverable. 4xx is the server
@@ -121,7 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       //    verifier before it can be consumed.
       if (hasNeonSessionVerifier()) {
         try {
-          const snapshot = await getNeonSession();
+          if (!verifierExchangePromise) {
+            verifierExchangePromise = getNeonSession();
+          }
+          const snapshot = await verifierExchangePromise;
           if (snapshot && !cancelled) {
             console.info("[auth] neon session bootstrapped", {
               neonUserId: snapshot.user.id,
