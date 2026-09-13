@@ -151,6 +151,9 @@ export default function Signup() {
           <div className="signup-logo-wrap">
             <img src={logoImg} alt="Zist Logo" className="signup-logo" />
             <span className="signup-brand">ZIST</span>
+            <Link to="/" className="signup-return-link">
+              Back to landing page
+            </Link>
           </div>
 
           <div className="signup-content">

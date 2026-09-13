@@ -79,6 +79,9 @@ export default function Login() {
           <div className="login-logo-wrap">
             <img src={logoImg} alt="Zist Logo" className="login-logo" />
             <span className="login-brand">ZIST</span>
+            <Link to="/" className="login-return-link">
+              Back to landing page
+            </Link>
           </div>
 
           <div className="login-content">
