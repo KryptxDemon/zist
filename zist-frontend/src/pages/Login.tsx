@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { startGoogleSignIn } from "@/lib/neonAuthAdapter";
+import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import "./Login.css";
 
 const logoImg = "/zistv2-logo.png";
@@ -20,9 +20,26 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
 
   const from = location.state?.from?.pathname || "/app";
+
+  const { signInWithGoogle, isGoogleLoading } = useGoogleAuth({
+    onSuccess: () => {
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully logged in.",
+      });
+      navigate(from, { replace: true });
+    },
+    onError: (message) => {
+      toast({
+        title: "Google sign-in failed",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,29 +63,8 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    try {
-      // Neon Auth (Better Auth) only accepts callbackURLs that match a
-      // registered origin on the project. Sending an absolute URL like
-      // "https://zist-media.netlify.app/app" gets rejected with HTTP 403
-      // INVALID_CALLBACKURL because the production host is not on the
-      // allow-list yet. A relative path like "/app" is always accepted, and
-      // Neon uses the incoming request's Origin header to build the absolute
-      // redirect target after Google completes.
-      await startGoogleSignIn({ callbackURL: from });
-      // No success toast here — the browser is redirecting away to Google.
-    } catch (error) {
-      setIsGoogleLoading(false);
-      toast({
-        title: "Google sign-in unavailable",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Unable to start Google sign-in.",
-        variant: "destructive",
-      });
-    }
+  const handleGoogleLogin = () => {
+    void signInWithGoogle("login");
   };
 
   return (

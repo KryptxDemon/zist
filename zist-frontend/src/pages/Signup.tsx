@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import { authService } from "@/services/authService";
-import { startGoogleSignIn } from "@/lib/neonAuthAdapter";
+import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import "./Signup.css";
 
 const logoImg = "/zistv2-logo.png";
@@ -33,6 +33,23 @@ export default function Signup() {
   const { signup } = useAuth();
   const { toast } = useToast();
 
+  const { signInWithGoogle, isGoogleLoading } = useGoogleAuth({
+    onSuccess: () => {
+      toast({
+        title: "Welcome to Zist!",
+        description: "Your account is ready.",
+      });
+      navigate("/app");
+    },
+    onError: (message) => {
+      toast({
+        title: "Google sign-up failed",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const [displayName, setDisplayName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -40,7 +57,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
   const [displayNameStatus, setDisplayNameStatus] = useState<{
     available: boolean | null;
     suggestions: string[];
@@ -118,29 +135,8 @@ export default function Signup() {
     }
   };
 
-  const handleGoogleSignup = async () => {
-    setIsGoogleLoading(true);
-    try {
-      // Neon Auth (Better Auth) only accepts callbackURLs that match a
-      // registered origin on the project. Sending an absolute URL like
-      // "https://zist-media.netlify.app/app" gets rejected with HTTP 403
-      // INVALID_CALLBACKURL because the production host is not on the
-      // allow-list yet. A relative path like "/app" is always accepted, and
-      // Neon uses the incoming request's Origin header to build the absolute
-      // redirect target after Google completes.
-      await startGoogleSignIn({ callbackURL: "/app" });
-      // No success toast here — the browser is redirecting away to Google.
-    } catch (error) {
-      setIsGoogleLoading(false);
-      toast({
-        title: "Google sign-up unavailable",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Unable to start Google sign-up.",
-        variant: "destructive",
-      });
-    }
+  const handleGoogleSignup = () => {
+    void signInWithGoogle("signup");
   };
 
   return (

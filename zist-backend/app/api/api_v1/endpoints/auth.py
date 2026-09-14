@@ -37,6 +37,10 @@ from app.schemas.auth import (
 
 router = APIRouter()
 
+import logging
+
+logger = logging.getLogger("zist.auth.google")
+
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
@@ -146,6 +150,18 @@ def _unsign_state(state: str | None) -> dict:
     return payload
 
 
+def _callback_url(request: Request) -> str:
+    """Resolve the OAuth redirect URI.
+
+    Prefers the explicitly configured value so the string sent to Google's
+    /authorize endpoint is byte-identical to the one sent during the /token
+    exchange. Falls back to url_for for local development.
+    """
+    if settings.GOOGLE_REDIRECT_URI:
+        return settings.GOOGLE_REDIRECT_URI.strip()
+    return str(request.url_for("google_callback"))
+
+
 def _build_google_auth_url(request: Request, source: str) -> str:
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
         raise HTTPException(
@@ -153,7 +169,7 @@ def _build_google_auth_url(request: Request, source: str) -> str:
             detail="Google OAuth is not configured",
         )
 
-    callback_url = str(request.url_for("google_callback"))
+    callback_url = _callback_url(request)
     state = _sign_state(
         {
             "source": source,
@@ -186,7 +202,6 @@ def _google_userinfo_to_user(db: Session, payload: dict) -> User:
     first_name = str(payload.get("given_name") or "").strip() or None
     last_name = str(payload.get("family_name") or "").strip() or None
     full_name = str(payload.get("name") or "").strip()
-    picture = str(payload.get("picture") or "").strip() or None
     email_verified = bool(payload.get("email_verified", False))
 
     existing_user = (
@@ -200,8 +215,6 @@ def _google_userinfo_to_user(db: Session, payload: dict) -> User:
         existing_user.first_name = existing_user.first_name or first_name
         existing_user.last_name = existing_user.last_name or last_name
         existing_user.email_verified = existing_user.email_verified or email_verified
-        if picture and not existing_user.avatar_url:
-            existing_user.avatar_url = picture
         if full_name and not existing_user.display_name:
             existing_user.display_name = _next_available_display_name(db, full_name)
         db.commit()
@@ -219,7 +232,6 @@ def _google_userinfo_to_user(db: Session, payload: dict) -> User:
         last_name=last_name,
         google_sub=google_sub,
         email_verified=email_verified,
-        avatar_url=picture,
         is_active=True,
     )
     db.add(user)
@@ -245,6 +257,40 @@ def _build_popup_html(payload: dict) -> str:
         const targetOrigin = document.body.getAttribute('data-origin') || window.location.origin;
         if (window.opener) {{
           window.opener.postMessage({{ type: 'zist-google-auth', payload }}, targetOrigin);
+        }}
+        window.close();
+      }})();
+    </script>
+  </body>
+</html>"""
+
+
+def _build_popup_error_html(message: str) -> str:
+    """Popup page returned when the OAuth exchange fails.
+
+    Without this, a raised HTTPException renders raw JSON inside the popup and
+    no postMessage is ever emitted, so the opener hangs on a spinner forever.
+    Posting a typed error lets the opener surface a real toast and reset state.
+    """
+    frontend_url = settings.FRONTEND_URL.rstrip("/")
+    safe_payload = html.escape(
+        json.dumps({"error": message}, separators=(",", ":")), quote=True
+    )
+    safe_origin = html.escape(frontend_url, quote=True)
+    return f"""<!doctype html>
+<html>
+  <head>
+    <meta charset=\"utf-8\" />
+    <title>Zist Google Sign-In</title>
+  </head>
+  <body data-payload=\"{safe_payload}\" data-origin=\"{safe_origin}\">
+    <p style=\"font-family:system-ui,sans-serif;padding:24px\">Sign-in failed. You can close this window.</p>
+    <script>
+      (function () {{
+        const payload = JSON.parse(document.body.getAttribute('data-payload') || '{{}}');
+        const targetOrigin = document.body.getAttribute('data-origin') || window.location.origin;
+        if (window.opener) {{
+          window.opener.postMessage({{ type: 'zist-google-auth-error', payload }}, targetOrigin);
         }}
         window.close();
       }})();
@@ -281,47 +327,65 @@ async def google_callback(
     db: Session = Depends(get_db),
 ):
     if error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+        return HTMLResponse(content=_build_popup_error_html(f"Google returned an error: {error}"))
     if not code:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Google authorization code")
+        return HTMLResponse(content=_build_popup_error_html("Missing Google authorization code"))
 
-    _ = _unsign_state(state)
+    try:
+        _ = _unsign_state(state)
+    except HTTPException as exc:
+        return HTMLResponse(content=_build_popup_error_html(str(exc.detail)))
 
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Google OAuth is not configured",
+        return HTMLResponse(content=_build_popup_error_html("Google OAuth is not configured on the server"))
+
+    # Must match the redirect_uri sent during /authorize exactly.
+    callback_url = _callback_url(request)
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            token_response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": callback_url,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            token_response.raise_for_status()
+            token_data = token_response.json()
+
+            google_access_token = str(token_data.get("access_token") or "")
+            if not google_access_token:
+                return HTMLResponse(
+                    content=_build_popup_error_html("Google access token missing")
+                )
+
+            userinfo_response = await client.get(
+                GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {google_access_token}"},
+            )
+            userinfo_response.raise_for_status()
+            userinfo = userinfo_response.json()
+    except httpx.HTTPError as exc:
+        logger.exception("google.token_exchange_failed")
+        return HTMLResponse(
+            content=_build_popup_error_html(f"Could not reach Google: {exc}")
         )
 
-    callback_url = str(request.url_for("google_callback"))
-
-    async with httpx.AsyncClient(timeout=20) as client:
-        token_response = await client.post(
-            GOOGLE_TOKEN_URL,
-            data={
-                "code": code,
-                "client_id": settings.GOOGLE_CLIENT_ID,
-                "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uri": callback_url,
-                "grant_type": "authorization_code",
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+    try:
+        user = _google_userinfo_to_user(db, userinfo)
+    except HTTPException as exc:
+        return HTMLResponse(content=_build_popup_error_html(str(exc.detail)))
+    except Exception as exc:
+        logger.exception("google.user_upsert_failed")
+        return HTMLResponse(
+            content=_build_popup_error_html("Could not create your Zist account")
         )
-        token_response.raise_for_status()
-        token_data = token_response.json()
 
-        access_token = str(token_data.get("access_token") or "")
-        if not access_token:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google access token missing")
-
-        userinfo_response = await client.get(
-            GOOGLE_USERINFO_URL,
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        userinfo_response.raise_for_status()
-        userinfo = userinfo_response.json()
-
-    user = _google_userinfo_to_user(db, userinfo)
     response_payload = {
         "access_token": create_access_token(user.id),
         "refresh_token": create_refresh_token(user.id),

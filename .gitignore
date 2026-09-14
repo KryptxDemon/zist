@@ -58,6 +58,7 @@ wheels/
 .env.*.local
 .env.production
 /zist-backend/.env
+zist-google.json
 
 # Local Python virtual environment
 .venv/

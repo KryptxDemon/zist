@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str | None = None
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Explicit OAuth callback URL registered in Google Cloud Console.
+    # Google requires the redirect_uri to match byte-for-byte between the
+    # /authorize request and the /token exchange. Deriving it from
+    # request.url_for() is fragile behind Render's TLS-terminating proxy
+    # (it can emit http:// instead of https://), so we pin it via env.
+    # When unset, we fall back to url_for for local development.
+    GOOGLE_REDIRECT_URI: str | None = None
+
     OPENLIBRARY_BASE_URL: str = "https://openlibrary.org"
 
     WIKIPEDIA_API_BASE: str = "https://en.wikipedia.org/api/rest_v1"
