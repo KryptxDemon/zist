@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -10,12 +10,7 @@ import {
   authService,
   type OAuthSessionPayload,
 } from "@/services/authService";
-import {
-  clearNeonSessionVerifier,
-  getNeonSession,
-  hasNeonSessionVerifier,
-  persistNeonSession,
-} from "@/lib/neonAuthAdapter";
+
 import { ApiError } from "@/services/apiClient";
 
 /**
@@ -30,7 +25,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-let verifierExchangePromise: Promise<any> | null = null;
+
 
 function isTransientSyncError(err: unknown): boolean {
   if (!(err instanceof Error)) return true;
@@ -59,8 +54,8 @@ interface AuthContextType {
     lastName: string,
   ) => Promise<void>;
   /**
-   * @deprecated Google OAuth is now handled by Neon Auth during AuthProvider init.
-   * Kept for compatibility with the legacy backend popup flow.
+   * Finish a Google sign-in. Called by useGoogleAuth once the popup posts the
+   * backend's token payload back to this window.
    */
   completeGoogleAuth: (payload: {
     access_token: string;
@@ -108,79 +103,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function init() {
-      // 1. Hydrate from stored auth (synchronous). The stored user object
-      //    is always a local Zist user — ``authService.login/signup`` and
-      //    ``getCurrentUser`` only ever persist that shape — so it's safe
-      //    to show immediately while we re-validate in the background.
-      const { user: storedUser } = authService.getStoredAuth();
+      // 1. Hydrate from stored auth synchronously so the UI paints instantly.
+      //    The stored object is always a local Zist user, so it is safe to
+      //    show while we re-validate in the background.
+      const { user: storedUser, token } = authService.getStoredAuth();
       if (storedUser && !cancelled) {
         setUser(storedUser);
       }
 
-      // 2. If we just landed from a Google OAuth redirect, exchange the
-      //    session verifier BEFORE we drop isLoading. This prevents
-      //    ProtectedRoute from redirecting to /login and stripping the
-      //    verifier before it can be consumed.
-      if (hasNeonSessionVerifier()) {
-        try {
-          if (!verifierExchangePromise) {
-            verifierExchangePromise = getNeonSession();
-          }
-          const snapshot = await verifierExchangePromise;
-          if (snapshot && !cancelled) {
-            console.info("[auth] neon session bootstrapped", {
-              neonUserId: snapshot.user.id,
-              email: snapshot.user.email,
-              tokenPresent: Boolean(snapshot.token),
-            });
-            // Stash the Neon token so the very first ``/auth/me`` request
-            // carries the right Bearer header. ``getCurrentUser`` will
-            // overwrite both the token and the user with the canonical
-            // Zist local user once the upsert completes.
-            persistNeonSession(snapshot);
-
-            try {
-              const me = await syncMeWithBackoff();
-              if (!cancelled && me) {
-                setUser(me);
-              }
-            } catch (meError) {
-              // /auth/me definitively failed. The Neon snapshot uses the
-              // upstream ``sub`` as its ``id``, which would never resolve
-              // via ``GET /users/{id}`` on the backend, so we MUST NOT
-              // silently adopt it. Instead: drop the session, surface a
-              // visible error, and bounce the user back to /login.
-              console.error(
-                "[auth] /auth/me failed after retries; cannot adopt Neon snapshot as local user",
-                meError,
-              );
-              if (!cancelled) {
-                authService.clearStoredSession();
-                setUser(null);
-              }
-            }
-          } else if (!snapshot) {
-            console.warn(
-              "[auth] Neon session verifier present but no session returned",
-            );
-          }
-        } catch (error) {
-          console.error("[auth] failed to bootstrap Neon session", error);
-        } finally {
-          clearNeonSessionVerifier();
-        }
-      } else if (storedUser) {
-        // No Neon verifier, but we have a stored session — silently
-        // re-validate it with /auth/me in the background so a stale or
-        // revoked token doesn't keep the UI in a broken state.
+      // 2. Re-validate against /auth/me so a stale or revoked token doesn't
+      //    leave the UI in a broken half-authenticated state. Transient
+      //    failures retry with backoff; a definitive 401 clears the session
+      //    (getCurrentUser already wipes storage in that case).
+      if (token) {
         try {
           const me = await syncMeWithBackoff();
           if (!cancelled && me) {
             setUser(me);
           }
         } catch (err) {
-          // ``getCurrentUser`` already cleared storage on a definitive
-          // 401. Treat any failure here as "logged out".
           console.warn("[auth] stored session no longer valid", err);
           if (!cancelled) {
             setUser(null);
@@ -188,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 3. Only now mark loading as done
+      // 3. Only now mark loading as done.
       if (!cancelled) {
         setIsLoading(false);
       }

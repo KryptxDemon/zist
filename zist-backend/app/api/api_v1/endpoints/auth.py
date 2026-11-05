@@ -158,7 +158,7 @@ def _build_google_auth_url(request: Request, source: str, redirect_to: str | Non
             detail="Google OAuth is not configured",
         )
 
-    callback_url = str(request.url_for("google_callback"))
+    callback_url = settings.GOOGLE_REDIRECT_URI or str(request.url_for("google_callback"))
     state_payload: dict = {
         "source": source,
         "ts": datetime.now(UTC).isoformat(),
@@ -308,7 +308,7 @@ async def google_callback(
             detail="Google OAuth is not configured",
         )
 
-    callback_url = str(request.url_for("google_callback"))
+    callback_url = settings.GOOGLE_REDIRECT_URI or str(request.url_for("google_callback"))
 
     async with httpx.AsyncClient(timeout=20) as client:
         token_response = await client.post(

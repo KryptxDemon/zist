@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
     FRONTEND_URL: str = "http://localhost:5173"
+    GOOGLE_REDIRECT_URI: str | None = None
 
     OPENLIBRARY_BASE_URL: str = "https://openlibrary.org"
 
