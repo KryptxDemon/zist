@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -41,6 +41,11 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 STATE_MAX_AGE_MINUTES = 10
+
+# Schemes the mobile app is allowed to be redirected back to after the Google
+# round-trip. Keeping this to an explicit allow-list prevents an attacker from
+# turning ``/auth/google/start`` into an open redirect.
+ALLOWED_MOBILE_REDIRECT_PREFIXES = ("zist://", "exp://")
 
 
 def _auth_user_response(user: User) -> AuthUserResponse:
@@ -146,7 +151,7 @@ def _unsign_state(state: str | None) -> dict:
     return payload
 
 
-def _build_google_auth_url(request: Request, source: str) -> str:
+def _build_google_auth_url(request: Request, source: str, redirect_to: str | None = None) -> str:
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -154,13 +159,19 @@ def _build_google_auth_url(request: Request, source: str) -> str:
         )
 
     callback_url = str(request.url_for("google_callback"))
-    state = _sign_state(
-        {
-            "source": source,
-            "ts": datetime.now(UTC).isoformat(),
-            "nonce": secrets.token_urlsafe(12),
-        }
-    )
+    state_payload: dict = {
+        "source": source,
+        "ts": datetime.now(UTC).isoformat(),
+        "nonce": secrets.token_urlsafe(12),
+    }
+    if redirect_to:
+        if not redirect_to.startswith(ALLOWED_MOBILE_REDIRECT_PREFIXES):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported redirect target",
+            )
+        state_payload["redirect_to"] = redirect_to
+    state = _sign_state(state_payload)
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": callback_url,
@@ -266,9 +277,13 @@ def check_display_name(display_name: str, db: Session = Depends(get_db)):
 
 
 @router.get("/google/start", response_model=GoogleAuthStartResponse)
-def google_start(request: Request, source: str = "login"):
+def google_start(
+    request: Request,
+    source: str = "login",
+    redirect_to: str | None = None,
+):
     source = source if source in {"login", "signup"} else "login"
-    auth_url = _build_google_auth_url(request, source)
+    auth_url = _build_google_auth_url(request, source, redirect_to)
     return GoogleAuthStartResponse(auth_url=auth_url)
 
 
@@ -285,7 +300,7 @@ async def google_callback(
     if not code:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Google authorization code")
 
-    _ = _unsign_state(state)
+    state_payload = _unsign_state(state)
 
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
         raise HTTPException(
@@ -328,6 +343,22 @@ async def google_callback(
         "token_type": "bearer",
         "user": _auth_user_response(user).model_dump(mode="json"),
     }
+
+    # Native clients (the Expo app) can't consume the postMessage popup below,
+    # so when the caller asked for a mobile redirect we hand the session back
+    # over a deep link instead. The user object is omitted to keep the URL
+    # short — the app fetches it from ``GET /auth/me`` with the access token.
+    redirect_to = state_payload.get("redirect_to")
+    if redirect_to:
+        params = urlencode(
+            {
+                "access_token": response_payload["access_token"],
+                "refresh_token": response_payload["refresh_token"],
+                "token_type": response_payload["token_type"],
+            }
+        )
+        separator = "&" if "?" in redirect_to else "?"
+        return RedirectResponse(url=f"{redirect_to}{separator}{params}")
 
     return HTMLResponse(content=_build_popup_html(response_payload))
 
