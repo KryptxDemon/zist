@@ -92,9 +92,11 @@ export function MediaCard({ media, onPress, layout = "grid", style }: MediaCardP
   const { colors, radius, shadow } = useTheme();
   const subtitle = [media.year ? String(media.year) : null, media.creator].filter(Boolean).join(" · ");
 
+  const CardContainer = onPress ? Pressable : View;
+
   if (layout === "row") {
     return (
-      <Pressable
+      <CardContainer
         onPress={onPress}
         style={[
           {
@@ -122,12 +124,12 @@ export function MediaCard({ media, onPress, layout = "grid", style }: MediaCardP
           ) : null}
         </View>
         {media.status ? <StatusBadge status={media.status} /> : null}
-      </Pressable>
+      </CardContainer>
     );
   }
 
   return (
-    <Pressable onPress={onPress} style={[{ flex: 1, gap: 8 }, style]}>
+    <CardContainer onPress={onPress} style={[{ flex: 1, gap: 8 }, style]}>
       <View style={[{ borderRadius: radius.xl }, shadow("sm")]}>
         <MediaPoster coverUrl={media.coverUrl} type={media.type} title={media.title} height={190} />
       </View>
@@ -146,6 +148,6 @@ export function MediaCard({ media, onPress, layout = "grid", style }: MediaCardP
         </View>
         {media.progress != null ? <Progress value={media.progress} height={5} /> : null}
       </View>
-    </Pressable>
+    </CardContainer>
   );
 }

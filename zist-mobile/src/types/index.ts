@@ -46,6 +46,8 @@ export interface MediaItem {
   creator?: string;
   description?: string;
   coverUrl?: string;
+  externalSource?: string;
+  externalId?: string;
   tags: string[];
   status: MediaStatus;
   rating?: number;

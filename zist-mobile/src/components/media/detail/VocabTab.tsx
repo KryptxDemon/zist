@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
-import { BookOpen, Check, Plus, Search, Sparkles, Trash2 } from "lucide-react-native";
+import { Pressable, Share, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { BookOpen, Check, Copy, Plus, Search, Share2, Sparkles, Trash2 } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import {
@@ -361,6 +362,25 @@ function VocabCard({
     }
   };
 
+  const handleCopy = async () => {
+    try {
+      const text = word.definition ? `${word.word}: ${word.definition}` : word.word;
+      await Clipboard.setStringAsync(text);
+      toast({ title: "Word copied to clipboard!" });
+    } catch {
+      toast({ title: "Failed to copy", variant: "destructive" });
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const text = word.definition ? `${word.word} — ${word.definition}` : word.word;
+      await Share.share({ message: text });
+    } catch {
+      // Dismissed
+    }
+  };
+
   const handleDeleteWord = async () => {
     try {
       await vocabService.delete(word.id);
@@ -393,7 +413,13 @@ function VocabCard({
           {word.word}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-          <IconButton size="iconSm" onPress={() => setConfirmVisible(true)}>
+          <IconButton size="iconSm" accessibilityLabel="Copy word" onPress={() => void handleCopy()}>
+            <Copy size={18} color={colors.mutedForeground} />
+          </IconButton>
+          <IconButton size="iconSm" accessibilityLabel="Share word" onPress={() => void handleShare()}>
+            <Share2 size={18} color={colors.mutedForeground} />
+          </IconButton>
+          <IconButton size="iconSm" accessibilityLabel="Delete word" onPress={() => setConfirmVisible(true)}>
             <Trash2 size={18} color={colors.mutedForeground} />
           </IconButton>
           <Pressable

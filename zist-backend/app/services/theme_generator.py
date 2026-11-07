@@ -138,22 +138,48 @@ async def generate_movie_themes(
     overview: str,
     keywords: list[str],
     count: int = 5,
+    year: int | None = None,
+    creator: str | None = None,
+    media_type: str = "movie",
+    genres: list[str] | None = None,
 ) -> tuple[list[dict[str, str]], bool, str | None, str | None]:
     if not settings.GEMINI_API_KEY:
         return _fallback_themes(keywords, overview, count), False, None, "Gemini API key is not configured"
 
+    meta_parts = []
+    if year:
+        meta_parts.append(f"Release Year: {year}")
+    if creator:
+        role = "Director" if media_type == "movie" else "Creator/Showrunner"
+        meta_parts.append(f"{role}: {creator}")
+    if media_type:
+        meta_parts.append(f"Medium/Format: {media_type.capitalize()}")
+    if genres:
+        meta_parts.append(f"Genres: {', '.join(genres)}")
+    if keywords:
+        meta_parts.append(f"Key Themes/Tags: {', '.join(keywords[:12])}")
+
+    meta_block = "\n".join(meta_parts) if meta_parts else "N/A"
+
     prompt = (
-        "Identify 5 core themes from this movie. For each, provide a specific, insightful explanation that:\n"
-        "1. Explains how the theme is demonstrated through character actions and plot events\n"
-        "2. Identifies the emotional or philosophical stakes\n"
-        "3. Connects the theme to the movie's central conflict\n"
-        "Avoid generic phrases like 'the film explores' or 'this theme is important'. Be specific about what happens.\n"
-        "\n"
-        "Return ONLY a JSON array with exactly 5 objects: [{\"title\": string, \"summary\": string}]\n"
-        f"Each summary should be 2-3 sentences grounded in specific plot points or character moments.\n\n"
-        f"Movie: {title}\n"
-        f"Plot: {overview or 'N/A'}\n"
-        f"Keywords: {', '.join(keywords) if keywords else 'N/A'}"
+        f"You are an expert narrative analyst. Your task is to identify and summarize exactly {count} distinct, profound "
+        f"thematic concepts central to the story of the exact {media_type} specified below.\n\n"
+        f"WORK DETAILS:\n"
+        f"Title: {title}\n"
+        f"{meta_block}\n"
+        f"Official Synopsis:\n{overview or 'N/A'}\n\n"
+        "STRICT ACCURACY AND ANTI-HALLUCINATION RULES:\n"
+        f"1. You must analyze ONLY this specific {media_type} ('{title}'"
+        + (f", {year}" if year else "")
+        + (f", directed by {creator}" if creator else "")
+        + ").\n"
+        "2. DO NOT confuse this work with any other film, adaptation, remake, prequel, or sequel with a similar or identical title.\n"
+        "3. DO NOT hallucinate or import characters, subplots, twists, or incidents from other movies. Every statement must be strictly accurate to THIS specific story.\n"
+        "4. Base your themes directly on the verified plot synopsis and the genuine narrative conflict of this work. If a specific plot detail is not certain, articulate the philosophical, moral, and emotional conflict accurately rather than fabricating unverified plot events.\n"
+        "5. Avoid generic filler (e.g., 'the film explores', 'this theme is important'). Write with clarity, precision, and depth.\n\n"
+        f"Return ONLY a valid JSON array containing exactly {count} objects in this format:\n"
+        '[\n  {"title": "Concise Theme Name (2-4 words)", "summary": "2-3 precise sentences explaining how this theme develops in this story, the character or moral stakes, and how it drives the core conflict."}\n]\n'
+        "Do not include markdown outside the JSON block."
     )
 
     text, used_model, ai_error = await generate_gemini_text(prompt)

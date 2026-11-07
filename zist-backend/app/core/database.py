@@ -87,3 +87,27 @@ def ensure_user_profile_columns() -> None:
     with engine.begin() as connection:
         for statement in statements:
             connection.execute(text(statement))
+
+
+def ensure_media_columns() -> None:
+    inspector = inspect(engine)
+    if "media_items" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        column["name"] for column in inspector.get_columns("media_items")
+    }
+    if "tags" in existing_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE media_items ADD COLUMN tags TEXT"))
+
+
+def ensure_ai_cache_table() -> None:
+    inspector = inspect(engine)
+    if "ai_cache" in inspector.get_table_names():
+        return
+
+    from app.models.ai_cache import AICache
+    Base.metadata.create_all(bind=engine, tables=[AICache.__table__])

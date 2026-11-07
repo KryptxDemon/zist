@@ -86,13 +86,18 @@ export function ThemeProvider({
   const setTheme = useCallback(
     (next: ThemeMode) => {
       if (lockedTheme) return;
+      localStorage.setItem(THEME_KEY, next);
       setThemeState(next);
     },
     [lockedTheme],
   );
   const toggleTheme = useCallback(() => {
     if (lockedTheme) return;
-    setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+    setThemeState((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      localStorage.setItem(THEME_KEY, next);
+      return next;
+    });
   }, [lockedTheme]);
 
   const value = useMemo<ThemeContextValue>(() => {

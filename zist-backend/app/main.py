@@ -5,7 +5,13 @@ import logging
 
 from app.api.api_v1.api import api_router
 from app.core.config import settings
-from app.core.database import Base, engine, ensure_user_profile_columns
+from app.core.database import (
+    Base,
+    engine,
+    ensure_ai_cache_table,
+    ensure_media_columns,
+    ensure_user_profile_columns,
+)
 from app.models import *
 
 logger = logging.getLogger("zist.server")
@@ -55,6 +61,7 @@ def create_application() -> FastAPI:
 
     @app.get("/health", tags=["Health"])
     def health_check():
+
         return {
             "status": "ok",
             "project": settings.PROJECT_NAME,
@@ -69,9 +76,16 @@ def create_application() -> FastAPI:
             "version": settings.VERSION,
         }
 
-    Base.metadata.create_all(bind=engine)
-    ensure_user_profile_columns()
+    try:
+        Base.metadata.create_all(bind=engine)
+        ensure_user_profile_columns()
+        ensure_media_columns()
+        ensure_ai_cache_table()
+    except Exception as exc:
+        logger.warning("Database initialization deferred/failed: %s", exc)
     return app
 
 
 app = create_application()
+
+

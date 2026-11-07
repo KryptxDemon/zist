@@ -24,7 +24,14 @@ import {
   aiService,
 } from "@/services/externalServices";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   MediaItem,
+  MediaStatus,
   ThemeConcept,
   FactItem,
   VocabItem,
@@ -162,6 +169,26 @@ export default function MediaDetail() {
     }
   };
 
+  const handleStatusChange = async (nextStatus: MediaStatus) => {
+    if (!media || media.status === nextStatus) return;
+    const prev = media;
+    setMedia({ ...media, status: nextStatus });
+    try {
+      const updated = await mediaService.update(media.id, { status: nextStatus });
+      setMedia(updated);
+      toast({
+        title: "Status updated",
+        description: `Set to ${nextStatus.replace("-", " ")}.`,
+      });
+    } catch {
+      setMedia(prev);
+      toast({
+        title: "Failed to update status",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading || !media) {
     return (
       <AppLayout>
@@ -203,7 +230,37 @@ export default function MediaDetail() {
                 {media.title}
               </h1>
               <MediaTypeBadge type={media.type} size="sm" />
-              <StatusBadge status={media.status} size="sm" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="cursor-pointer transition-transform hover:scale-105 focus:outline-none"
+                    title="Click to change status"
+                  >
+                    <StatusBadge status={media.status} size="sm" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-36">
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange("planned")}
+                    className="cursor-pointer"
+                  >
+                    Planned
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange("in-progress")}
+                    className="cursor-pointer"
+                  >
+                    In Progress
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange("completed")}
+                    className="cursor-pointer"
+                  >
+                    Completed
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <p className="text-muted-foreground">
               {media.creator && `${media.creator} • `}
@@ -818,6 +875,12 @@ function ThemeCard({
     }
   };
 
+  const handleCopyTheme = () => {
+    const text = `${theme.title}\n\n${theme.summary || ""}`.trim();
+    navigator.clipboard.writeText(text);
+    toast({ title: "Theme copied to clipboard!" });
+  };
+
   return (
     <div className="glass grain rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4">
@@ -851,6 +914,9 @@ function ThemeCard({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={handleCopyTheme} title="Copy theme">
+            <Copy className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={handleDeleteTheme}>
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -1471,6 +1537,12 @@ function VocabCard({
     }
   };
 
+  const handleCopyWord = () => {
+    const text = `${word.word}: ${word.definition || ""}`.trim();
+    navigator.clipboard.writeText(text);
+    toast({ title: "Word copied to clipboard!" });
+  };
+
   return (
     <div
       className={cn(
@@ -1483,6 +1555,9 @@ function VocabCard({
           {word.word}
         </h4>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={handleCopyWord} title="Copy word">
+            <Copy className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={handleDeleteWord}>
             <Trash2 className="h-4 w-4" />
           </Button>

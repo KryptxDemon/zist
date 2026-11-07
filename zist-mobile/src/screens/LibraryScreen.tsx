@@ -16,10 +16,12 @@ import {
   MediaCardSkeleton,
   Screen,
   SearchInput,
+  Segmented,
   Select,
   Text,
   useToast,
   type SelectOption,
+  type TabItem,
 } from "@/components/ui";
 import { PageHeader } from "@/components/layout/AppHeader";
 import { MediaGridCard } from "@/components/library/MediaGridCard";
@@ -38,8 +40,8 @@ const TYPE_OPTIONS: SelectOption<MediaType>[] = [
   { value: "game", label: "Games" },
 ];
 
-const STATUS_OPTIONS: SelectOption<MediaStatus | "all">[] = [
-  { value: "all", label: "All Status" },
+const STATUS_TABS: TabItem<MediaStatus | "all">[] = [
+  { value: "all", label: "All" },
   { value: "planned", label: "Planned" },
   { value: "in-progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
@@ -223,20 +225,19 @@ export function LibraryScreen() {
           allLabel="All Types"
         />
 
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <Select<MediaStatus | "all">
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={STATUS_OPTIONS}
-            label="Status"
-            style={{ flex: 1 }}
-          />
+        <Segmented<MediaStatus | "all">
+          value={statusFilter}
+          onChange={setStatusFilter}
+          items={STATUS_TABS}
+        />
+
+        <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
           <Select<SortOption>
             value={sortBy}
             onChange={setSortBy}
             options={SORT_OPTIONS}
-            label="Sort"
-            style={{ flex: 1 }}
+            label="Sort by"
+            style={{ minWidth: 160 }}
           />
         </View>
       </View>

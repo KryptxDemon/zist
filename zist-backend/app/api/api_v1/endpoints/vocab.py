@@ -1,8 +1,12 @@
+import json
+import logging
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
+from app.models.ai_cache import AICache
 from app.models.media import MediaItem
 from app.models.user import User
 from app.models.vocab import VocabItem
@@ -10,6 +14,8 @@ from app.schemas.vocab import VocabCreate, VocabListResponse, VocabResponse, Voc
 from app.services.tmdb import get_movie_themes_payload
 from app.services.vocab_generator import generate_movie_vocab
 from app.utils.pagination import paginate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -207,15 +213,78 @@ async def generate_vocab_for_media(
         query=media.title,
         tmdb_id=media.external_id if media.external_source == 'tmdb' else None,
     )
-    overview = (tmdb_payload or {}).get('overview') or ''
-    keywords = (tmdb_payload or {}).get('keywords') or []
+    canonical_title = str((tmdb_payload or {}).get("title") or media.title).strip()
+    overview = (tmdb_payload or {}).get("overview") or ""
+    keywords = (tmdb_payload or {}).get("keywords") or []
+    release_year = (tmdb_payload or {}).get("release_year")
+    director = (tmdb_payload or {}).get("director")
+    tmdb_id = (tmdb_payload or {}).get("id")
+    norm_title = re.sub(r"[^\w\s]", "", canonical_title.lower()).strip()
+    norm_title = re.sub(r"\s+", "_", norm_title)
 
-    items, used_ai, used_model, ai_error = await generate_movie_vocab(
-        title=tmdb_payload.get('title') if tmdb_payload else media.title,
-        overview=overview,
-        keywords=keywords,
-        count=count,
-    )
+    # Check database cache first
+    cached_record: AICache | None = None
+    if tmdb_id:
+        cached_record = db.query(AICache).filter(
+            AICache.content_type == "vocab",
+            AICache.cache_key == f"vocab:tmdb:{tmdb_id}",
+        ).first()
+
+    if not cached_record and norm_title:
+        year_suffix = f":{release_year}" if release_year else ""
+        cached_record = db.query(AICache).filter(
+            AICache.content_type == "vocab",
+            AICache.cache_key == f"vocab:title:{norm_title}{year_suffix}",
+        ).first()
+
+    items: list[dict] = []
+    used_ai = False
+    used_model: str | None = None
+    ai_error: str | None = None
+
+    if cached_record and cached_record.data:
+        try:
+            cached_data = json.loads(cached_record.data)
+            if isinstance(cached_data, list) and cached_data:
+                items = cached_data
+                used_ai = True
+                used_model = f"{cached_record.model_used or 'gemini'} (cached)"
+                logger.info(
+                    "Retrieved cached vocab for '%s' from AICache (key: %s)",
+                    canonical_title,
+                    cached_record.cache_key,
+                )
+        except Exception:
+            logger.warning("Failed to decode cached vocab for '%s'", canonical_title)
+
+    if not items:
+        items, used_ai, used_model, ai_error = await generate_movie_vocab(
+            title=canonical_title,
+            overview=overview,
+            keywords=keywords,
+            count=count,
+            release_year=release_year,
+            director=director,
+            media_type=media.type or "movie",
+        )
+
+        if used_ai and items:
+            try:
+                cache_key = f"vocab:tmdb:{tmdb_id}" if tmdb_id else f"vocab:title:{norm_title}:{release_year or 'na'}"
+                new_cache = AICache(
+                    cache_key=cache_key,
+                    content_type="vocab",
+                    external_id=str(tmdb_id) if tmdb_id else None,
+                    media_title=canonical_title,
+                    data=json.dumps(items),
+                    model_used=used_model,
+                )
+                db.add(new_cache)
+                db.commit()
+                logger.info("Cached newly generated vocab for '%s' (key: %s)", canonical_title, cache_key)
+            except Exception as e:
+                db.rollback()
+                logger.warning("Could not persist vocab to AICache: %s", e)
 
     existing_words = {
         v.word.strip().lower(): v for v in db.query(VocabItem).filter(VocabItem.media_id == media_id).all()

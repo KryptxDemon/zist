@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { LibraryBig, Plus, Search, Star, WandSparkles, X } from "lucide-react-native";
+import { ArrowLeft, LibraryBig, Plus, Search, Star, WandSparkles, X } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import { mediaService } from "@/services/mediaService";
@@ -12,6 +12,7 @@ import {
   Card,
   ChipSelect,
   Field,
+  IconButton,
   Input,
   Label,
   Row,
@@ -75,6 +76,7 @@ export function AddMediaScreen() {
   const [mode, setMode] = useState<Mode>("discover");
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const searchRequestId = useRef(0);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedResult, setSelectedResult] = useState<MediaResultItem | null>(null);
   const [groupedResults, setGroupedResults] = useState<{
@@ -260,8 +262,10 @@ export function AddMediaScreen() {
   // Live "search as you type" (debounced), mirroring the web effect.
   useEffect(() => {
     const query = searchQuery.trim();
+    const requestId = ++searchRequestId.current;
     if (!query) {
       setGroupedResults({ moviesTv: [], books: [] });
+      setIsSearching(false);
       return;
     }
 
@@ -270,15 +274,27 @@ export function AddMediaScreen() {
       void (async () => {
         try {
           const results = await mediaSearchService.searchMediaGrouped(query);
+          if (requestId !== searchRequestId.current) return;
           setGroupedResults(results);
+        } catch (error) {
+          if (requestId !== searchRequestId.current) return;
+          setGroupedResults({ moviesTv: [], books: [] });
+          toast({
+            title: "Search failed",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Could not fetch media results.",
+            variant: "destructive",
+          });
         } finally {
-          setIsSearching(false);
+          if (requestId === searchRequestId.current) setIsSearching(false);
         }
       })();
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, toast]);
 
   const selectedPreview = useMemo(
     () => selectedResult || groupedResults.moviesTv[0] || groupedResults.books[0] || null,
@@ -299,12 +315,19 @@ export function AddMediaScreen() {
 
   return (
     <Screen>
-      <View style={{ gap: 6 }}>
-        <Text variant="h1">Add Media</Text>
-        <Text variant="muted">
-          Search by title, preview rich results with posters, and add a polished entry to your
-          library in one pass.
-        </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 4 }}>
+        <IconButton
+          accessibilityLabel="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))}
+        >
+          <ArrowLeft size={22} color={colors.foreground} />
+        </IconButton>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="h2" weight="bold">Add Media</Text>
+          <Text variant="muted">
+            Search by title or enter details to grow your library.
+          </Text>
+        </View>
       </View>
 
       <Row gap={8} align="stretch">

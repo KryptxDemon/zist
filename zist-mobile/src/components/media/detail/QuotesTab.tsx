@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Share, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import {
   Bookmark,
   ChevronDown,
@@ -7,6 +8,7 @@ import {
   Copy,
   Plus,
   Quote,
+  Share2,
   Sparkles,
 } from "lucide-react-native";
 
@@ -272,9 +274,20 @@ function QuoteCard({
 
   const handleCopy = async () => {
     try {
-      await Share.share({ message: quote.text });
+      const textToCopy = quote.speaker ? `“${quote.text}” — ${quote.speaker}` : quote.text;
+      await Clipboard.setStringAsync(textToCopy);
+      toast({ title: "Quote copied to clipboard!" });
     } catch {
-      toast({ title: "Failed to share quote", variant: "destructive" });
+      toast({ title: "Failed to copy", variant: "destructive" });
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const textToShare = quote.speaker ? `“${quote.text}” — ${quote.speaker}` : quote.text;
+      await Share.share({ message: textToShare });
+    } catch {
+      // User cancelled or share dismissed
     }
   };
 
@@ -331,17 +344,20 @@ function QuoteCard({
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-          <IconButton size="iconSm" onPress={() => void handleCopy()}>
+          <IconButton size="iconSm" accessibilityLabel="Copy quote" onPress={() => void handleCopy()}>
             <Copy size={18} color={colors.mutedForeground} />
           </IconButton>
-          <IconButton size="iconSm" onPress={() => void handleToggleBookmark()}>
+          <IconButton size="iconSm" accessibilityLabel="Share quote" onPress={() => void handleShare()}>
+            <Share2 size={18} color={colors.mutedForeground} />
+          </IconButton>
+          <IconButton size="iconSm" accessibilityLabel="Bookmark quote" onPress={() => void handleToggleBookmark()}>
             <Bookmark
               size={18}
               color={quote.isBookmarked ? colors.primary : colors.mutedForeground}
               fill={quote.isBookmarked ? colors.primary : "none"}
             />
           </IconButton>
-          <IconButton size="iconSm" onPress={() => setIsExpanded((prev) => !prev)}>
+          <IconButton size="iconSm" accessibilityLabel="Toggle meaning" onPress={() => setIsExpanded((prev) => !prev)}>
             {isExpanded ? (
               <ChevronUp size={18} color={colors.mutedForeground} />
             ) : (

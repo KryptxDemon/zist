@@ -8,28 +8,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  cuteAvatars,
+  getCuteAvatarUri,
+  getInitials,
+  createInitialsAvatar,
+} from "@/lib/avatar";
+import {
   ArrowLeft,
-  ImagePlus,
+  Camera,
+  Check,
+  Globe,
+  Link as LinkIcon,
   Loader2,
-  Palette,
   Sparkles,
-  Upload,
+  User as UserIcon,
   WandSparkles,
 } from "lucide-react";
 
-const avatarPresets = [
-  { name: "Aurora", colors: ["#0ea5e9", "#1d4ed8"] },
-  { name: "Sunset", colors: ["#fb7185", "#f97316"] },
-  { name: "Forest", colors: ["#22c55e", "#166534"] },
-  { name: "Midnight", colors: ["#1f2937", "#4f46e5"] },
-  { name: "Candy", colors: ["#ec4899", "#8b5cf6"] },
-  { name: "Citrus", colors: ["#f59e0b", "#eab308"] },
-  { name: "Ocean", colors: ["#06b6d4", "#0f766e"] },
-  { name: "Slate", colors: ["#334155", "#0f172a"] },
-] as const;
-
 const socialFields = [
   { key: "websiteUrl", label: "Website", placeholder: "https://your-site.com" },
+  { key: "xUrl", label: "X (Twitter)", placeholder: "https://x.com/username" },
   {
     key: "githubUrl",
     label: "GitHub",
@@ -45,51 +43,12 @@ const socialFields = [
     label: "Instagram",
     placeholder: "https://instagram.com/username",
   },
-  { key: "xUrl", label: "X", placeholder: "https://x.com/username" },
   {
     key: "youtubeUrl",
     label: "YouTube",
     placeholder: "https://youtube.com/@channel",
   },
 ] as const;
-
-function getInitials(
-  firstName: string,
-  lastName: string,
-  displayName: string,
-): string {
-  const first = firstName.trim().charAt(0);
-  const last = lastName.trim().charAt(0);
-  if (first || last) return `${first}${last}`.trim().toUpperCase();
-
-  const nameParts = displayName.trim().split(/\s+/).filter(Boolean);
-  if (nameParts.length >= 2) {
-    return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
-  }
-
-  return (displayName.trim().charAt(0) || "U").toUpperCase();
-}
-
-function createInitialsAvatar(
-  initials: string,
-  colors: readonly [string, string],
-): string {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-      <defs>
-        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="${colors[0]}" />
-          <stop offset="100%" stop-color="${colors[1]}" />
-        </linearGradient>
-      </defs>
-      <rect width="512" height="512" rx="120" fill="url(#bg)" />
-      <circle cx="256" cy="256" r="176" fill="rgba(255,255,255,0.08)" />
-      <text x="50%" y="54%" text-anchor="middle" font-family="Arial, sans-serif" font-size="164" font-weight="700" fill="white" dominant-baseline="middle">${initials}</text>
-    </svg>
-  `;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
 
 async function compressImage(file: File): Promise<string> {
   const source = await new Promise<string>((resolve, reject) => {
@@ -141,11 +100,13 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [showCustomUrlInput, setShowCustomUrlInput] = useState(false);
   const [socialLinks, setSocialLinks] = useState({
     websiteUrl: "",
     githubUrl: "",
@@ -177,11 +138,14 @@ export default function Profile() {
     [displayName, firstName, lastName],
   );
 
-  const handleAvatarPick = (colors: readonly [string, string]) => {
-    setAvatar(createInitialsAvatar(initials, colors));
+  const previewAvatar =
+    avatar || user?.avatar || getCuteAvatarUri(cuteAvatars[0].svg);
+
+  const handleCuteAvatarPick = (svg: string, name: string) => {
+    setAvatar(getCuteAvatarUri(svg));
     toast({
-      title: "Avatar updated",
-      description: "A new avatar style is ready.",
+      title: "Avatar selected",
+      description: `You've chosen ${name}! Click Save Changes to keep it.`,
     });
   };
 
@@ -191,15 +155,15 @@ export default function Profile() {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-    event.target.value = "";
     if (!file) return;
 
+    setIsUploading(true);
     try {
       const compressed = await compressImage(file);
       setAvatar(compressed);
       toast({
         title: "Image uploaded",
-        description: "Your picture was compressed for faster loading.",
+        description: "Your picture was compressed for fast loading.",
       });
     } catch (error) {
       toast({
@@ -210,34 +174,43 @@ export default function Profile() {
             : "Unable to process the image.",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleUseInitials = () => {
-    setAvatar(createInitialsAvatar(initials, avatarPresets[3].colors));
+    setAvatar(createInitialsAvatar(initials));
     toast({
       title: "Initials avatar ready",
-      description: "Your profile picture now uses your initials.",
+      description: `Using your initials (${initials}).`,
     });
   };
 
   const handleSave = async () => {
     if (!user) return;
+    if (!displayName.trim()) {
+      toast({
+        title: "Display name is required",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
       await updateProfile({
-        displayName,
-        firstName,
-        lastName,
-        bio,
-        avatar: avatar || undefined,
-        websiteUrl: socialLinks.websiteUrl || undefined,
-        githubUrl: socialLinks.githubUrl || undefined,
-        linkedinUrl: socialLinks.linkedinUrl || undefined,
-        instagramUrl: socialLinks.instagramUrl || undefined,
-        xUrl: socialLinks.xUrl || undefined,
-        youtubeUrl: socialLinks.youtubeUrl || undefined,
+        displayName: displayName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        bio: bio.trim(),
+        avatar: avatar.trim() || undefined,
+        websiteUrl: socialLinks.websiteUrl.trim() || undefined,
+        githubUrl: socialLinks.githubUrl.trim() || undefined,
+        linkedinUrl: socialLinks.linkedinUrl.trim() || undefined,
+        instagramUrl: socialLinks.instagramUrl.trim() || undefined,
+        xUrl: socialLinks.xUrl.trim() || undefined,
+        youtubeUrl: socialLinks.youtubeUrl.trim() || undefined,
       });
 
       toast({
@@ -257,221 +230,288 @@ export default function Profile() {
     }
   };
 
-  const previewAvatar =
-    avatar ||
-    user?.avatar ||
-    createInitialsAvatar(initials, avatarPresets[0].colors);
-
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-20 md:pb-0">
+      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 md:pb-12">
+        {/* Header Bar */}
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">
-              Edit Profile
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Refresh your avatar, socials, and bio.
-            </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/app/profile")}
+              className="rounded-full"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">
+                Edit Profile
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Manage your identity, cute avatars, and social presence.
+              </p>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/app/profile")}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to profile
+          <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save Changes
           </Button>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-6">
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-border/50 bg-gradient-to-br from-primary/15 via-background to-cyan-500/10 p-6">
-              <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/20 blur-3xl" />
-              <div className="relative flex items-center gap-4">
-                <div className="h-24 w-24 rounded-[1.5rem] overflow-hidden border border-white/10 bg-background shadow-xl">
-                  <img
-                    src={previewAvatar}
-                    alt="Profile preview"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                    Profile preview
-                  </p>
-                  <h2 className="font-display text-2xl font-bold text-foreground">
-                    {displayName || "Your name"}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {bio ||
-                      "Add a short bio that introduces your learning style."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <ImagePlus className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-foreground">Avatar studio</h3>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button
-                  variant="outline"
-                  onClick={handleUploadClick}
-                  className="justify-start gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Upload image
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleUseInitials}
-                  className="justify-start gap-2"
-                >
-                  <WandSparkles className="h-4 w-4" />
-                  Use initials
-                </Button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={handleUploadChange}
+        {/* 1. Identity Preview Card */}
+        <div className="relative overflow-hidden rounded-[2rem] border border-border/50 bg-gradient-to-br from-primary/15 via-background to-cyan-500/10 p-6 shadow-sm">
+          <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+          <div className="relative flex items-center gap-5">
+            <div className="h-24 w-24 shrink-0 rounded-2xl overflow-hidden border-2 border-primary/30 bg-background shadow-xl">
+              <img
+                src={previewAvatar}
+                alt="Profile preview"
+                className="h-full w-full object-cover"
               />
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {avatarPresets.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => handleAvatarPick(preset.colors)}
-                    className="group rounded-2xl border border-border/60 bg-background/70 p-3 text-left transition-all hover:border-primary/40 hover:shadow-lg"
-                  >
-                    <div
-                      className="mb-3 h-16 w-16 rounded-2xl"
-                      style={{
-                        background: `linear-gradient(135deg, ${preset.colors[0]}, ${preset.colors[1]})`,
-                      }}
-                    />
-                    <p className="text-sm font-medium text-foreground">
-                      {preset.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Click to apply
-                    </p>
-                  </button>
-                ))}
+            </div>
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+                  Live Preview
+                </span>
               </div>
+              <h2 className="font-display text-2xl font-bold text-foreground truncate">
+                {displayName || "Your Name"}
+              </h2>
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {bio || "Add a short bio below to introduce yourself to friends and learners."}
+              </p>
             </div>
           </div>
+        </div>
 
-          <div className="space-y-6">
-            <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
+        {/* 2. Cute & Unique Avatar Studio */}
+        <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <h3 className="font-display text-xl font-semibold text-foreground">
-                  Profile details
+                <h3 className="font-display text-lg font-bold text-foreground">
+                  Cute & Unique Avatars
                 </h3>
               </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Your first name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Your last name"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="The name people see"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell people what you learn, watch, or obsess over."
-                  rows={5}
-                />
-              </div>
-            </div>
-
-            <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
-              <div className="flex items-center gap-2">
-                <Palette className="h-4 w-4 text-primary" />
-                <h3 className="font-display text-xl font-semibold text-foreground">
-                  Social links
-                </h3>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {socialFields.map((field) => (
-                  <div key={field.key} className="space-y-2 sm:col-span-1">
-                    <Label htmlFor={field.key}>{field.label}</Label>
-                    <Input
-                      id={field.key}
-                      value={socialLinks[field.key]}
-                      onChange={(e) =>
-                        setSocialLinks((current) => ({
-                          ...current,
-                          [field.key]: e.target.value,
-                        }))
-                      }
-                      placeholder={field.placeholder}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">
-                Your avatar and links update across the app after saving.
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Pick a handcrafted character that matches your personality
               </p>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/app/profile")}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-w-36"
-                >
-                  {isSaving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Save Changes
-                </Button>
-              </div>
             </div>
           </div>
+
+          {/* 8 Cute Characters Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+            {cuteAvatars.map((char) => {
+              const charUri = getCuteAvatarUri(char.svg);
+              const isSelected = avatar === charUri;
+
+              return (
+                <button
+                  key={char.id}
+                  type="button"
+                  onClick={() => handleCuteAvatarPick(char.svg, char.name)}
+                  className={`group relative flex flex-col items-center gap-2 rounded-2xl p-2.5 transition-all text-center border ${
+                    isSelected
+                      ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/40"
+                      : "border-border/60 bg-background/50 hover:bg-accent/40 hover:border-primary/40"
+                  }`}
+                >
+                  <div className="h-14 w-14 overflow-hidden rounded-xl bg-background/60 shadow-inner">
+                    <img
+                      src={charUri}
+                      alt={char.name}
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-foreground truncate w-full">
+                    {char.name}
+                  </span>
+                  <span className="text-[9px] text-muted-foreground truncate w-full">
+                    {char.tag}
+                  </span>
+                  {isSelected && (
+                    <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white">
+                      <Check className="h-2.5 w-2.5" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Photo Upload & Initials Shortcuts */}
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleUploadClick}
+              disabled={isUploading}
+              className="gap-2"
+            >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
+              Upload Photo
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleUseInitials}
+              className="gap-2"
+            >
+              <WandSparkles className="h-4 w-4" />
+              Use Initials
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleUploadChange}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowCustomUrlInput((v) => !v)}
+              className="text-xs text-primary hover:underline flex items-center gap-1.5 ml-auto self-center"
+            >
+              <LinkIcon className="h-3 w-3" />
+              {showCustomUrlInput ? "Hide image link input" : "Or use custom image URL..."}
+            </button>
+          </div>
+
+          {showCustomUrlInput && (
+            <div className="space-y-1.5 pt-2">
+              <Label className="text-xs">Custom Avatar URL</Label>
+              <Input
+                value={avatar.startsWith("data:") ? "" : avatar}
+                onChange={(e) => setAvatar(e.target.value)}
+                placeholder="https://example.com/avatar.png"
+                className="text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 3. Personal Information */}
+        <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
+          <div className="flex items-center gap-2">
+            <UserIcon className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-lg font-bold text-foreground">
+              Personal Information
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="displayName" className="text-sm font-medium">
+                Display Name <span className="text-primary">*</span>
+              </Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="The name people see (e.g. Alex Chen)"
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="firstName" className="text-sm font-medium">
+                  First Name
+                </Label>
+                <Input
+                  id="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="First name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName" className="text-sm font-medium">
+                  Last Name
+                </Label>
+                <Input
+                  id="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Last name"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="bio" className="text-sm font-medium">
+                Bio / About You
+              </Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Cinema enthusiast & CS student exploring storytelling and history."
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Social Links */}
+        <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" />
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground">
+                Social Links
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Connect your profiles so friends can discover your work
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {socialFields.map((field) => (
+              <div key={field.key} className="space-y-1.5">
+                <Label htmlFor={field.key} className="text-sm font-medium">
+                  {field.label}
+                </Label>
+                <Input
+                  id={field.key}
+                  value={socialLinks[field.key]}
+                  onChange={(e) =>
+                    setSocialLinks((current) => ({
+                      ...current,
+                      [field.key]: e.target.value,
+                    }))
+                  }
+                  placeholder={field.placeholder}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 5. Bottom Actions */}
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/app/profile")}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving} className="gap-2 min-w-[140px]">
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
         </div>
       </div>
     </AppLayout>

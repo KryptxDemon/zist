@@ -124,6 +124,9 @@ async def generate_movie_vocab(
     overview: str,
     keywords: list[str] | None = None,
     count: int = 8,
+    release_year: str | None = None,
+    director: str | None = None,
+    media_type: str = "movie",
 ) -> tuple[list[dict[str, Any]], bool, str | None, str | None]:
     """Generate vocabulary items for a media title.
 
@@ -136,19 +139,34 @@ async def generate_movie_vocab(
     if not settings.GEMINI_API_KEY:
         return _fallback_vocab(overview, safe_count), False, None, "Gemini API key is not configured"
 
+    meta_parts = [f"Title: '{title}'"]
+    if release_year:
+        meta_parts.append(f"Release Year: {release_year}")
+    if director:
+        meta_parts.append(f"Director / Creator: {director}")
+    if media_type:
+        meta_parts.append(f"Format: {media_type.capitalize()}")
+    if overview:
+        meta_parts.append(f"Plot Overview: {overview[:600]}")
+    if keywords:
+        meta_parts.append(f"Keywords: {', '.join(keywords[:10])}")
+
+    metadata_block = "\n".join(f"- {p}" for p in meta_parts)
+
     prompt = (
-        f"Identify up to {safe_count} interesting, uncommon, or thematic vocabulary words "
-        f"from the movie / show titled '{title}'. Prefer words that are central to the plot, "
-        "themes, or setting. For each word, provide:\n"
+        f"Identify up to {safe_count} salient, uncommon, or thematic vocabulary words "
+        f"from the following {media_type}:\n\n"
+        f"{metadata_block}\n\n"
+        "STRICT ACCURACY RULES:\n"
+        f"1. Choose words specifically relevant to '{title}' ({release_year or 'canonical release'}).\n"
+        "2. Do NOT import terms or context from unrelated movies or franchises.\n"
+        "3. For each word, provide:\n"
         "- word (the vocabulary term)\n"
         "- part_of_speech (e.g., noun, verb, adjective)\n"
         "- definition (short, learner-friendly)\n"
-        "- example_sentence (one short sentence using the word in a clear context)\n\n"
+        "- example_sentence (one sentence showing usage in context of the story or theme)\n\n"
         "Return ONLY a JSON array of objects with these exact keys. "
-        "Do not include any commentary or markdown fences.\n\n"
-        f"Movie: {title}\n"
-        f"Plot: {overview or 'N/A'}\n"
-        f"Keywords: {', '.join(keywords) if keywords else 'N/A'}"
+        "Do not include any commentary or markdown fences."
     )
 
     text, used_model, ai_error = await generate_gemini_text(prompt)

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, FlatList, View } from "react-native";
 import { useRouter } from "expo-router";
 import {
+  ArrowLeft,
   BookOpen,
   CheckCircle2,
   Circle,

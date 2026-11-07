@@ -26,7 +26,8 @@ import { RadialGlow } from "@/components/layout/RadialGlow";
 import { IconButton, Text } from "@/components/ui";
 
 /** The web's `.login-image` / `.signup-image` (`/bg.jpg`). */
-const BRAND_IMAGE = require("@/../assets/brand/bg.jpg");
+const BRAND_IMAGE = require("../../../assets/brand/bg.jpg");
+const LOGO_IMAGE = require("../../../assets/brand/zist-logo.png");
 
 /**
  * Shared chrome for the login / signup / reset-password screens.
@@ -101,7 +102,7 @@ function IdentityScaffold({ children }: { children: React.ReactNode }) {
           }}
         >
           <Image
-            source={require("@/../assets/brand/zist-logo.png")}
+            source={LOGO_IMAGE}
             style={{ height: 30, width: 30 }}
             resizeMode="contain"
           />
@@ -157,7 +158,7 @@ function AppScaffold({ children }: { children: React.ReactNode }) {
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Image
-            source={require("@/../assets/brand/zist-logo.png")}
+            source={LOGO_IMAGE}
             style={{ height: 40, width: 40, borderRadius: 12 }}
             resizeMode="contain"
           />

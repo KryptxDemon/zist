@@ -123,15 +123,15 @@ async def _enrich_with_creator(item: dict, media_type: str) -> dict:
 	)
 
 
-async def _tmdb_get(path: str, query: str) -> list[dict]:
+async def _tmdb_get(path: str, query: str, params: dict | None = None) -> list[dict]:
 	if not settings.TMDB_API_KEY:
 		return []
 	url = f"{settings.TMDB_BASE_URL}{path}"
-	params = {"api_key": settings.TMDB_API_KEY, "query": query}
+	merged = {"api_key": settings.TMDB_API_KEY, "query": query, **(params or {})}
 
 	try:
 		async with httpx.AsyncClient(timeout=10) as client:
-			response = await client.get(url, params=params)
+			response = await client.get(url, params=merged)
 			response.raise_for_status()
 		payload = response.json()
 		return payload.get("results", [])
@@ -183,11 +183,12 @@ async def get_movie_by_tmdb_id(tmdb_id: str) -> dict | None:
 		return None
 
 
-async def get_movie_keywords(tmdb_id: str) -> list[str]:
+async def get_movie_keywords(tmdb_id: str, media_type: str = "movie") -> list[str]:
 	if not settings.TMDB_API_KEY:
 		return []
 
-	url = f"{settings.TMDB_BASE_URL}/movie/{tmdb_id}/keywords"
+	endpoint = "tv" if media_type == "tv" else "movie"
+	url = f"{settings.TMDB_BASE_URL}/{endpoint}/{tmdb_id}/keywords"
 	params = {"api_key": settings.TMDB_API_KEY}
 
 	try:
@@ -195,9 +196,16 @@ async def get_movie_keywords(tmdb_id: str) -> list[str]:
 			response = await client.get(url, params=params)
 			response.raise_for_status()
 		payload = response.json()
-		keywords = payload.get("keywords", []) if isinstance(payload, dict) else []
+		raw_keywords = (
+			payload.get("results")
+			if media_type == "tv"
+			else payload.get("keywords")
+		)
+		if not isinstance(raw_keywords, list):
+			raw_keywords = payload.get("keywords") or payload.get("results") or []
+
 		results: list[str] = []
-		for keyword in keywords:
+		for keyword in raw_keywords:
 			name = keyword.get("name") if isinstance(keyword, dict) else None
 			if isinstance(name, str) and name.strip():
 				results.append(name.strip())
@@ -206,31 +214,77 @@ async def get_movie_keywords(tmdb_id: str) -> list[str]:
 		return []
 
 
-async def get_movie_themes_payload(query: str, tmdb_id: str | None = None) -> dict | None:
+async def get_movie_themes_payload(
+	query: str,
+	tmdb_id: str | None = None,
+	media_type: str = "movie",
+	year: int | None = None,
+) -> dict | None:
 	movie_data: dict | None = None
+	mtype = "tv" if media_type == "tv" else "movie"
 
 	if tmdb_id:
-		movie_data = await get_movie_by_tmdb_id(tmdb_id)
+		endpoint = "tv" if mtype == "tv" else "movie"
+		movie_data = await _tmdb_get_json(f"/{endpoint}/{tmdb_id}")
 
 	if not movie_data:
-		results = await _tmdb_get("/search/movie", query)
+		search_path = "/search/tv" if mtype == "tv" else "/search/movie"
+		search_params: dict = {}
+		if year:
+			if mtype == "tv":
+				search_params["first_air_date_year"] = year
+			else:
+				search_params["primary_release_year"] = year
+
+		results = await _tmdb_get(search_path, query, params=search_params)
+		if not results and year:
+			# Retry without year filter if no exact match
+			results = await _tmdb_get(search_path, query)
+
 		if not results:
 			return None
 		first = results[0]
 		resolved_id = first.get("id")
 		if resolved_id is None:
 			return None
-		movie_data = await get_movie_by_tmdb_id(str(resolved_id))
+		endpoint = "tv" if mtype == "tv" else "movie"
+		movie_data = await _tmdb_get_json(f"/{endpoint}/{resolved_id}")
 
 	if not movie_data:
 		return None
 
 	movie_id = movie_data.get("id")
-	keywords = await get_movie_keywords(str(movie_id)) if movie_id is not None else []
+	keywords = (
+		await get_movie_keywords(str(movie_id), mtype)
+		if movie_id is not None
+		else []
+	)
+
+	# Extract year
+	date_str = movie_data.get("release_date") or movie_data.get("first_air_date") or ""
+	resolved_year = int(date_str[:4]) if len(date_str) >= 4 and date_str[:4].isdigit() else year
+
+	# Extract genres
+	genres = [
+		g.get("name")
+		for g in movie_data.get("genres", [])
+		if isinstance(g, dict) and g.get("name")
+	]
+
+	# Extract creator / director
+	creator = None
+	if movie_id:
+		if mtype == "tv":
+			creator = await _fetch_tv_creator(str(movie_id))
+		else:
+			creator = await _fetch_movie_creator(str(movie_id))
 
 	return {
 		"tmdb_id": str(movie_id) if movie_id is not None else None,
-		"title": movie_data.get("title") or query,
+		"title": movie_data.get("title") or movie_data.get("name") or query,
 		"overview": movie_data.get("overview") or "",
 		"keywords": keywords,
+		"year": resolved_year,
+		"creator": creator,
+		"genres": genres,
 	}

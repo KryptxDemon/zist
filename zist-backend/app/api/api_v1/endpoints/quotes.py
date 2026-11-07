@@ -1,13 +1,19 @@
+import json
+import logging
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
+from app.models.ai_cache import AICache
 from app.models.media import MediaItem
 from app.models.quote import QuoteItem
 from app.models.user import User
 from app.schemas.quote import QuoteCreate, QuoteListResponse, QuoteResponse, QuoteUpdate
 from app.services.quote_generator import generate_movie_quotes
 from app.services.tmdb import get_movie_themes_payload
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -71,12 +77,76 @@ async def generate_quotes_for_media(
             detail="Could not find this title on TMDb for quote generation.",
         )
 
-    generated_quotes, used_ai, used_model, ai_error = await generate_movie_quotes(
-        title=tmdb_payload.get("title") or media.title,
-        overview=tmdb_payload.get("overview") or "",
-        keywords=tmdb_payload.get("keywords") or [],
-        count=count,
-    )
+    canonical_title = str(tmdb_payload.get("title") or media.title).strip()
+    release_year = tmdb_payload.get("release_year")
+    director = tmdb_payload.get("director")
+    tmdb_id = tmdb_payload.get("id")
+    norm_title = re.sub(r"[^\w\s]", "", canonical_title.lower()).strip()
+    norm_title = re.sub(r"\s+", "_", norm_title)
+
+    # Check database cache first
+    cached_record: AICache | None = None
+    if tmdb_id:
+        cached_record = db.query(AICache).filter(
+            AICache.content_type == "quotes",
+            AICache.cache_key == f"quotes:tmdb:{tmdb_id}",
+        ).first()
+
+    if not cached_record and norm_title:
+        year_suffix = f":{release_year}" if release_year else ""
+        cached_record = db.query(AICache).filter(
+            AICache.content_type == "quotes",
+            AICache.cache_key == f"quotes:title:{norm_title}{year_suffix}",
+        ).first()
+
+    generated_quotes: list[dict] = []
+    used_ai = False
+    used_model: str | None = None
+    ai_error: str | None = None
+
+    if cached_record and cached_record.data:
+        try:
+            cached_data = json.loads(cached_record.data)
+            if isinstance(cached_data, list) and cached_data:
+                generated_quotes = cached_data
+                used_ai = True
+                used_model = f"{cached_record.model_used or 'gemini'} (cached)"
+                logger.info(
+                    "Retrieved cached quotes for '%s' from AICache (key: %s)",
+                    canonical_title,
+                    cached_record.cache_key,
+                )
+        except Exception:
+            logger.warning("Failed to decode cached quotes for '%s'", canonical_title)
+
+    if not generated_quotes:
+        generated_quotes, used_ai, used_model, ai_error = await generate_movie_quotes(
+            title=canonical_title,
+            overview=tmdb_payload.get("overview") or "",
+            keywords=tmdb_payload.get("keywords") or [],
+            count=count,
+            release_year=release_year,
+            director=director,
+            media_type=media.type or "movie",
+        )
+
+        if used_ai and generated_quotes:
+            try:
+                cache_key = f"quotes:tmdb:{tmdb_id}" if tmdb_id else f"quotes:title:{norm_title}:{release_year or 'na'}"
+                new_cache = AICache(
+                    cache_key=cache_key,
+                    content_type="quotes",
+                    external_id=str(tmdb_id) if tmdb_id else None,
+                    media_title=canonical_title,
+                    data=json.dumps(generated_quotes),
+                    model_used=used_model,
+                )
+                db.add(new_cache)
+                db.commit()
+                logger.info("Cached newly generated quotes for '%s' (key: %s)", canonical_title, cache_key)
+            except Exception as e:
+                db.rollback()
+                logger.warning("Could not persist quotes to AICache: %s", e)
 
     existing_quotes = db.query(QuoteItem).filter(QuoteItem.media_id == media_id).all()
     existing_by_text = {quote.text.strip().lower(): quote for quote in existing_quotes}

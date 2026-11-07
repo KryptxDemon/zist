@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { RefreshControl, View } from "react-native";
+import { ImageBackground, RefreshControl, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -168,7 +168,8 @@ export function MediaDetailScreen() {
     setMedia({ ...media, status });
     try {
       const updated = await mediaService.update(media.id, { status });
-      setMedia(updated);
+      setMedia((current) => (current ? { ...current, ...updated, status } : updated));
+      toast({ title: `Status set to ${status}` });
     } catch {
       setMedia(previous);
       toast({ title: "Failed to update status", variant: "destructive" });
@@ -252,6 +253,8 @@ export function MediaDetailScreen() {
   const subtitle = [media.creator, media.year ? String(media.year) : null]
     .filter(Boolean)
     .join(" • ");
+  const createdDate = new Date(media.createdAt).toLocaleDateString();
+  const updatedDate = new Date(media.updatedAt).toLocaleDateString();
 
   const tabs: TabItem<DetailTab>[] = [
     {
@@ -322,17 +325,36 @@ export function MediaDetailScreen() {
       </Row>
 
       {/* Title block */}
-      <View style={{ gap: 10 }}>
-        <Text variant="h1" numberOfLines={3}>
-          {media.title}
-        </Text>
-        <Row gap={8} wrap>
-          <MediaTypeBadge type={media.type} size="md" />
-          <StatusBadge status={media.status} />
-        </Row>
-        {subtitle ? <Text variant="muted">{subtitle}</Text> : null}
-        <StarRating value={media.rating ?? 0} size={22} onChange={handleRate} />
-        <Segmented value={media.status} onChange={handleStatusChange} items={statusItems} />
+      <View style={[styles.heroFrame, { borderColor: colors.border }]}>
+        {media.coverUrl ? (
+          <ImageBackground
+            source={{ uri: media.coverUrl }}
+            blurRadius={18}
+            resizeMode="cover"
+            style={StyleSheet.absoluteFill}
+            imageStyle={styles.heroImage}
+            accessibilityLabel={`${media.title} cover`}
+          />
+        ) : null}
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: colors.background + (media.coverUrl ? "d9" : "00") },
+          ]}
+        />
+        <View style={styles.heroContent}>
+          <Text variant="h1" numberOfLines={3}>
+            {media.title}
+          </Text>
+          <Row gap={8} wrap>
+            <MediaTypeBadge type={media.type} size="md" />
+            <StatusBadge status={media.status} />
+          </Row>
+          {subtitle ? <Text variant="muted">{subtitle}</Text> : null}
+          <StarRating value={media.rating ?? 0} size={22} onChange={handleRate} />
+          <Segmented value={media.status} onChange={handleStatusChange} items={statusItems} />
+        </View>
       </View>
 
       {/* Cover + tags */}
@@ -346,9 +368,19 @@ export function MediaDetailScreen() {
             style={{ width: 120, flexGrow: 0 }}
           />
           <View style={{ flex: 1, gap: 10 }}>
-            <Text variant="label" color="mutedForeground">
-              Tags
+            <Text variant="label" color="mutedForeground">Description</Text>
+            <Text
+              variant="small"
+              numberOfLines={6}
+              color={media.description ? "foreground" : "mutedForeground"}
+              style={!media.description ? { fontStyle: "italic" } : undefined}
+            >
+              {media.description || "No description available."}
             </Text>
+          </View>
+        </Row>
+        <View style={{ gap: 10 }}>
+          <Text variant="label" color="mutedForeground">Tags</Text>
             {media.tags.length > 0 ? (
               <TagRow tags={media.tags} />
             ) : (
@@ -356,8 +388,25 @@ export function MediaDetailScreen() {
                 No tags
               </Text>
             )}
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 130, gap: 3 }}>
+            <Text variant="caption" color="mutedForeground">Added</Text>
+            <Text variant="small">{createdDate}</Text>
           </View>
-        </Row>
+          <View style={{ flex: 1, minWidth: 130, gap: 3 }}>
+            <Text variant="caption" color="mutedForeground">Last updated</Text>
+            <Text variant="small">{updatedDate}</Text>
+          </View>
+          {media.externalSource || media.externalId ? (
+            <View style={{ flex: 1, minWidth: 130, gap: 3 }}>
+              <Text variant="caption" color="mutedForeground">External reference</Text>
+              <Text variant="small" numberOfLines={1}>
+                {[media.externalSource, media.externalId].filter(Boolean).join(" · ")}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </DetailSection>
 
       {/* Tabs */}
@@ -463,3 +512,19 @@ export function MediaDetailScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  heroFrame: {
+    minHeight: 220,
+    overflow: "hidden",
+    borderRadius: 24,
+    borderWidth: 1,
+  },
+  heroImage: {
+    opacity: 0.9,
+  },
+  heroContent: {
+    gap: 10,
+    padding: 18,
+  },
+});

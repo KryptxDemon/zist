@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, Share, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import {
   Bookmark,
   ChevronDown,
   ChevronUp,
+  Copy,
   ExternalLink,
   Lightbulb,
   Plus,
+  Share2,
   Sparkles,
   Trash2,
 } from "lucide-react-native";
@@ -328,6 +331,25 @@ function ThemeCard({
     }
   };
 
+  const handleCopy = async () => {
+    try {
+      const textToCopy = theme.summary ? `${theme.title}\n${theme.summary}` : theme.title;
+      await Clipboard.setStringAsync(textToCopy);
+      toast({ title: "Theme copied to clipboard!" });
+    } catch {
+      toast({ title: "Failed to copy", variant: "destructive" });
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const textToShare = theme.summary ? `${theme.title} — ${theme.summary}` : theme.title;
+      await Share.share({ message: textToShare });
+    } catch {
+      // Dismissed
+    }
+  };
+
   const handleDeleteTheme = async () => {
     try {
       await themeService.delete(theme.id);
@@ -391,17 +413,23 @@ function ThemeCard({
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-          <IconButton size="iconSm" onPress={() => setConfirmVisible(true)}>
-            <Trash2 size={18} color={colors.mutedForeground} />
+          <IconButton size="iconSm" accessibilityLabel="Copy theme" onPress={() => void handleCopy()}>
+            <Copy size={18} color={colors.mutedForeground} />
           </IconButton>
-          <IconButton size="iconSm" onPress={() => void handleToggleSave()}>
+          <IconButton size="iconSm" accessibilityLabel="Share theme" onPress={() => void handleShare()}>
+            <Share2 size={18} color={colors.mutedForeground} />
+          </IconButton>
+          <IconButton size="iconSm" accessibilityLabel="Bookmark theme" onPress={() => void handleToggleSave()}>
             <Bookmark
               size={18}
               color={theme.savedForLater ? colors.primary : colors.mutedForeground}
               fill={theme.savedForLater ? colors.primary : "none"}
             />
           </IconButton>
-          <IconButton size="iconSm" onPress={() => setIsExpanded((prev) => !prev)}>
+          <IconButton size="iconSm" accessibilityLabel="Delete theme" onPress={() => setConfirmVisible(true)}>
+            <Trash2 size={18} color={colors.mutedForeground} />
+          </IconButton>
+          <IconButton size="iconSm" accessibilityLabel="Toggle summary" onPress={() => setIsExpanded((prev) => !prev)}>
             {isExpanded ? (
               <ChevronUp size={18} color={colors.mutedForeground} />
             ) : (

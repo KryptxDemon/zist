@@ -21,7 +21,7 @@ from app.schemas.feed import (
     ShareableContentResponse,
 )
 from app.services.feed_serializer import serialize_feed_comment, serialize_feed_post
-from app.services import notification_service
+from app.services import friend_service, notification_service
 from app.utils.enums import FeedFilterVisibility, FeedPostType
 from app.utils.pagination import paginate
 
@@ -47,10 +47,12 @@ def get_feed(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    following_ids = [
+    direct_follows = [
         row.following_id
         for row in db.query(UserFollow).filter(UserFollow.follower_id == current_user.id).all()
     ]
+    friend_ids = [u.id for u in friend_service.list_friends(db, current_user.id)]
+    following_ids = list(set(direct_follows + friend_ids))
 
     query = db.query(FeedPost)
     if visibility == FeedFilterVisibility.global_:

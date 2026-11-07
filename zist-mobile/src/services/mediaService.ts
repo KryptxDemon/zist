@@ -43,6 +43,8 @@ const mapMediaItem = (item: ApiObject): MediaItem =>
     creator: item.creator,
     description: item.description,
     coverUrl: item.coverUrl ?? item.cover_url,
+    externalSource: item.externalSource ?? item.external_source,
+    externalId: item.externalId ?? item.external_id,
     tags: Array.isArray(item.tags) ? item.tags : [],
     status: item.status,
     rating: item.rating,
@@ -164,6 +166,7 @@ export const mediaService = {
         description: data.description,
         year: data.year,
         creator: data.creator,
+        tags: data.tags ?? [],
         status: data.status,
         external_source: data.externalSource,
         external_id: data.externalId,
@@ -178,15 +181,18 @@ export const mediaService = {
 
   async update(id: string, data: Partial<MediaItem>): Promise<MediaItem> {
     try {
-      const response = await apiClient.patch<ApiObject>(`/media/${id}`, {
-        title: data.title,
-        type: data.type,
-        year: data.year,
-        creator: data.creator,
-        cover_url: data.coverUrl,
-        status: data.status,
-        rating: data.rating,
-      });
+      const payload: Record<string, unknown> = {};
+      if (data.title !== undefined) payload.title = data.title;
+      if (data.type !== undefined) payload.type = data.type;
+      if (data.year !== undefined) payload.year = data.year;
+      if (data.creator !== undefined) payload.creator = data.creator;
+      if (data.coverUrl !== undefined) payload.cover_url = data.coverUrl;
+      if (data.description !== undefined) payload.description = data.description;
+      if (data.tags !== undefined) payload.tags = data.tags;
+      if (data.status !== undefined) payload.status = data.status;
+      if (data.rating !== undefined) payload.rating = data.rating;
+
+      const response = await apiClient.patch<ApiObject>(`/media/${id}`, payload);
       return mapMediaItem(response);
     } catch (error) {
       throw new Error(

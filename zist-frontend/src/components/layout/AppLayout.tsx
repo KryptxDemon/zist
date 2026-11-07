@@ -138,29 +138,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Right side - User Menu */}
           <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="rounded-full"
-              title={
-                theme === "light"
-                  ? "Switch to dark mode"
-                  : "Switch to light mode"
-              }
-            >
-              {theme === "light" ? (
-                <Moon className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-              ) : (
-                <Sun className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-              )}
-            </Button>
-
             {/* Notifications Bell */}
             <NotificationsBell />
 
-            {/* User Avatar */}
+            {/* User Avatar & Settings Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
@@ -179,7 +160,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem
                   onClick={() => navigate("/app/profile")}
                   className="gap-2"
@@ -193,6 +174,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <User className="h-4 w-4" />
                   Friends
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={toggleTheme}
+                  className="gap-2 cursor-pointer"
+                >
+                  {theme === "light" ? (
+                    <>
+                      <Moon className="h-4 w-4 text-primary" />
+                      <span>Dark Theme</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sun className="h-4 w-4 text-primary" />
+                      <span>Light Theme</span>
+                    </>
+                  )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

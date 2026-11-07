@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { RefreshControl, View } from "react-native";
-import { Inbox, Send, UserRound, Users } from "lucide-react-native";
+import { router } from "expo-router";
+import { ArrowLeft, Inbox, Send, UserRound, Users } from "lucide-react-native";
 
 import {
   Card,
   EmptyState,
+  IconButton,
   Screen,
   Segmented,
   Spinner,
@@ -100,9 +102,25 @@ export function FriendsScreen() {
   const outgoingTotal = outgoing?.total ?? 0;
   const friendsTotal = friends?.total ?? 0;
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/");
+    }
+  };
+
   if (loading && !friends) {
     return (
       <Screen>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 6 }}>
+          <IconButton accessibilityLabel="Back" onPress={handleBack}>
+            <ArrowLeft size={22} color={colors.foreground} />
+          </IconButton>
+          <Text variant="h3" weight="bold">
+            Friends
+          </Text>
+        </View>
         <Spinner label="Loading friends…" />
       </Screen>
     );
@@ -118,11 +136,16 @@ export function FriendsScreen() {
         />
       }
     >
-      <View style={{ gap: 4 }}>
-        <Text variant="h2" weight="bold">
-          Friends
-        </Text>
-        <Text variant="muted">Manage your connections and friend requests.</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 4 }}>
+        <IconButton accessibilityLabel="Back" onPress={handleBack}>
+          <ArrowLeft size={22} color={colors.foreground} />
+        </IconButton>
+        <View style={{ flex: 1 }}>
+          <Text variant="h2" weight="bold">
+            Friends
+          </Text>
+          <Text variant="muted">Manage your connections and friend requests.</Text>
+        </View>
       </View>
 
       {error ? (

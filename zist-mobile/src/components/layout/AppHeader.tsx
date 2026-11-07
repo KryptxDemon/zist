@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, LogOut, Moon, Sun, User as UserIcon, Users } from "lucide-react-native";
+import { ArrowLeft, LogOut, User as UserIcon, Users } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
-import { ActionSheet, Avatar, IconButton, Text } from "@/components/ui";
+import { ActionSheet, Avatar, Text } from "@/components/ui";
 import { NotificationsBell } from "./NotificationsBell";
 
 export interface AppHeaderProps {
@@ -30,7 +30,7 @@ export function AppHeader({
   showChrome = !title,
   right,
 }: AppHeaderProps) {
-  const { colors, theme, toggleTheme } = useTheme();
+  const { colors } = useTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -68,7 +68,7 @@ export function AppHeader({
             style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
           >
             <Image
-              source={require("@/../assets/brand/zist-logo.png")}
+              source={require("../../../assets/brand/zist-logo.png")}
               style={{ height: 34, width: 34, borderRadius: 10 }}
               resizeMode="contain"
             />
@@ -94,18 +94,7 @@ export function AppHeader({
         {right}
 
         {showChrome ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-            <IconButton
-              onPress={toggleTheme}
-              accessibilityLabel={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-            >
-              {theme === "light" ? (
-                <Moon size={20} color={colors.mutedForeground} />
-              ) : (
-                <Sun size={20} color={colors.mutedForeground} />
-              )}
-            </IconButton>
-
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <NotificationsBell />
 
             <Pressable onPress={() => setMenuOpen(true)} hitSlop={6} style={{ marginLeft: 4 }}>

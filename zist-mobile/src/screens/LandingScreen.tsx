@@ -31,18 +31,18 @@ import { apiClient } from "@/services/apiClient";
 import { consumeSessionNotice } from "@/lib/sessionNotice";
 import { Text, useToast } from "@/components/ui";
 
-const LOGO = require("@/../assets/brand/zist-logo.png");
-const HERO = require("@/../assets/brand/anime.png");
-const ABOUT_BG = require("@/../assets/brand/bg.jpg");
+const LOGO = require("../../assets/brand/zist-logo.png");
+const HERO = require("../../assets/brand/anime.png");
+const ABOUT_BG = require("../../assets/brand/bg.jpg");
 
 /** `anime.png` is 1530×1028; the web lets the image size itself. */
 const HERO_ASPECT = 1530 / 1028;
 
 /** The web's `/theme-*.jpg` placeholders, in `themePlaceholderImages` order. */
 const THEME_PLACEHOLDERS = [
-  require("@/../assets/brand/theme-identity.jpg"),
-  require("@/../assets/brand/theme-power.jpg"),
-  require("@/../assets/brand/theme-faith.jpg"),
+  require("../../assets/brand/theme-identity.jpg"),
+  require("../../assets/brand/theme-power.jpg"),
+  require("../../assets/brand/theme-faith.jpg"),
 ];
 
 interface LandingThemeItem {
@@ -120,11 +120,6 @@ const SOCIALS = [
   { label: "Facebook", href: "https://www.facebook.com/asifanwarrr/" },
 ];
 
-const SECTIONS = [
-  { id: "how-it-works", label: "How it works" },
-  { id: "themes", label: "Themes" },
-  { id: "about", label: "About Zist" },
-] as const;
 
 /**
  * Native port of the web `Landing` page — the signed-out entry point.
@@ -293,8 +288,25 @@ function LandingContent() {
             <Text style={[display, { fontSize: 18, textTransform: "uppercase" }]}>Zist</Text>
           </Pressable>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <Pressable onPress={() => goTo("/login")} hitSlop={10} style={{ paddingVertical: 8 }}>
-              <Text style={[mono, { color: brandColors.paper }]}>Log in</Text>
+            <Pressable
+              onPress={() => goTo("/login")}
+              hitSlop={10}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: fontFamily.geistMonoMedium,
+                  fontSize: 15,
+                  letterSpacing: 0.5,
+                  color: brandColors.paper,
+                  textTransform: "uppercase",
+                }}
+              >
+                Log in
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => setMenuOpen(true)}
@@ -397,11 +409,16 @@ function LandingContent() {
             style={{
               width: "100%",
               aspectRatio: HERO_ASPECT,
-              marginTop: 50,
+              marginTop: 36,
+              borderRadius: 12,
               overflow: "hidden",
             }}
           >
-            <Image source={HERO} style={StyleSheet.absoluteFill} resizeMode="contain" />
+            <Image
+              source={HERO}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+            />
           </View>
         </View>
 
@@ -740,19 +757,40 @@ function LandingContent() {
             </Pressable>
           </View>
 
-          <View style={{ marginTop: 80, gap: 23 }}>
-            {SECTIONS.map((section) => (
-              <Pressable key={section.id} onPress={() => scrollTo(section.id)}>
-                <Text
-                  style={[
-                    display,
-                    { fontSize: 37, lineHeight: 44, textTransform: "uppercase" },
-                  ]}
-                >
-                  {section.label}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={{ marginTop: 60, gap: 24 }}>
+            <Pressable onPress={() => goTo("/signup")}>
+              <Text
+                style={[
+                  display,
+                  { fontSize: 36, lineHeight: 44, textTransform: "uppercase" },
+                ]}
+              >
+                Join Zist
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => goTo("/login")}>
+              <Text
+                style={[
+                  display,
+                  { fontSize: 36, lineHeight: 44, textTransform: "uppercase", color: brandColors.accent },
+                ]}
+              >
+                Log In
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={{ marginTop: 48 }}>
+            <Text style={mono}>Contact Developer</Text>
+            <View style={{ marginTop: 16, gap: 12 }}>
+              {SOCIALS.map((social) => (
+                <Pressable key={social.label} onPress={() => void Linking.openURL(social.href)}>
+                  <Text style={{ fontFamily: fontFamily.geistMono, fontSize: 13, color: brandColors.soft }}>
+                    {social.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           <View
@@ -770,18 +808,15 @@ function LandingContent() {
                 alignItems: "center",
                 gap: 8,
                 paddingVertical: 17,
-                paddingHorizontal: 18,
+                paddingHorizontal: 22,
                 borderRadius: 999,
                 backgroundColor: brandColors.accent,
               }}
             >
               <Text style={{ fontFamily: fontFamily.geistMonoMedium, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: brandColors.bg }}>
-                Join Zist
+                Get Started
               </Text>
               <ArrowUpRight size={15} color={brandColors.bg} />
-            </Pressable>
-            <Pressable onPress={() => goTo("/login")} style={{ paddingVertical: 8 }}>
-              <Text style={[mono, { color: brandColors.soft }]}>Log in</Text>
             </Pressable>
           </View>
         </View>

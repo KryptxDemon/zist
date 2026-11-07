@@ -178,15 +178,16 @@ export const mediaService = {
 
   async update(id: string, data: Partial<MediaItem>): Promise<MediaItem> {
     try {
-      const response = await apiClient.patch<ApiObject>(`/media/${id}`, {
-        title: data.title,
-        type: data.type,
-        year: data.year,
-        creator: data.creator,
-        cover_url: data.coverUrl,
-        status: data.status,
-        rating: data.rating,
-      });
+      const payload: Record<string, unknown> = {};
+      if (data.title !== undefined) payload.title = data.title;
+      if (data.type !== undefined) payload.type = data.type;
+      if (data.year !== undefined) payload.year = data.year;
+      if (data.creator !== undefined) payload.creator = data.creator;
+      if (data.coverUrl !== undefined) payload.cover_url = data.coverUrl;
+      if (data.status !== undefined) payload.status = data.status;
+      if (data.rating !== undefined) payload.rating = data.rating;
+
+      const response = await apiClient.patch<ApiObject>(`/media/${id}`, payload);
       return mapMediaItem(response);
     } catch (error) {
       throw new Error(

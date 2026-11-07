@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatRelativeTime } from "@/lib/time";
 import {
@@ -31,6 +31,58 @@ const typeConfig = {
   quote: { icon: Quote, color: "text-violet-400", bg: "bg-violet-500/20", label: "Quote" },
 };
 
+function ExpandableText({
+  text,
+  wordLimit = 50,
+  charLimit = 240,
+  className = "",
+  prefix = "",
+  suffix = "",
+}: {
+  text: string;
+  wordLimit?: number;
+  charLimit?: number;
+  className?: string;
+  prefix?: string;
+  suffix?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const words = text.trim().split(/\s+/);
+  const isTooLong = words.length > wordLimit || text.length > charLimit;
+
+  const displayText =
+    !isTooLong || expanded
+      ? text
+      : words.slice(0, wordLimit).join(" ").trim() + "…";
+
+  return (
+    <div className="space-y-1">
+      <p className={className}>
+        {prefix}
+        {displayText}
+        {suffix}
+      </p>
+      {isTooLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+        >
+          {expanded ? (
+            <>
+              See less <ChevronUp className="h-3 w-3" />
+            </>
+          ) : (
+            <>
+              See more <ChevronDown className="h-3 w-3" />
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 interface FeedPostCardProps {
   post: FeedPost;
   onUpdate?: (post: FeedPost) => void;
@@ -53,18 +105,9 @@ export function FeedPostCard({
   const [commentText, setCommentText] = useState("");
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [captionOverflows, setCaptionOverflows] = useState(false);
-  const captionRef = useRef<HTMLParagraphElement | null>(null);
-
   const config = typeConfig[localPost.type];
   const Icon = config.icon;
   const isOwner = user?.id === localPost.userId;
-
-  useLayoutEffect(() => {
-    const el = captionRef.current;
-    setCaptionOverflows(el ? el.scrollHeight - el.clientHeight > 1 : false);
-  }, [localPost.caption, localPost.type]);
 
   const updatePost = (next: FeedPost) => {
     setLocalPost(next);
@@ -212,37 +255,12 @@ export function FeedPostCard({
 
       {localPost.caption ? (
         <div className="mb-4">
-          <p
-            ref={captionRef}
-            className={cn(
-              "text-foreground leading-relaxed",
-              !expanded && "line-clamp-6",
-            )}
-          >
-            {localPost.caption}
-          </p>
-          {captionOverflows ? (
-            <div className="mt-1 flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-                className="text-primary hover:text-primary/80 gap-1 h-7 px-2"
-              >
-                {expanded ? (
-                  <>
-                    See less <ChevronUp className="h-3.5 w-3.5" />
-                  </>
-                ) : (
-                  <>
-                    See more <ChevronDown className="h-3.5 w-3.5" />
-                  </>
-                )}
-              </Button>
-            </div>
-          ) : null}
+          <ExpandableText
+            text={localPost.caption}
+            className="text-foreground leading-relaxed"
+            wordLimit={50}
+            charLimit={240}
+          />
         </div>
       ) : null}
 
@@ -253,9 +271,12 @@ export function FeedPostCard({
               {(localPost.content as ThemeConcept).title}
             </h4>
             {(localPost.content as ThemeConcept).summary ? (
-              <p className="text-sm text-muted-foreground mt-1">
-                {(localPost.content as ThemeConcept).summary}
-              </p>
+              <ExpandableText
+                text={(localPost.content as ThemeConcept).summary}
+                className="text-sm text-muted-foreground mt-1 leading-relaxed"
+                wordLimit={40}
+                charLimit={180}
+              />
             ) : null}
           </div>
         )}
@@ -265,17 +286,25 @@ export function FeedPostCard({
               {(localPost.content as VocabItem).word}
             </h4>
             {(localPost.content as VocabItem).definition ? (
-              <p className="text-sm text-muted-foreground mt-1">
-                {(localPost.content as VocabItem).definition}
-              </p>
+              <ExpandableText
+                text={(localPost.content as VocabItem).definition}
+                className="text-sm text-muted-foreground mt-1"
+                wordLimit={40}
+                charLimit={180}
+              />
             ) : null}
           </div>
         )}
         {localPost.type === "quote" && (
           <div>
-            <p className="text-foreground italic">
-              &ldquo;{(localPost.content as QuoteItem).text}&rdquo;
-            </p>
+            <ExpandableText
+              text={(localPost.content as QuoteItem).text}
+              prefix="“"
+              suffix="”"
+              className="text-foreground italic leading-relaxed"
+              wordLimit={45}
+              charLimit={200}
+            />
             {(localPost.content as QuoteItem).speaker ? (
               <p className="text-sm text-muted-foreground mt-2">
                 — {(localPost.content as QuoteItem).speaker}

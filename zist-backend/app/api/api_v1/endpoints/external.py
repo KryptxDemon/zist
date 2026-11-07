@@ -1,5 +1,6 @@
 import json
 import re
+import asyncio
 
 from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel, Field
@@ -59,12 +60,11 @@ async def search_media_external(query: str = Query(..., min_length=1), type: Med
         return {"items": await search_tv(query)}
     if type == MediaType.book:
         return {"items": await search_books(query)}
-    return {
-        "grouped": {
-            "movies_tv": await search_multi(query),
-            "books": await search_books(query),
-        }
-    }
+    movies_tv, books = await asyncio.gather(
+        search_multi(query),
+        search_books(query),
+    )
+    return {"grouped": {"movies_tv": movies_tv, "books": books}}
 
 
 @router.get("/external/wiki/summary")

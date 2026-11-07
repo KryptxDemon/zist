@@ -1,10 +1,10 @@
 import React from "react";
 import { Redirect, Stack } from "expo-router";
+import { View } from "react-native";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { AppHeader } from "@/components/layout/AppHeader";
+import { useTheme } from "@/theme";
 import { Spinner } from "@/components/ui";
-import { View } from "react-native";
 
 /**
  * Protected area of the app — the native equivalent of the web
@@ -12,10 +12,11 @@ import { View } from "react-native";
  */
 export default function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { colors } = useTheme();
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
         <Spinner />
       </View>
     );
@@ -28,12 +29,12 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="add" options={{ header: () => <AppHeader title="Add media" showBack /> }} />
-      <Stack.Screen name="friends" options={{ header: () => <AppHeader title="Friends" showBack /> }} />
-      <Stack.Screen name="profile" options={{ header: () => <AppHeader title="Profile" showBack /> }} />
-      <Stack.Screen name="profile-edit" options={{ header: () => <AppHeader title="Edit profile" showBack /> }} />
+      <Stack.Screen name="add" />
+      <Stack.Screen name="friends" />
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="profile-edit" />
       <Stack.Screen name="media/[id]" />
       <Stack.Screen name="quiz/[mediaId]" />
       <Stack.Screen name="user/[userId]" />

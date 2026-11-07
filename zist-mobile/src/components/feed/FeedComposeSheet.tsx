@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
-import { ChevronDown, ChevronUp, Plus, Search } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Plus, Search, Share2 } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import {
@@ -135,8 +135,8 @@ export function FeedComposeSheet({
     <View>
       {showTrigger ? (
         <Button
-          label="Share"
-          icon={<Plus size={16} color={colors.primaryForeground} />}
+          label="Share to Feed"
+          icon={<Share2 size={16} color={colors.primaryForeground} />}
           onPress={() => setOpen(true)}
         />
       ) : null}
@@ -145,8 +145,8 @@ export function FeedComposeSheet({
         visible={open}
         onClose={() => setOpen(false)}
         presentation="sheet"
-        title="Share from your library"
-        description="Pick something you've saved and add your take on it."
+        title="Share to Community Feed"
+        description="Pick something you've saved from your library and share your take."
       >
         <Segmented<PostType>
           value={postType}

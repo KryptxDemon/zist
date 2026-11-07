@@ -80,6 +80,7 @@ def create_media(
 	data = payload.model_dump()
 	data["type"] = payload.type.value
 	data["status"] = payload.status.value
+	data["tags"] = ", ".join(payload.tags) or None
 
 	item = MediaItem(user_id=current_user.id, **data)
 	db.add(item)
@@ -112,6 +113,8 @@ def update_media(
 		updates["type"] = updates["type"].value
 	if "status" in updates and updates["status"] is not None:
 		updates["status"] = updates["status"].value
+	if "tags" in updates:
+		updates["tags"] = ", ".join(updates["tags"]) or None
 
 	for key, value in updates.items():
 		setattr(item, key, value)

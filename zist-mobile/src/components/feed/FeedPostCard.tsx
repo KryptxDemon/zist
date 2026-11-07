@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, StyleSheet, type TextStyle, View } from "react-native";
 import { useRouter } from "expo-router";
 import {
   Bookmark,
@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react-native";
 
-import { useTheme } from "@/theme";
+import { type ThemeColors, useTheme } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, Text, useToast } from "@/components/ui";
 import { feedService } from "@/services/feedService";
@@ -53,8 +53,80 @@ const TYPE_CONFIG = {
   },
 } as const;
 
-const CAPTION_LINES = 6;
 const LIKED_COLOR = "#fb7185";
+
+interface ExpandableTextProps {
+  text: string;
+  wordLimit?: number;
+  charLimit?: number;
+  variant?: "body" | "small" | "caption";
+  color?: keyof ThemeColors;
+  tint?: string;
+  style?: TextStyle;
+  italic?: boolean;
+  prefix?: string;
+  suffix?: string;
+}
+
+function ExpandableText({
+  text,
+  wordLimit = 55,
+  charLimit = 260,
+  variant = "body",
+  color,
+  tint,
+  style,
+  italic = false,
+  prefix = "",
+  suffix = "",
+}: ExpandableTextProps) {
+  const { colors } = useTheme();
+  const [expanded, setExpanded] = useState(false);
+
+  const words = useMemo(() => text.trim().split(/\s+/), [text]);
+  const isTooLong = words.length > wordLimit || text.length > charLimit;
+
+  const displayText = useMemo(() => {
+    if (!isTooLong || expanded) return text;
+    const truncated = words.slice(0, wordLimit).join(" ");
+    return truncated.trim() + "…";
+  }, [text, words, isTooLong, expanded, wordLimit]);
+
+  return (
+    <View style={{ gap: 4 }}>
+      <Text
+        variant={variant}
+        color={color}
+        tint={tint}
+        style={[{ fontStyle: italic ? "italic" : "normal" }, style]}
+      >
+        {prefix}{displayText}{suffix}
+      </Text>
+      {isTooLong && (
+        <Pressable
+          onPress={() => setExpanded((v) => !v)}
+          hitSlop={8}
+          style={{
+            alignSelf: "flex-start",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingVertical: 2,
+          }}
+        >
+          <Text variant="caption" tint={colors.primary} weight="semibold">
+            {expanded ? "See less" : "See more"}
+          </Text>
+          {expanded ? (
+            <ChevronUp size={13} color={colors.primary} />
+          ) : (
+            <ChevronDown size={13} color={colors.primary} />
+          )}
+        </Pressable>
+      )}
+    </View>
+  );
+}
 
 export interface FeedPostCardProps {
   post: FeedPost;
@@ -76,9 +148,6 @@ export function FeedPostCard({
 
   const [localPost, setLocalPost] = useState(post);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [measured, setMeasured] = useState(false);
-  const [captionOverflows, setCaptionOverflows] = useState(false);
   const [likePending, setLikePending] = useState(false);
   const [savePending, setSavePending] = useState(false);
 
@@ -91,13 +160,6 @@ export function FeedPostCard({
   useEffect(() => {
     setLocalPost(post);
   }, [post]);
-
-  // Re-measure the caption whenever its text or the post type changes.
-  useEffect(() => {
-    setMeasured(false);
-    setExpanded(false);
-    setCaptionOverflows(false);
-  }, [localPost.caption, localPost.type]);
 
   const config = TYPE_CONFIG[localPost.type];
   const isOwner = user?.id === localPost.userId;
@@ -171,7 +233,15 @@ export function FeedPostCard({
       return (
         <View style={{ gap: 4 }}>
           <Text variant="h4">{content.title}</Text>
-          {content.summary ? <Text variant="small" color="mutedForeground">{content.summary}</Text> : null}
+          {content.summary ? (
+            <ExpandableText
+              text={content.summary}
+              variant="small"
+              color="mutedForeground"
+              wordLimit={40}
+              charLimit={180}
+            />
+          ) : null}
         </View>
       );
     }
@@ -181,7 +251,15 @@ export function FeedPostCard({
       return (
         <View style={{ gap: 4 }}>
           <Text variant="h4">{content.word}</Text>
-          {content.definition ? <Text variant="small" color="mutedForeground">{content.definition}</Text> : null}
+          {content.definition ? (
+            <ExpandableText
+              text={content.definition}
+              variant="small"
+              color="mutedForeground"
+              wordLimit={40}
+              charLimit={180}
+            />
+          ) : null}
         </View>
       );
     }
@@ -189,10 +267,20 @@ export function FeedPostCard({
     const content = localPost.content as QuoteItem;
     return (
       <View style={{ gap: 8 }}>
-        <Text variant="body" style={{ fontStyle: "italic" }}>
-          {`\u201C${content.text}\u201D`}
-        </Text>
-        {content.speaker ? <Text variant="small" color="mutedForeground">{`— ${content.speaker}`}</Text> : null}
+        <ExpandableText
+          text={content.text}
+          variant="body"
+          italic
+          prefix={`\u201C`}
+          suffix={`\u201D`}
+          wordLimit={45}
+          charLimit={200}
+        />
+        {content.speaker ? (
+          <Text variant="small" color="mutedForeground">
+            {`— ${content.speaker}`}
+          </Text>
+        ) : null}
       </View>
     );
   };
@@ -283,38 +371,14 @@ export function FeedPostCard({
         </View>
       </View>
 
-      {/* Caption */}
+      {/* Caption with word-based clamping */}
       {localPost.caption ? (
-        <View style={{ gap: 4 }}>
-          <Text
-            variant="body"
-            numberOfLines={expanded || !measured ? undefined : CAPTION_LINES}
-            onTextLayout={(event) => {
-              if (!measured) {
-                setCaptionOverflows(event.nativeEvent.lines.length > CAPTION_LINES);
-                setMeasured(true);
-              }
-            }}
-          >
-            {localPost.caption}
-          </Text>
-          {captionOverflows ? (
-            <Pressable
-              onPress={() => setExpanded((v) => !v)}
-              hitSlop={8}
-              style={{ alignSelf: "flex-end", flexDirection: "row", alignItems: "center", gap: 4 }}
-            >
-              <Text variant="caption" tint={colors.primary} weight="medium">
-                {expanded ? "See less" : "See more"}
-              </Text>
-              {expanded ? (
-                <ChevronUp size={14} color={colors.primary} />
-              ) : (
-                <ChevronDown size={14} color={colors.primary} />
-              )}
-            </Pressable>
-          ) : null}
-        </View>
+        <ExpandableText
+          text={localPost.caption}
+          variant="body"
+          wordLimit={50}
+          charLimit={240}
+        />
       ) : null}
 
       {/* Shared content payload */}

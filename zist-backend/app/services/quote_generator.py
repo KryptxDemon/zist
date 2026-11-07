@@ -100,15 +100,35 @@ async def generate_movie_quotes(
     overview: str,
     keywords: list[str],
     count: int = 5,
+    release_year: str | None = None,
+    director: str | None = None,
+    media_type: str = "movie",
 ) -> tuple[list[dict[str, str | None]], bool, str | None, str | None]:
     if not settings.GEMINI_API_KEY:
         return [], False, None, "Gemini API key is not configured"
 
+    meta_parts = [f"Title: '{title}'"]
+    if release_year:
+        meta_parts.append(f"Release Year: {release_year}")
+    if director:
+        meta_parts.append(f"Director / Creator: {director}")
+    if media_type:
+        meta_parts.append(f"Format: {media_type.capitalize()}")
+    if overview:
+        meta_parts.append(f"Plot Overview: {overview[:600]}")
+
+    metadata_block = "\n".join(f"- {p}" for p in meta_parts)
+
     prompt = (
-        f"Give me {count} quotes of the movie {title}. "
-        "Return ONLY valid JSON as an array with format: "
-        '[{"text": string, "speaker": string|null}]. '
-        "Use widely known lines from the title. Do not add commentary or markdown."
+        f"You are an expert film and television archivist. Provide {count} accurate, iconic, and memorable quotes specifically from the following {media_type}:\n\n"
+        f"{metadata_block}\n\n"
+        "STRICT ACCURACY RULES:\n"
+        f"1. Quotes MUST be authentically spoken in '{title}' ({release_year or 'canonical release'}).\n"
+        "2. Do NOT mix quotes from other films, adaptations, sequels, prequels, or unrelated media.\n"
+        "3. Provide the accurate character name as 'speaker'. If unknown, use null.\n"
+        "4. Return ONLY valid JSON as an array of objects with the exact schema:\n"
+        '[{"text": "quote text", "speaker": "character name or null"}]\n'
+        "No commentary, no markdown fences, just the JSON array."
     )
 
     text, used_model, ai_error = await generate_gemini_text(prompt)

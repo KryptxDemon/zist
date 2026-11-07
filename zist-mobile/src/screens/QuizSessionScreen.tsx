@@ -184,9 +184,16 @@ export function QuizSessionScreen() {
 
   if (isLoading) {
     return (
-      <Screen scroll={false} contentContainerStyle={{ alignItems: "center", justifyContent: "center" }}>
-        <Brain size={48} color={colors.primary} />
-        <Text variant="muted">Generating quiz...</Text>
+      <Screen scroll={false} contentContainerStyle={{ flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+          <IconButton onPress={backToHub} accessibilityLabel="Back to Quiz Hub">
+            <ArrowLeft size={20} color={colors.foreground} />
+          </IconButton>
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <Brain size={48} color={colors.primary} />
+          <Text variant="muted">Generating quiz...</Text>
+        </View>
       </Screen>
     );
   }
@@ -207,9 +214,16 @@ export function QuizSessionScreen() {
 
   if (!currentQuestion) {
     return (
-      <Screen scroll={false} contentContainerStyle={{ alignItems: "center", justifyContent: "center" }}>
-        <Brain size={48} color={colors.primary} />
-        <Text variant="muted">Preparing quiz...</Text>
+      <Screen scroll={false} contentContainerStyle={{ flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+          <IconButton onPress={backToHub} accessibilityLabel="Back to Quiz Hub">
+            <ArrowLeft size={20} color={colors.foreground} />
+          </IconButton>
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <Brain size={48} color={colors.primary} />
+          <Text variant="muted">Preparing quiz...</Text>
+        </View>
       </Screen>
     );
   }

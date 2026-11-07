@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
 from app.models.feed import FeedPost
+from app.models.friend import FriendRequest
 from app.models.media import MediaItem
 from app.models.user import User, UserFollow
 from app.schemas.feed import FeedListResponse
@@ -192,9 +193,21 @@ def get_user_posts(
         .first()
         is not None
     )
+    is_friend = (
+        db.query(FriendRequest)
+        .filter(
+            FriendRequest.status == "accepted",
+            or_(
+                (FriendRequest.requester_id == current_user.id) & (FriendRequest.recipient_id == user_id),
+                (FriendRequest.requester_id == user_id) & (FriendRequest.recipient_id == current_user.id),
+            ),
+        )
+        .first()
+        is not None
+    )
 
     query = db.query(FeedPost).filter(FeedPost.user_id == user_id)
-    if is_following or user_id == current_user.id:
+    if is_following or is_friend or user_id == current_user.id:
         query = query.filter(FeedPost.visibility.in_(["friends", "global"]))
     else:
         query = query.filter(FeedPost.visibility == "global")

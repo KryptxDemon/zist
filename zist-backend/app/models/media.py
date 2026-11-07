@@ -35,6 +35,8 @@ class MediaItem(Base):
 
     cover_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    tags: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     external_source: Mapped[str | None] = mapped_column(String, nullable=True)
     external_id: Mapped[str | None] = mapped_column(String, nullable=True)
 

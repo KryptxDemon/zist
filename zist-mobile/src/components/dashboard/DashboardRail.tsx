@@ -82,7 +82,7 @@ function RailCard({
   // untouched (it fills its parent).
   return (
     <Pressable onPress={onPress} style={{ width: RAIL_CARD_WIDTH }}>
-      <MediaCard layout="grid" media={{ ...item, coverUrl: cover }} />
+      <MediaCard layout="grid" media={{ ...item, coverUrl: cover }} onPress={onPress} />
       <View
         style={{
           flexDirection: "row",

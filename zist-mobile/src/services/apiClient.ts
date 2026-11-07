@@ -1,3 +1,5 @@
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { API_URL } from "@/lib/env";
 import { localStorage, sessionStorage } from "@/lib/webStorage";
 
@@ -6,25 +8,63 @@ const configuredApiUrl = API_URL;
 const normalizeBaseUrl = (url: string) => url.replace(/\/+$/, "");
 
 /**
- * Base URLs to try, in order.
- *
- * The web client also fell back to a relative `/api/v1` path, which the browser
- * resolves against the current origin. React Native's `fetch` has no document
- * base URL, so a relative candidate is meaningless here — every entry must be
- * absolute or the request silently fails.
+ * Detect host IP if running under Expo Go / Metro development.
+ * Expo Go knows the Metro packager host IP in `Constants.expoConfig?.hostUri`.
  */
-const API_BASE_URLS = Array.from(
-  new Set(
-    [configuredApiUrl]
-      .filter(
-        (url): url is string =>
-          typeof url === "string" && /^https?:\/\//i.test(url.trim()),
-      )
-      .map((url) => normalizeBaseUrl(url.trim())),
-  ),
-);
+const detectedHostIp = (() => {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(":")[0];
+    if (
+      ip &&
+      ip !== "localhost" &&
+      ip !== "127.0.0.1" &&
+      !ip.includes("expo.app") &&
+      !ip.includes("exp.direct")
+    ) {
+      return ip;
+    }
+  }
+  return null;
+})();
 
-if (API_BASE_URLS.length === 0) {
+export function getCustomApiUrl(): string | null {
+  return localStorage.getItem("custom_api_url") || null;
+}
+
+export function setCustomApiUrl(url: string | null): void {
+  if (url && url.trim()) {
+    localStorage.setItem("custom_api_url", normalizeBaseUrl(url.trim()));
+  } else {
+    localStorage.removeItem("custom_api_url");
+  }
+}
+
+export function getCandidateBaseUrls(): string[] {
+  const custom = getCustomApiUrl();
+  const candidates = [
+    custom,
+    configuredApiUrl,
+    detectedHostIp ? `http://${detectedHostIp}:8000/api/v1` : null,
+    Platform.OS === "android" ? "http://10.0.2.2:8000/api/v1" : null,
+    "http://localhost:8000/api/v1",
+  ];
+
+  return Array.from(
+    new Set(
+      candidates
+        .filter(
+          (url): url is string =>
+            typeof url === "string" && /^https?:\/\//i.test(url.trim()),
+        )
+        .map((url) => normalizeBaseUrl(url.trim())),
+    ),
+  );
+}
+
+const REQUEST_TIMEOUT_MS = __DEV__ ? 8_000 : 45_000;
+
+if (getCandidateBaseUrls().length === 0) {
   console.warn(
     "[api] EXPO_PUBLIC_API_URL is missing or is not an absolute http(s) URL — API calls cannot succeed.",
   );
@@ -80,6 +120,55 @@ class ApiError extends Error {
   }
 }
 
+function getErrorMessage(data: unknown, status: number): string {
+  if (!data || typeof data !== "object") return `HTTP ${status}`;
+
+  const payload = data as {
+    detail?: unknown;
+    message?: unknown;
+  };
+
+  if (typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message;
+  }
+
+  if (typeof payload.detail === "string" && payload.detail.trim()) {
+    return payload.detail;
+  }
+
+  if (
+    payload.detail &&
+    typeof payload.detail === "object" &&
+    !Array.isArray(payload.detail)
+  ) {
+    const detail = payload.detail as { message?: unknown };
+    if (typeof detail.message === "string" && detail.message.trim()) {
+      return detail.message;
+    }
+  }
+
+  if (Array.isArray(payload.detail)) {
+    const messages = payload.detail
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const error = item as { loc?: unknown; msg?: unknown };
+        const message =
+          typeof error.msg === "string" ? error.msg.trim() : "";
+        if (!message) return null;
+
+        const location = Array.isArray(error.loc)
+          ? error.loc.filter((part) => typeof part === "string").join(".")
+          : "";
+        return location ? `${location}: ${message}` : message;
+      })
+      .filter((message): message is string => Boolean(message));
+
+    if (messages.length > 0) return messages.join("\n");
+  }
+
+  return `HTTP ${status}`;
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {},
@@ -108,8 +197,9 @@ async function apiRequest<T>(
 
   let lastNetworkError: Error | null = null;
   let lastApiError: ApiError | null = null;
+  const baseUrls = getCandidateBaseUrls();
 
-  for (const baseUrl of API_BASE_URLS) {
+  for (const baseUrl of baseUrls) {
     let url = `${baseUrl}${endpoint}`;
 
     // Add query parameters
@@ -121,24 +211,33 @@ async function apiRequest<T>(
       url += `?${searchParams.toString()}`;
     }
 
+    let timedOut = false;
     try {
-      const response = await fetch(url, {
-        ...fetchOptions,
-        headers: finalHeaders,
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, REQUEST_TIMEOUT_MS);
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          ...fetchOptions,
+          headers: finalHeaders,
+          signal: fetchOptions.signal ?? controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const detailMessage =
-          typeof data?.detail === "string"
-            ? data.detail
-            : data?.detail?.message || data?.message;
         const apiError = new ApiError(
           response.status,
           data,
-          detailMessage || `HTTP ${response.status}`,
+          getErrorMessage(data, response.status),
         );
+        const detailMessage = apiError.message;
 
         // A bearer token we sent was refused: the session is over. This is the
         // signal that turns a wall of "Not authenticated" errors into a clean
@@ -176,6 +275,16 @@ async function apiRequest<T>(
       if (error instanceof ApiError) {
         throw error;
       }
+      if (
+        timedOut ||
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && /abort|cancel/i.test(error.message))
+      ) {
+        lastNetworkError = new Error(
+          `Request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds`,
+        );
+        continue;
+      }
       lastNetworkError =
         error instanceof Error ? error : new Error("Network request failed");
     }
@@ -185,9 +294,36 @@ async function apiRequest<T>(
     throw lastApiError;
   }
 
+  const triedSummary = baseUrls.join(", ");
   throw new Error(
-    `API request failed: ${lastNetworkError?.message || "Failed to fetch"}`,
+    `API request failed: ${lastNetworkError?.message || "Failed to fetch"}. Tried: [${triedSummary}]. Ensure FastAPI is running on host 0.0.0.0 and firewall permits port 8000.`,
   );
+}
+
+export async function testServerConnection(
+  targetUrl?: string,
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  const urlToTry = targetUrl
+    ? normalizeBaseUrl(targetUrl)
+    : getCandidateBaseUrls()[0] || "";
+  if (!urlToTry) return { ok: false, error: "No URL provided" };
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const rootUrl = urlToTry.replace(/\/api\/v1\/?$/, "");
+    const response = await fetch(`${rootUrl}/docs`, {
+      method: "GET",
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
+
+    if (response.status < 500) {
+      return { ok: true, status: response.status };
+    }
+    return { ok: false, status: response.status, error: `HTTP ${response.status}` };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Connection refused / timed out" };
+  }
 }
 
 export const apiClient = {

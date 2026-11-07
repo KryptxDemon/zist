@@ -294,13 +294,18 @@ export default function UserProfilePage() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() =>
-                        navigator.clipboard.writeText(window.location.href)
-                      }
+                      onClick={() => {
+                        const url = `${window.location.origin}/app/user/${profile.id}`;
+                        navigator.clipboard.writeText(url);
+                        toast({
+                          title: "Profile link copied!",
+                          description: url,
+                        });
+                      }}
                       className="gap-2"
                     >
-                      <LinkIcon className="h-4 w-4" />
-                      Copy Link
+                      <Share2 className="h-4 w-4" />
+                      Share Profile
                     </Button>
                   </>
                 ) : currentUser ? (

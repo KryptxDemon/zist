@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+import { SvgXml } from "react-native-svg";
 import {
   ArrowLeft,
-  ImagePlus,
-  Palette,
+  Camera,
+  Check,
+  Globe,
+  Link as LinkIcon,
   Sparkles,
-  Upload,
+  User as UserIcon,
   WandSparkles,
 } from "lucide-react-native";
 
@@ -24,9 +26,10 @@ import {
 } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  avatarPresets,
   createInitialsAvatar,
+  cuteAvatars,
   defaultInitialsPreset,
+  getCuteAvatarUri,
   getInitials,
   pickAvatarImage,
 } from "@/lib/avatar";
@@ -43,10 +46,10 @@ type SocialKey =
 
 const socialFields: { key: SocialKey; label: string; placeholder: string }[] = [
   { key: "websiteUrl", label: "Website", placeholder: "https://your-site.com" },
+  { key: "xUrl", label: "X (Twitter)", placeholder: "https://x.com/username" },
   { key: "githubUrl", label: "GitHub", placeholder: "https://github.com/username" },
   { key: "linkedinUrl", label: "LinkedIn", placeholder: "https://linkedin.com/in/username" },
   { key: "instagramUrl", label: "Instagram", placeholder: "https://instagram.com/username" },
-  { key: "xUrl", label: "X", placeholder: "https://x.com/username" },
   { key: "youtubeUrl", label: "YouTube", placeholder: "https://youtube.com/@channel" },
 ];
 
@@ -60,18 +63,16 @@ const emptySocial: Record<SocialKey, string> = {
 };
 
 const HTTP_URL = /^https?:\/\/\S+$/i;
-
-/** A `data:image/...` avatar produced by the studio (SVG initials or JPEG upload). */
 const DATA_IMAGE_URI = /^data:image\//i;
 
 /**
- * Edit-profile form: display name, names, avatar, bio and social links.
- * Ported from the web `Profile.tsx` (profile *edit* page).
- *
- * The avatar studio mirrors the web exactly: upload a photo (centre-cropped
- * and compressed to a JPEG data URI) or pick one of eight gradient initials
- * tiles. Both are stored in the same format the web app writes, so avatars
- * are portable between the two clients.
+ * Clean, well-organized profile edit screen.
+ * Groups editing into clear sections:
+ *  1. Live Identity Preview
+ *  2. Cute Avatars Studio + Photo Upload
+ *  3. Personal Information (Display name, names, bio)
+ *  4. Social Links & Presence
+ *  5. Prominent Save Actions
  */
 export function ProfileScreen() {
   const { colors } = useTheme();
@@ -87,6 +88,7 @@ export function ProfileScreen() {
   const [avatar, setAvatar] = useState("");
   const [social, setSocial] = useState<Record<SocialKey, string>>(emptySocial);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showCustomUrlInput, setShowCustomUrlInput] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -111,21 +113,21 @@ export function ProfileScreen() {
   );
 
   const previewAvatar =
-    avatar || user?.avatar || createInitialsAvatar(initials, avatarPresets[0].colors);
+    avatar || user?.avatar || getCuteAvatarUri(cuteAvatars[0].svg);
 
-  const handleAvatarPick = (presetColors: readonly [string, string]) => {
-    setAvatar(createInitialsAvatar(initials, presetColors));
+  const handleCuteAvatarPick = (charSvg: string, charName: string) => {
+    setAvatar(getCuteAvatarUri(charSvg));
     toast({
-      title: "Avatar updated",
-      description: "A new avatar style is ready.",
+      title: "Avatar selected",
+      description: `You've chosen ${charName}! Save changes to keep it.`,
     });
   };
 
   const handleUseInitials = () => {
     setAvatar(createInitialsAvatar(initials, defaultInitialsPreset.colors));
     toast({
-      title: "Initials avatar ready",
-      description: "Your profile picture now uses your initials.",
+      title: "Initials avatar applied",
+      description: `Using your initials (${initials}).`,
     });
   };
 
@@ -136,14 +138,14 @@ export function ProfileScreen() {
       if (!compressed) return;
       setAvatar(compressed);
       toast({
-        title: "Image uploaded",
-        description: "Your picture was compressed for faster loading.",
+        title: "Photo uploaded",
+        description: "Your custom photo is ready. Tap Save to apply.",
       });
     } catch (error) {
       toast({
         title: "Upload failed",
         description:
-          error instanceof Error ? error.message : "Unable to process the image.",
+          error instanceof Error ? error.message : "Unable to select image.",
         variant: "destructive",
       });
     } finally {
@@ -200,7 +202,7 @@ export function ProfileScreen() {
       await updateProfile(updates);
       toast({
         title: "Profile updated",
-        description: "Your changes are live everywhere.",
+        description: "Your profile has been saved.",
       });
       router.back();
     } catch (error) {
@@ -216,171 +218,282 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Button
-          variant="ghost"
-          size="iconSm"
-          onPress={() => router.back()}
-          accessibilityLabel="Back"
-          icon={<ArrowLeft size={18} color={colors.foreground} />}
-        />
-        <View style={{ flex: 1 }}>
-          <Text variant="h2" weight="bold">
-            Edit Profile
-          </Text>
-          <Text variant="muted">Refresh your avatar, socials, and bio.</Text>
+      {/* Top Bar */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Button
+            variant="ghost"
+            size="iconSm"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/profile"))}
+            accessibilityLabel="Back"
+            icon={<ArrowLeft size={18} color={colors.foreground} />}
+          />
+          <View>
+            <Text variant="h2" weight="bold">
+              Edit Profile
+            </Text>
+            <Text variant="muted">Manage your identity, avatar, and links</Text>
+          </View>
         </View>
+
+        <Button
+          size="sm"
+          label={isSaving ? "Saving..." : "Save"}
+          onPress={handleSave}
+          loading={isSaving}
+        />
       </View>
 
-      <Card variant="glass" style={{ gap: 16 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-          <Avatar
-            name={displayName || initials}
-            avatarUrl={previewAvatar}
-            size="2xl"
-            clickable={false}
-            ring
-          />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="caption" uppercase letterSpacing={2}>
-              Profile preview
+      {/* 1. Identity Preview Card */}
+      <Card
+        variant="glass"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 16,
+          padding: 16,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 20,
+        }}
+      >
+        <Avatar
+          name={displayName || initials}
+          avatarUrl={previewAvatar}
+          size="2xl"
+          clickable={false}
+          ring
+        />
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Sparkles size={14} color={colors.primary} />
+            <Text variant="caption" weight="semibold" uppercase letterSpacing={1.5} color="primary">
+              Live Preview
             </Text>
-            <Text variant="h3" weight="bold" numberOfLines={1}>
-              {displayName || "Your name"}
-            </Text>
-            <Text variant="small" numberOfLines={2}>
-              {bio || "Add a short bio that introduces your learning style."}
+          </View>
+          <Text variant="h3" weight="bold" numberOfLines={1}>
+            {displayName || "Your Name"}
+          </Text>
+          <Text variant="small" color="mutedForeground" numberOfLines={2}>
+            {bio || "Add a bio below to tell people what you're learning & watching."}
+          </Text>
+        </View>
+      </Card>
+
+      {/* 2. Avatar Studio */}
+      <Card
+        variant="glass"
+        style={{
+          gap: 16,
+          padding: 16,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 20,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ gap: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Sparkles size={16} color={colors.primary} />
+              <Text variant="h4" weight="semibold">
+                Cute & Unique Avatars
+              </Text>
+            </View>
+            <Text variant="caption" color="mutedForeground">
+              Pick a character that matches your personality
             </Text>
           </View>
         </View>
 
-        <Field
-          label="Avatar URL"
-          hint="Paste a link to an image, or build one in the avatar studio below."
-          error={errors.avatar}
-        >
-          <Input
-            value={avatar.startsWith("data:") ? "" : avatar}
-            onChangeText={setAvatar}
-            placeholder={
-              avatar.startsWith("data:")
-                ? "Generated avatar in use"
-                : "https://example.com/avatar.png"
-            }
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            error={errors.avatar}
-          />
-        </Field>
-      </Card>
+        {/* 8 Cute Handcrafted Avatars Grid */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          {cuteAvatars.map((char) => {
+            const charUri = getCuteAvatarUri(char.svg);
+            const isSelected = avatar === charUri;
 
-      <Card variant="glass" style={{ gap: 16 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <ImagePlus size={16} color={colors.primary} />
-          <Text variant="h4" weight="semibold">
-            Avatar studio
-          </Text>
+            return (
+              <Pressable
+                key={char.id}
+                onPress={() => handleCuteAvatarPick(char.svg, char.name)}
+                style={({ pressed }) => ({
+                  flexGrow: 1,
+                  flexBasis: "22%",
+                  minWidth: 74,
+                  alignItems: "center",
+                  padding: 8,
+                  borderRadius: 16,
+                  borderWidth: isSelected ? 2 : 1,
+                  borderColor: isSelected ? colors.primary : colors.border,
+                  backgroundColor: isSelected ? colors.primary + "18" : colors.background,
+                  opacity: pressed ? 0.8 : 1,
+                  gap: 4,
+                })}
+              >
+                <View style={{ width: 48, height: 48, borderRadius: 12, overflow: "hidden" }}>
+                  <SvgXml xml={char.svg} width={48} height={48} />
+                </View>
+                <Text variant="caption" weight={isSelected ? "bold" : "medium"} numberOfLines={1}>
+                  {char.name}
+                </Text>
+                <Text
+                  variant="caption"
+                  tint={isSelected ? colors.primary : colors.mutedForeground}
+                  style={{ fontSize: 9 }}
+                  numberOfLines={1}
+                >
+                  {char.tag}
+                </Text>
+                {isSelected && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: colors.primary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Check size={10} color="#ffffff" strokeWidth={3} />
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
 
-        <View style={{ flexDirection: "row", gap: 12 }}>
+        {/* Studio Action Shortcuts */}
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
           <Button
             variant="outline"
-            label="Upload image"
-            icon={<Upload size={16} color={colors.foreground} />}
+            size="sm"
+            label={isUploading ? "Uploading..." : "Upload Photo"}
+            icon={<Camera size={14} color={colors.foreground} />}
             onPress={handleUpload}
             loading={isUploading}
             style={{ flex: 1 }}
           />
           <Button
             variant="outline"
-            label="Use initials"
-            icon={<WandSparkles size={16} color={colors.foreground} />}
+            size="sm"
+            label="Use Initials"
+            icon={<WandSparkles size={14} color={colors.foreground} />}
             onPress={handleUseInitials}
             style={{ flex: 1 }}
           />
         </View>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-          {avatarPresets.map((preset) => (
-            <Pressable
-              key={preset.name}
-              onPress={() => handleAvatarPick(preset.colors)}
-              style={{
-                flexGrow: 1,
-                flexBasis: "45%",
-                gap: 6,
-                padding: 12,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.background + "b3",
-              }}
-            >
-              <LinearGradient
-                colors={preset.colors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 6 }}
-              />
-              <Text variant="small" weight="medium">
-                {preset.name}
-              </Text>
-              <Text variant="caption">Tap to apply</Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* Optional Custom Image URL */}
+        <Pressable
+          onPress={() => setShowCustomUrlInput((v) => !v)}
+          style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginTop: 2 }}
+        >
+          <LinkIcon size={12} color={colors.primary} />
+          <Text variant="caption" color="primary" weight="medium">
+            {showCustomUrlInput ? "Hide custom image link" : "Or use custom image URL..."}
+          </Text>
+        </Pressable>
+
+        {showCustomUrlInput && (
+          <Field
+            label="Custom Avatar URL"
+            hint="Link directly to a publicly hosted PNG, JPG, or SVG image"
+            error={errors.avatar}
+          >
+            <Input
+              value={avatar.startsWith("data:") ? "" : avatar}
+              onChangeText={setAvatar}
+              placeholder="https://example.com/avatar.png"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              error={errors.avatar}
+            />
+          </Field>
+        )}
       </Card>
 
-      <Card variant="glass" style={{ gap: 16 }}>
+      {/* 3. Basic Information */}
+      <Card
+        variant="glass"
+        style={{
+          gap: 16,
+          padding: 16,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 20,
+        }}
+      >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Sparkles size={16} color={colors.primary} />
+          <UserIcon size={16} color={colors.primary} />
           <Text variant="h4" weight="semibold">
-            Profile details
+            Personal Information
           </Text>
         </View>
+
+        <Field label="Display Name *" hint="Your public handle across the community" error={errors.displayName}>
+          <Input
+            value={displayName}
+            onChangeText={setDisplayName}
+            placeholder="The name people see (e.g. Alex Chen)"
+            error={errors.displayName}
+          />
+        </Field>
 
         <View style={{ flexDirection: "row", gap: 12 }}>
           <Field label="First Name" style={{ flex: 1 }}>
             <Input
               value={firstName}
               onChangeText={setFirstName}
-              placeholder="Your first name"
+              placeholder="First name"
             />
           </Field>
           <Field label="Last Name" style={{ flex: 1 }}>
             <Input
               value={lastName}
               onChangeText={setLastName}
-              placeholder="Your last name"
+              placeholder="Last name"
             />
           </Field>
         </View>
 
-        <Field label="Display Name" error={errors.displayName}>
-          <Input
-            value={displayName}
-            onChangeText={setDisplayName}
-            placeholder="The name people see"
-            error={errors.displayName}
-          />
-        </Field>
-
-        <Field label="Bio">
+        <Field label="Bio / About You" hint="Tell fellow learners about your interests, study lists, or current obsessions">
           <Textarea
             value={bio}
             onChangeText={setBio}
-            placeholder="Tell people what you learn, watch, or obsess over."
+            placeholder="e.g. Cinema enthusiast & computer science student exploring storytelling."
           />
         </Field>
       </Card>
 
-      <Card variant="glass" style={{ gap: 16 }}>
+      {/* 4. Social Links */}
+      <Card
+        variant="glass"
+        style={{
+          gap: 16,
+          padding: 16,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 20,
+        }}
+      >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Palette size={16} color={colors.primary} />
-          <Text variant="h4" weight="semibold">
-            Social links
-          </Text>
+          <Globe size={16} color={colors.primary} />
+          <View>
+            <Text variant="h4" weight="semibold">
+              Social Links
+            </Text>
+            <Text variant="caption" color="mutedForeground">
+              Add your profiles to let friends discover your work
+            </Text>
+          </View>
         </View>
 
         {socialFields.map((field) => (
@@ -404,15 +517,12 @@ export function ProfileScreen() {
         ))}
       </Card>
 
-      <Text variant="muted">
-        Your avatar and links update across the app after saving.
-      </Text>
-
-      <View style={{ flexDirection: "row", gap: 12 }}>
+      {/* 5. Bottom Save / Cancel Actions */}
+      <View style={{ flexDirection: "row", gap: 12, marginTop: 4, marginBottom: 24 }}>
         <Button
           variant="outline"
           label="Cancel"
-          onPress={() => router.back()}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/profile"))}
           style={{ flex: 1 }}
         />
         <Button

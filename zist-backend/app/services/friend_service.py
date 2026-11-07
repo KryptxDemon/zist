@@ -30,8 +30,33 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.friend import FriendRequest
-from app.models.user import User
+from app.models.user import User, UserFollow
 from app.services import notification_service
+
+
+def _sync_mutual_follow(db: Session, user1_id: str, user2_id: str) -> None:
+    """Ensure mutual follow records exist when users become friends."""
+    for u1, u2 in [(user1_id, user2_id), (user2_id, user1_id)]:
+        exists = (
+            db.query(UserFollow)
+            .filter(
+                UserFollow.follower_id == u1,
+                UserFollow.following_id == u2,
+            )
+            .first()
+        )
+        if not exists:
+            db.add(UserFollow(follower_id=u1, following_id=u2))
+
+
+def _remove_mutual_follow(db: Session, user1_id: str, user2_id: str) -> None:
+    """Clean up mutual follow records when users unfriend."""
+    db.query(UserFollow).filter(
+        or_(
+            (UserFollow.follower_id == user1_id) & (UserFollow.following_id == user2_id),
+            (UserFollow.follower_id == user2_id) & (UserFollow.following_id == user1_id),
+        )
+    ).delete(synchronize_session=False)
 
 
 def _get_active_request(
@@ -94,6 +119,7 @@ def send_request(db: Session, requester: User, recipient_id: str) -> FriendReque
         from app.utils.time import utcnow
 
         reverse.responded_at = utcnow()
+        _sync_mutual_follow(db, requester.id, recipient_id)
         db.flush()
         notification_service.create_notification(
             db,
@@ -185,6 +211,7 @@ def accept_request(
 
     request.status = "accepted"
     request.responded_at = utcnow()
+    _sync_mutual_follow(db, request.requester_id, current_user.id)
 
     notification_service.create_notification(
         db,
@@ -287,6 +314,7 @@ def unfriend(db: Session, current_user: User, other_user_id: str) -> None:
             detail="You are not friends with this user",
         )
     db.delete(accepted)
+    _remove_mutual_follow(db, current_user.id, other_user_id)
     db.commit()
 
 
