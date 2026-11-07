@@ -9,6 +9,8 @@ const STORAGE_KEYS = {
   QUOTES: "zist_quotes",
   QUIZZES: "zist_quizzes",
   FEED: "zist_feed",
+  LAST_VISITED_MEDIA: "zist_last_visited_media_id",
+  LAST_VIEWED_CONCEPT: "zist_last_viewed_concept_id",
 } as const;
 
 export const storage = {

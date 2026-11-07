@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Lightbulb,
   Plus,
+  Rss,
   Share2,
   Sparkles,
   Trash2,
@@ -28,6 +29,10 @@ import {
 } from "@/components/ui";
 import { themeService } from "@/services/mediaService";
 import { wikiService } from "@/services/externalServices";
+import {
+  DirectShareFeedModal,
+  type DirectShareItem,
+} from "@/components/feed/DirectShareFeedModal";
 import { parseTimestamp } from "@/lib/time";
 import type { ThemeConcept } from "@/types";
 import { DetailSection } from "./primitives";
@@ -56,6 +61,7 @@ export function ThemesTab({
   const [isGenerating, setIsGenerating] = useState(false);
   const [examples, setExamples] = useState<string[]>([]);
   const [isLoadingExamples, setIsLoadingExamples] = useState(false);
+  const [feedShareItem, setFeedShareItem] = useState<DirectShareItem | null>(null);
 
   useEffect(() => {
     if (openAddNonce > 0) setIsAddOpen(true);
@@ -247,6 +253,8 @@ export function ThemesTab({
               theme={theme}
               themes={themes}
               setThemes={setThemes}
+              mediaTitle={mediaTitle}
+              onShareToFeed={(item) => setFeedShareItem(item)}
             />
           ))}
         </View>
@@ -273,6 +281,12 @@ export function ThemesTab({
           autoFocus
         />
       </Sheet>
+
+      <DirectShareFeedModal
+        visible={!!feedShareItem}
+        onClose={() => setFeedShareItem(null)}
+        item={feedShareItem}
+      />
     </View>
   );
 }
@@ -281,10 +295,14 @@ function ThemeCard({
   theme,
   themes,
   setThemes,
+  mediaTitle,
+  onShareToFeed,
 }: {
   theme: ThemeConcept;
   themes: ThemeConcept[];
   setThemes: (next: ThemeConcept[]) => void;
+  mediaTitle?: string;
+  onShareToFeed: (item: DirectShareItem) => void;
 }) {
   const { colors, radius } = useTheme();
   const { toast } = useToast();
@@ -413,6 +431,21 @@ function ThemeCard({
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+          <IconButton
+            size="iconSm"
+            accessibilityLabel="Share to feed"
+            onPress={() =>
+              onShareToFeed({
+                type: "theme",
+                id: theme.id,
+                title: theme.title,
+                subtitle: theme.summary,
+                mediaTitle,
+              })
+            }
+          >
+            <Rss size={18} color={colors.primary} />
+          </IconButton>
           <IconButton size="iconSm" accessibilityLabel="Copy theme" onPress={() => void handleCopy()}>
             <Copy size={18} color={colors.mutedForeground} />
           </IconButton>

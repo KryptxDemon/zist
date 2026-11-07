@@ -30,7 +30,7 @@ export function AppHeader({
   showChrome = !title,
   right,
 }: AppHeaderProps) {
-  const { colors } = useTheme();
+  const { colors, fontFamily } = useTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -67,13 +67,35 @@ export function AppHeader({
             onPress={() => router.push("/")}
             style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
           >
-            <Image
-              source={require("../../../assets/brand/zist-logo.png")}
-              style={{ height: 34, width: 34, borderRadius: 10 }}
-              resizeMode="contain"
-            />
-            <Text variant="h3" weight="semibold">
-              Zist
+            <View
+              style={{
+                padding: 3,
+                borderRadius: 12,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <Image
+                source={require("../../../assets/brand/zist-logo.png")}
+                style={{ height: 28, width: 28, borderRadius: 8 }}
+                resizeMode="contain"
+              />
+            </View>
+            <Text
+              style={{
+                fontFamily: fontFamily.authDisplay,
+                fontSize: 20,
+                letterSpacing: 2.5,
+                color: colors.foreground,
+              }}
+            >
+              ZIST
             </Text>
           </Pressable>
         ) : (

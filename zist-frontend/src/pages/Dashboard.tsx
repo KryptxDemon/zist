@@ -19,6 +19,7 @@ import {
   themeService,
   vocabService,
 } from "@/services/mediaService";
+import { storage, STORAGE_KEYS } from "@/services/storage";
 import { MediaItem, QuoteItem, ThemeConcept, VocabItem } from "@/types";
 import { isWithinLastDays, parseTimestamp } from "@/lib/time";
 
@@ -420,26 +421,69 @@ export default function Dashboard() {
     return [...unique].slice(0, 24);
   }, [themes]);
 
-  const lastOpened = sortedByRecent[0];
+  const lastOpened = useMemo(() => {
+    const visitedId = storage.get<string>(STORAGE_KEYS.LAST_VISITED_MEDIA);
+    if (visitedId) {
+      const match = media.find((m) => m.id === visitedId);
+      if (match) return match;
+    }
+    return sortedByRecent[0];
+  }, [media, sortedByRecent]);
+
   const featuredMedia =
-    sortedByRecent[0] || recentlyAdded[0] || continueLearning[0];
+    lastOpened || sortedByRecent[0] || recentlyAdded[0] || continueLearning[0];
   const featuredCover = featuredMedia
     ? coverById[featuredMedia.id] || TYPE_FALLBACKS[featuredMedia.type]
     : TYPE_FALLBACKS.movie;
-  const lastConcept = useMemo(
-    () =>
-      [...themes].sort(
-        (a, b) =>
-          epoch(b.updatedAt || b.createdAt) -
-          epoch(a.updatedAt || a.createdAt),
-      )[0],
-    [themes],
-  );
-  const lastConceptMedia = lastConcept
-    ? media.find((m) => m.id === lastConcept.mediaId)
-    : undefined;
-  const quizMedia =
-    continueLearning.find((m) => m.status === "in-progress") || lastOpened;
+
+  const lastConcept = useMemo(() => {
+    const viewedConceptId = storage.get<string>(
+      STORAGE_KEYS.LAST_VIEWED_CONCEPT,
+    );
+    if (viewedConceptId) {
+      const match = themes.find((t) => t.id === viewedConceptId);
+      if (match) return match;
+    }
+    const sortedThemes = [...themes].sort(
+      (a, b) =>
+        epoch(b.updatedAt || b.createdAt) -
+        epoch(a.updatedAt || a.createdAt),
+    );
+    // If multiple media exist, pick a concept from a different title than lastOpened
+    if (sortedThemes.length > 1 && media.length > 1 && lastOpened) {
+      const diffMediaTheme = sortedThemes.find(
+        (t) => t.mediaId !== lastOpened.id,
+      );
+      if (diffMediaTheme) return diffMediaTheme;
+    }
+    return sortedThemes[0];
+  }, [themes, media, lastOpened]);
+
+  const lastConceptMedia = useMemo(() => {
+    return lastConcept
+      ? media.find((m) => m.id === lastConcept.mediaId)
+      : undefined;
+  }, [lastConcept, media]);
+
+  const quizMedia = useMemo(() => {
+    const withVocab = media.filter((m) =>
+      vocab.some((v) => v.mediaId === m.id),
+    );
+    const inProgress = media.filter((m) => m.status === "in-progress");
+    const candidates = Array.from(
+      new Set([...inProgress, ...withVocab, ...media]),
+    );
+
+    const distinctBoth = candidates.find(
+      (m) => m.id !== lastOpened?.id && m.id !== lastConceptMedia?.id,
+    );
+    if (distinctBoth) return distinctBoth;
+
+    const distinctOpened = candidates.find((m) => m.id !== lastOpened?.id);
+    if (distinctOpened) return distinctOpened;
+
+    return candidates[0] || lastOpened;
+  }, [media, vocab, lastOpened, lastConceptMedia]);
 
   const lastOpenedCover = lastOpened
     ? coverById[lastOpened.id] || TYPE_FALLBACKS[lastOpened.type]
@@ -451,8 +495,8 @@ export default function Dashboard() {
     ? coverById[quizMedia.id] || TYPE_FALLBACKS[quizMedia.type]
     : TYPE_FALLBACKS.tv;
 
-  const continueQuizHref = lastOpened
-    ? `/app/quiz/${lastOpened.id}`
+  const continueQuizHref = quizMedia
+    ? `/app/quiz/${quizMedia.id}`
     : "/app/quiz";
   const addMediaHref = query.trim()
     ? `/app/media/new?q=${encodeURIComponent(query.trim())}`

@@ -79,6 +79,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        brand: ['Boldonse', 'Inter Tight', 'sans-serif'],
       },
       boxShadow: {
         'glow-sm': '0 2px 8px -2px hsl(0 0% 0% / 0.3)',

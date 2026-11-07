@@ -30,6 +30,7 @@ import {
 
 import { useTheme } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
+import { storage, STORAGE_KEYS } from "@/services/storage";
 import { RadialGlow } from "@/components/layout/RadialGlow";
 import {
   Button,
@@ -292,27 +293,60 @@ export function DashboardScreen() {
     [media, totalMedia, themes, vocab, quotes],
   );
 
-  const lastOpened = sortedByRecent[0];
+  const lastOpened = useMemo(() => {
+    const visitedId = storage.get<string>(STORAGE_KEYS.LAST_VISITED_MEDIA);
+    if (visitedId) {
+      const match = media.find((m) => m.id === visitedId);
+      if (match) return match;
+    }
+    return sortedByRecent[0];
+  }, [media, sortedByRecent]);
+
   const featuredMedia = lastOpened ?? recentlyAdded[0] ?? continueLearning[0];
   const featuredCover = featuredMedia
     ? coverById[featuredMedia.id] || fallbackCover(featuredMedia.type)
     : fallbackCover("movie");
 
-  const lastConcept = useMemo(
-    () =>
-      [...themes].sort(
-        (a, b) =>
-          epoch(b.updatedAt || b.createdAt) - epoch(a.updatedAt || a.createdAt),
-      )[0],
-    [themes],
-  );
+  const lastConcept = useMemo(() => {
+    const viewedConceptId = storage.get<string>(STORAGE_KEYS.LAST_VIEWED_CONCEPT);
+    if (viewedConceptId) {
+      const match = themes.find((t) => t.id === viewedConceptId);
+      if (match) return match;
+    }
+    const sortedThemes = [...themes].sort(
+      (a, b) =>
+        epoch(b.updatedAt || b.createdAt) - epoch(a.updatedAt || a.createdAt),
+    );
+    // If multiple media exist, pick a concept from a different title than lastOpened
+    if (sortedThemes.length > 1 && media.length > 1 && lastOpened) {
+      const diffMediaTheme = sortedThemes.find((t) => t.mediaId !== lastOpened.id);
+      if (diffMediaTheme) return diffMediaTheme;
+    }
+    return sortedThemes[0];
+  }, [themes, media, lastOpened]);
 
-  const lastConceptMedia = lastConcept
-    ? media.find((m) => m.id === lastConcept.mediaId)
-    : undefined;
+  const lastConceptMedia = useMemo(() => {
+    return lastConcept
+      ? media.find((m) => m.id === lastConcept.mediaId)
+      : undefined;
+  }, [lastConcept, media]);
 
-  const quizMedia =
-    continueLearning.find((m) => m.status === "in-progress") ?? lastOpened;
+  const quizMedia = useMemo(() => {
+    const withVocab = media.filter((m) => vocab.some((v) => v.mediaId === m.id));
+    const inProgress = media.filter((m) => m.status === "in-progress");
+    const candidates = Array.from(new Set([...inProgress, ...withVocab, ...media]));
+
+    // Pick a candidate distinct from both lastOpened and lastConceptMedia if possible
+    const distinctBoth = candidates.find(
+      (m) => m.id !== lastOpened?.id && m.id !== lastConceptMedia?.id,
+    );
+    if (distinctBoth) return distinctBoth;
+
+    const distinctOpened = candidates.find((m) => m.id !== lastOpened?.id);
+    if (distinctOpened) return distinctOpened;
+
+    return candidates[0] ?? lastOpened;
+  }, [media, vocab, lastOpened, lastConceptMedia]);
 
   const currentReading = sortedByRecent.find((m) => m.status === "in-progress");
 

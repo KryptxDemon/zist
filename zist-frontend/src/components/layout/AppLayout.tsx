@@ -76,17 +76,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navbar */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-background/95 backdrop-blur-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-background/85 backdrop-blur-md border-b border-border/40 shadow-sm shadow-black/5">
         <div className="flex h-full items-center justify-between px-4 lg:px-8 max-w-[1600px] mx-auto">
-          {/* Logo */}
-          <Link to="/app" className="flex items-center gap-3">
-            <img
-              src="/zistlogo-2.png"
-              alt="Zist Logo"
-              className="h-10 w-10 rounded-xl object-contain"
-            />
-            <span className="font-display text-xl font-semibold text-foreground">
-              Zist
+          {/* Logo & Brand Wordmark */}
+          <Link to="/app" className="group flex items-center gap-3">
+            <div className="relative p-1 rounded-xl bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/25 shadow-sm transition-transform duration-200 group-hover:scale-105">
+              <img
+                src="/zistlogo-2.png"
+                alt="Zist Logo"
+                className="h-8 w-8 rounded-lg object-contain"
+              />
+            </div>
+            <span className="font-brand text-xl tracking-[0.2em] font-black uppercase text-foreground drop-shadow-sm transition-colors group-hover:text-primary">
+              ZIST
             </span>
           </Link>
 

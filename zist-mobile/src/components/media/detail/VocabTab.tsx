@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, Share, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { BookOpen, Check, Copy, Plus, Search, Share2, Sparkles, Trash2 } from "lucide-react-native";
+import { BookOpen, Check, Copy, Plus, Rss, Search, Share2, Sparkles, Trash2 } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import {
@@ -20,6 +20,10 @@ import { vocabService } from "@/services/mediaService";
 import { aiService, dictionaryService } from "@/services/externalServices";
 import type { VocabItem } from "@/types";
 import { DetailSection } from "./primitives";
+import {
+  DirectShareFeedModal,
+  type DirectShareItem,
+} from "@/components/feed/DirectShareFeedModal";
 
 type GeneratedWord = Awaited<
   ReturnType<typeof aiService.generateMediaVocabulary>
@@ -55,6 +59,7 @@ export function VocabTab({
   const [newWord, setNewWord] = useState({ word: "", whereFound: "", tags: "" });
   const [filter, setFilter] = useState<VocabFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [feedShareItem, setFeedShareItem] = useState<DirectShareItem | null>(null);
 
   useEffect(() => {
     if (openAddNonce > 0) setIsAddOpen(true);
@@ -295,7 +300,14 @@ export function VocabTab({
       ) : (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
           {filteredVocab.map((word) => (
-            <VocabCard key={word.id} word={word} vocab={vocab} setVocab={setVocab} />
+            <VocabCard
+              key={word.id}
+              word={word}
+              vocab={vocab}
+              setVocab={setVocab}
+              mediaTitle={mediaTitle}
+              onShareToFeed={(item) => setFeedShareItem(item)}
+            />
           ))}
         </View>
       )}
@@ -334,6 +346,12 @@ export function VocabTab({
           onChangeText={(tags) => setNewWord({ ...newWord, tags })}
         />
       </Sheet>
+
+      <DirectShareFeedModal
+        visible={!!feedShareItem}
+        onClose={() => setFeedShareItem(null)}
+        item={feedShareItem}
+      />
     </View>
   );
 }
@@ -342,10 +360,14 @@ function VocabCard({
   word,
   vocab,
   setVocab,
+  mediaTitle,
+  onShareToFeed,
 }: {
   word: VocabItem;
   vocab: VocabItem[];
   setVocab: (next: VocabItem[]) => void;
+  mediaTitle?: string;
+  onShareToFeed: (item: DirectShareItem) => void;
 }) {
   const { colors, radius } = useTheme();
   const { toast } = useToast();
@@ -413,6 +435,21 @@ function VocabCard({
           {word.word}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+          <IconButton
+            size="iconSm"
+            accessibilityLabel="Share to feed"
+            onPress={() =>
+              onShareToFeed({
+                type: "vocab",
+                id: word.id,
+                title: word.word,
+                subtitle: word.definition,
+                mediaTitle,
+              })
+            }
+          >
+            <Rss size={18} color={colors.primary} />
+          </IconButton>
           <IconButton size="iconSm" accessibilityLabel="Copy word" onPress={() => void handleCopy()}>
             <Copy size={18} color={colors.mutedForeground} />
           </IconButton>

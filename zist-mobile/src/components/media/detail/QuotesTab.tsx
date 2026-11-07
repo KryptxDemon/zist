@@ -8,6 +8,7 @@ import {
   Copy,
   Plus,
   Quote,
+  Rss,
   Share2,
   Sparkles,
 } from "lucide-react-native";
@@ -28,16 +29,22 @@ import { quoteService } from "@/services/mediaService";
 import { aiService } from "@/services/externalServices";
 import { parseTimestamp } from "@/lib/time";
 import type { QuoteItem, ThemeConcept } from "@/types";
+import {
+  DirectShareFeedModal,
+  type DirectShareItem,
+} from "@/components/feed/DirectShareFeedModal";
 
 /** Quotes tab — capture quotes, bookmark, copy/share and generate AI meaning. */
 export function QuotesTab({
   mediaId,
+  mediaTitle,
   quotes,
   setQuotes,
   themes,
   openAddNonce = 0,
 }: {
   mediaId: string;
+  mediaTitle?: string;
   quotes: QuoteItem[];
   setQuotes: (next: QuoteItem[]) => void;
   themes: ThemeConcept[];
@@ -50,6 +57,7 @@ export function QuotesTab({
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [feedShareItem, setFeedShareItem] = useState<DirectShareItem | null>(null);
   const [newQuote, setNewQuote] = useState({
     text: "",
     speaker: "",
@@ -183,6 +191,8 @@ export function QuotesTab({
               quotes={quotes}
               setQuotes={setQuotes}
               themes={themes}
+              mediaTitle={mediaTitle}
+              onShareToFeed={(item) => setFeedShareItem(item)}
             />
           ))}
         </View>
@@ -239,6 +249,12 @@ export function QuotesTab({
           onChangeText={(userMeaning) => setNewQuote({ ...newQuote, userMeaning })}
         />
       </Sheet>
+
+      <DirectShareFeedModal
+        visible={!!feedShareItem}
+        onClose={() => setFeedShareItem(null)}
+        item={feedShareItem}
+      />
     </View>
   );
 }
@@ -248,11 +264,15 @@ function QuoteCard({
   quotes,
   setQuotes,
   themes,
+  mediaTitle,
+  onShareToFeed,
 }: {
   quote: QuoteItem;
   quotes: QuoteItem[];
   setQuotes: (next: QuoteItem[]) => void;
   themes: ThemeConcept[];
+  mediaTitle?: string;
+  onShareToFeed: (item: DirectShareItem) => void;
 }) {
   const { colors, radius } = useTheme();
   const { toast } = useToast();
@@ -344,6 +364,21 @@ function QuoteCard({
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+          <IconButton
+            size="iconSm"
+            accessibilityLabel="Share to feed"
+            onPress={() =>
+              onShareToFeed({
+                type: "quote",
+                id: quote.id,
+                title: quote.text,
+                subtitle: quote.speaker ? `— ${quote.speaker}` : undefined,
+                mediaTitle,
+              })
+            }
+          >
+            <Rss size={18} color={colors.primary} />
+          </IconButton>
           <IconButton size="iconSm" accessibilityLabel="Copy quote" onPress={() => void handleCopy()}>
             <Copy size={18} color={colors.mutedForeground} />
           </IconButton>

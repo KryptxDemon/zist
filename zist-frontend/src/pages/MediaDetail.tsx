@@ -23,6 +23,7 @@ import {
   dictionaryService,
   aiService,
 } from "@/services/externalServices";
+import { storage, STORAGE_KEYS } from "@/services/storage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,7 +58,12 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Rss,
 } from "lucide-react";
+import {
+  DirectShareFeedDialog,
+  type DirectShareItem,
+} from "@/components/feed/DirectShareFeedDialog";
 import {
   Dialog,
   DialogContent,
@@ -86,6 +92,7 @@ export default function MediaDetail() {
   const [facts, setFacts] = useState<FactItem[]>([]);
   const [vocab, setVocab] = useState<VocabItem[]>([]);
   const [quotes, setQuotes] = useState<QuoteItem[]>([]);
+  const [directShareItem, setDirectShareItem] = useState<DirectShareItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -121,6 +128,11 @@ export default function MediaDetail() {
         setFacts(factsData);
         setVocab(vocabData);
         setQuotes(quotesData);
+
+        storage.set(STORAGE_KEYS.LAST_VISITED_MEDIA, mediaData.id);
+        if (themesData.length > 0) {
+          storage.set(STORAGE_KEYS.LAST_VIEWED_CONCEPT, themesData[0].id);
+        }
 
         // Auto-generate themes if empty and media type supports it
         if (
@@ -372,6 +384,7 @@ export default function MediaDetail() {
               mediaTitle={media.title}
               themes={themes}
               setThemes={setThemes}
+              onDirectShare={(item) => setDirectShareItem(item)}
             />
           </TabsContent>
 
@@ -382,19 +395,28 @@ export default function MediaDetail() {
               mediaOverview={media.description}
               vocab={vocab}
               setVocab={setVocab}
+              onDirectShare={(item) => setDirectShareItem(item)}
             />
           </TabsContent>
 
           <TabsContent value="quotes">
             <QuotesTab
               mediaId={media.id}
+              mediaTitle={media.title}
               quotes={quotes}
               setQuotes={setQuotes}
               themes={themes}
+              onDirectShare={(item) => setDirectShareItem(item)}
             />
           </TabsContent>
         </Tabs>
       </div>
+
+      <DirectShareFeedDialog
+        open={!!directShareItem}
+        onOpenChange={(open) => !open && setDirectShareItem(null)}
+        item={directShareItem}
+      />
     </AppLayout>
   );
 }
@@ -545,11 +567,13 @@ function ThemesTab({
   mediaTitle,
   themes,
   setThemes,
+  onDirectShare,
 }: {
   mediaId: string;
   mediaTitle: string;
   themes: ThemeConcept[];
   setThemes: (themes: ThemeConcept[]) => void;
+  onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -791,6 +815,8 @@ function ThemesTab({
               theme={theme}
               themes={themes}
               setThemes={setThemes}
+              mediaTitle={mediaTitle}
+              onDirectShare={onDirectShare}
             />
           ))}
         </div>
@@ -803,10 +829,14 @@ function ThemeCard({
   theme,
   themes,
   setThemes,
+  mediaTitle,
+  onDirectShare,
 }: {
   theme: ThemeConcept;
   themes: ThemeConcept[];
   setThemes: (themes: ThemeConcept[]) => void;
+  mediaTitle?: string;
+  onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -914,6 +944,23 @@ function ThemeCard({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {onDirectShare && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                onDirectShare({
+                  type: "theme",
+                  title: theme.title,
+                  content: theme.summary || theme.userUnderstanding || undefined,
+                  mediaTitle,
+                })
+              }
+              title="Share to Feed"
+            >
+              <Rss className="h-4 w-4 text-primary" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={handleCopyTheme} title="Copy theme">
             <Copy className="h-4 w-4" />
           </Button>
@@ -1152,12 +1199,14 @@ function VocabTab({
   mediaOverview,
   vocab,
   setVocab,
+  onDirectShare,
 }: {
   mediaId: string;
   mediaTitle: string;
   mediaOverview?: string | null;
   vocab: VocabItem[];
   setVocab: (vocab: VocabItem[]) => void;
+  onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -1489,6 +1538,8 @@ function VocabTab({
               word={word}
               vocab={vocab}
               setVocab={setVocab}
+              mediaTitle={mediaTitle}
+              onDirectShare={onDirectShare}
             />
           ))}
         </div>
@@ -1501,10 +1552,14 @@ function VocabCard({
   word,
   vocab,
   setVocab,
+  mediaTitle,
+  onDirectShare,
 }: {
   word: VocabItem;
   vocab: VocabItem[];
   setVocab: (vocab: VocabItem[]) => void;
+  mediaTitle?: string;
+  onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
 
@@ -1555,6 +1610,25 @@ function VocabCard({
           {word.word}
         </h4>
         <div className="flex items-center gap-1">
+          {onDirectShare && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                onDirectShare({
+                  type: "vocab",
+                  title: word.word,
+                  content: word.definition
+                    ? `${word.definition}${word.exampleSentence ? ` — "${word.exampleSentence}"` : ""}`
+                    : word.exampleSentence || undefined,
+                  mediaTitle,
+                })
+              }
+              title="Share to Feed"
+            >
+              <Rss className="h-4 w-4 text-primary" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={handleCopyWord} title="Copy word">
             <Copy className="h-4 w-4" />
           </Button>
@@ -1600,14 +1674,18 @@ function VocabCard({
 
 function QuotesTab({
   mediaId,
+  mediaTitle,
   quotes,
   setQuotes,
   themes,
+  onDirectShare,
 }: {
   mediaId: string;
+  mediaTitle?: string;
   quotes: QuoteItem[];
   setQuotes: (quotes: QuoteItem[]) => void;
   themes: ThemeConcept[];
+  onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -1829,6 +1907,8 @@ function QuotesTab({
               quotes={quotes}
               setQuotes={setQuotes}
               themes={themes}
+              mediaTitle={mediaTitle}
+              onDirectShare={onDirectShare}
             />
           ))}
         </div>
@@ -1842,11 +1922,15 @@ function QuoteCard({
   quotes,
   setQuotes,
   themes,
+  mediaTitle,
+  onDirectShare,
 }: {
   quote: QuoteItem;
   quotes: QuoteItem[];
   setQuotes: (quotes: QuoteItem[]) => void;
   themes: ThemeConcept[];
+  mediaTitle?: string;
+  onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1899,6 +1983,23 @@ function QuoteCard({
           )}
         </div>
         <div className="flex items-center gap-1">
+          {onDirectShare && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                onDirectShare({
+                  type: "quote",
+                  title: quote.speaker ? `Quote by ${quote.speaker}` : "Memorable Quote",
+                  content: quote.text,
+                  mediaTitle,
+                })
+              }
+              title="Share to Feed"
+            >
+              <Rss className="h-4 w-4 text-primary" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={handleCopy}>
             <Copy className="h-4 w-4" />
           </Button>

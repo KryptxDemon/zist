@@ -41,15 +41,7 @@ interface ActivityEntry {
   createdAt: string;
 }
 
-function themeCategory(title: string): string {
-  const t = title.toLowerCase();
-  if (/(religion|faith|church|god|spiritual|moral|ethic)/.test(t)) return "Religious Concepts";
-  if (/(education|learn|growth|discipline|study|self)/.test(t)) return "Self-Education";
-  if (/(identity|society|culture|power|politic)/.test(t)) return "Social Dynamics";
-  return "General Concepts";
-}
-
-/** Native port of the web `Insights` page (charts rebuilt with react-native-svg). */
+/** Native port of the web `Insights` page with genuine tracking analytics. */
 export function InsightsScreen() {
   const { colors } = useTheme();
   const chartColors = useChartColors();
@@ -91,15 +83,23 @@ export function InsightsScreen() {
     return map;
   }, [media]);
 
-  // Topics / themes distribution (ports the web's unused conceptDistributionData).
-  const conceptDistribution = useMemo<SeriesDatum[]>(() => {
-    const map = new Map<string, number>();
-    themes.forEach((t) => {
-      const cat = themeCategory(t.title);
-      map.set(cat, (map.get(cat) || 0) + 1);
+  // Media status breakdown (Planned vs In Progress vs Completed)
+  const mediaStatusDistribution = useMemo<SeriesDatum[]>(() => {
+    const counts: Record<string, number> = {
+      Completed: 0,
+      "In Progress": 0,
+      Planned: 0,
+    };
+    media.forEach((m) => {
+      const s = String(m.status || "").toLowerCase();
+      if (s === "completed") counts["Completed"]++;
+      else if (s === "in-progress" || s === "in_progress") counts["In Progress"]++;
+      else counts["Planned"]++;
     });
-    return [...map.entries()].map(([label, value]) => ({ label, value }));
-  }, [themes]);
+    return Object.entries(counts)
+      .filter(([_, val]) => val > 0)
+      .map(([label, value]) => ({ label, value }));
+  }, [media]);
 
   // Themes grouped by media type (ports themesPerMediaTypeData).
   const themesPerMediaType = useMemo<SeriesDatum[]>(() => {
@@ -126,65 +126,65 @@ export function InsightsScreen() {
     return { values, labels };
   }, [vocab]);
 
-  // Learning-time estimate per media (verbatim from the web page).
-  const estimatedLearningTimeData = useMemo(() => {
-    const minutesByMedia = new Map<
+  // Knowledge density per media: actual count of themes, vocab, quotes, and quizzes
+  const knowledgePerMedia = useMemo(() => {
+    const map = new Map<
       string,
-      { title: string; minutes: number; themeCount: number; vocabCount: number; quoteCount: number; quizCount: number }
+      { title: string; count: number; themeCount: number; vocabCount: number; quoteCount: number; quizCount: number }
     >();
 
     const getOrCreate = (mediaId: string, title: string) => {
-      if (!minutesByMedia.has(mediaId)) {
-        minutesByMedia.set(mediaId, {
+      if (!map.has(mediaId)) {
+        map.set(mediaId, {
           title,
-          minutes: 0,
+          count: 0,
           themeCount: 0,
           vocabCount: 0,
           quoteCount: 0,
           quizCount: 0,
         });
       }
-      return minutesByMedia.get(mediaId)!;
+      return map.get(mediaId)!;
     };
 
     themes.forEach((item) => {
       const mediaItem = media.find((m) => m.id === item.mediaId);
       if (!mediaItem) return;
-      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
-      bucket.themeCount += 1;
-      bucket.minutes += 4;
+      const b = getOrCreate(mediaItem.id, mediaItem.title);
+      b.themeCount += 1;
+      b.count += 1;
     });
     vocab.forEach((item) => {
       const mediaItem = media.find((m) => m.id === item.mediaId);
       if (!mediaItem) return;
-      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
-      bucket.vocabCount += 1;
-      bucket.minutes += 3;
+      const b = getOrCreate(mediaItem.id, mediaItem.title);
+      b.vocabCount += 1;
+      b.count += 1;
     });
     quotes.forEach((item) => {
       const mediaItem = media.find((m) => m.id === item.mediaId);
       if (!mediaItem) return;
-      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
-      bucket.quoteCount += 1;
-      bucket.minutes += 2;
+      const b = getOrCreate(mediaItem.id, mediaItem.title);
+      b.quoteCount += 1;
+      b.count += 1;
     });
     quizAttempts.forEach((item) => {
       const mediaItem = media.find((m) => m.id === item.mediaId);
       if (!mediaItem) return;
-      const bucket = getOrCreate(mediaItem.id, mediaItem.title);
-      bucket.quizCount += 1;
-      bucket.minutes += Math.max(6, Math.round(item.totalQuestions * 1.5));
+      const b = getOrCreate(mediaItem.id, mediaItem.title);
+      b.quizCount += 1;
+      b.count += 1;
     });
 
-    return [...minutesByMedia.values()].sort((a, b) => b.minutes - a.minutes).slice(0, 8);
+    return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 8);
   }, [media, themes, vocab, quotes, quizAttempts]);
 
-  const totalEstimatedMinutes = useMemo(
-    () => estimatedLearningTimeData.reduce((sum, item) => sum + item.minutes, 0),
-    [estimatedLearningTimeData],
+  const totalKnowledgeItems = useMemo(
+    () => themes.length + vocab.length + quotes.length,
+    [themes, vocab, quotes],
   );
 
-  const topLearningMedia = estimatedLearningTimeData[0];
+  const topKnowledgeMedia = knowledgePerMedia[0];
 
   // Daily activity buckets power the heatmap + streak.
   const activityCounts = useMemo(() => {
@@ -276,9 +276,9 @@ export function InsightsScreen() {
       .slice(0, 8);
   }, [themes, vocab, quotes, mediaTitleById]);
 
-  const learningTimeSeries = estimatedLearningTimeData.map((item) => ({
+  const knowledgeSeries = knowledgePerMedia.map((item) => ({
     label: item.title,
-    value: item.minutes,
+    value: item.count,
   }));
 
   return (
@@ -298,8 +298,8 @@ export function InsightsScreen() {
         </Text>
         <Text variant="h1">Your Learning Analytics</Text>
         <Text variant="muted">
-          A simpler view of what you’ve spent time learning, what you’ve saved, and which media has
-          taken the most attention.
+          A genuine view of what you’ve spent time learning, what you’ve saved, and which media has
+          captured the most knowledge.
         </Text>
       </View>
 
@@ -313,24 +313,24 @@ export function InsightsScreen() {
         <>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             <StatCard
-              label="Media studied"
+              label="Media in library"
               value={media.length}
-              hint="Combined themes, vocabulary, quotes, and quizzes across your library."
+              hint="Tracked movies, series, books, and podcasts."
               icon={<BookOpen size={16} color={colors.mutedForeground} />}
             />
             <StatCard
-              label="Estimated learning time"
-              value={`${totalEstimatedMinutes} min`}
-              hint="Based on themes, vocabulary, quotes, and quiz activity."
-              icon={<Clock size={16} color={colors.mutedForeground} />}
+              label="Knowledge captured"
+              value={totalKnowledgeItems}
+              hint="Total themes, vocabulary words, and quotes saved."
+              icon={<Sparkles size={16} color={colors.mutedForeground} />}
             />
             <StatCard
-              label="Most active media"
-              value={topLearningMedia?.title || "No media yet"}
+              label="Top explored media"
+              value={topKnowledgeMedia?.title || "No media yet"}
               hint={
-                topLearningMedia
-                  ? `${topLearningMedia.minutes} min estimated`
-                  : "Add media and start learning."
+                topKnowledgeMedia
+                  ? `${topKnowledgeMedia.count} items recorded`
+                  : "Add media and start capturing concepts."
               }
               icon={<Target size={16} color={colors.mutedForeground} />}
             />
@@ -405,13 +405,13 @@ export function InsightsScreen() {
             )}
           </ChartCard>
 
-          <ChartCard title="Learning Time Per Media" subtitle="Estimated minutes of engagement">
-            {learningTimeSeries.length === 0 ? (
+          <ChartCard title="Knowledge Depth Per Media" subtitle="Themes, vocabulary, and quotes recorded">
+            {knowledgeSeries.length === 0 ? (
               <Text variant="muted">
                 Add themes, vocabulary, quotes, or quizzes to see this breakdown.
               </Text>
             ) : (
-              <HorizontalBarChart data={learningTimeSeries} valueSuffix=" min" />
+              <HorizontalBarChart data={knowledgeSeries} valueSuffix=" items" />
             )}
           </ChartCard>
 
@@ -423,17 +423,17 @@ export function InsightsScreen() {
             )}
           </ChartCard>
 
-          <ChartCard title="Topic Distribution" subtitle="Themes grouped into categories">
-            {conceptDistribution.length === 0 ? (
-              <Text variant="muted">Generate themes to see how your topics are distributed.</Text>
+          <ChartCard title="Library Progress" subtitle="Watchlist & reading status breakdown">
+            {mediaStatusDistribution.length === 0 ? (
+              <Text variant="muted">Add media to your library to see your reading/watch status.</Text>
             ) : (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
                 <DonutChart
-                  data={conceptDistribution}
-                  centerValue={themes.length}
-                  centerLabel="themes"
+                  data={mediaStatusDistribution}
+                  centerValue={media.length}
+                  centerLabel="titles"
                 />
-                <ChartLegend data={conceptDistribution} style={{ flex: 1, minWidth: 160 }} />
+                <ChartLegend data={mediaStatusDistribution} style={{ flex: 1, minWidth: 160 }} />
               </View>
             )}
           </ChartCard>

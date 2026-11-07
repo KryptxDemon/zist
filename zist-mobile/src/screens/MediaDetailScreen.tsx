@@ -42,6 +42,7 @@ import {
   themeService,
   vocabService,
 } from "@/services/mediaService";
+import { storage, STORAGE_KEYS } from "@/services/storage";
 import type {
   FactItem,
   MediaItem,
@@ -124,6 +125,11 @@ export function MediaDetailScreen() {
       setFacts(factsData);
       setVocab(vocabData);
       setQuotes(quotesData);
+
+      storage.set(STORAGE_KEYS.LAST_VISITED_MEDIA, mediaData.id);
+      if (themesData.length > 0) {
+        storage.set(STORAGE_KEYS.LAST_VIEWED_CONCEPT, themesData[0].id);
+      }
 
       // Auto-generate themes for empty media types that support it.
       if (themesData.length === 0 && AUTO_GENERATE_TYPES.includes(mediaData.type)) {
@@ -448,6 +454,7 @@ export function MediaDetailScreen() {
       {activeTab === "quotes" ? (
         <QuotesTab
           mediaId={media.id}
+          mediaTitle={media.title}
           quotes={quotes}
           setQuotes={setQuotes}
           themes={themes}
