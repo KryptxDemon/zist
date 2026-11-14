@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Film, Lightbulb, BookOpen, Quote, Image as ImageIcon, Star } from "lucide-react";
+import { Loader2, Film, Lightbulb, BookOpen, Quote, Image as ImageIcon, Star, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -69,8 +69,8 @@ export function FeedComposeDialog({
         setSelectedId("");
       } catch {
         toast({
-          title: "Could not load library items",
-          description: "Add movies, books, or notes to your library first.",
+          title: "Could not load archive items",
+          description: "Record titles or marginalia in your library first.",
           variant: "destructive",
         });
       } finally {
@@ -94,7 +94,7 @@ export function FeedComposeDialog({
 
   const handlePost = async () => {
     if (!selectedId) {
-      toast({ title: "Please select an item to share", variant: "destructive" });
+      toast({ title: "Please select an entry to reflect upon", variant: "destructive" });
       return;
     }
 
@@ -107,14 +107,14 @@ export function FeedComposeDialog({
         imageUrl: imageUrl.trim() || undefined,
         visibility,
       });
-      toast({ title: "Shared to feed!" });
+      toast({ title: "Reflection published to the forum" });
       setOpen(false);
       setCaption("");
       setImageUrl("");
       setSelectedId("");
       onPost();
     } catch {
-      toast({ title: "Failed to share post", variant: "destructive" });
+      toast({ title: "Failed to publish reflection", variant: "destructive" });
     } finally {
       setIsPosting(false);
     }
@@ -124,15 +124,15 @@ export function FeedComposeDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       {showTrigger ? (
         <DialogTrigger asChild>
-          <Button className="gap-2 shadow-sm font-semibold">
-            <Plus className="h-4 w-4" />
-            Create Post
+          <Button size="sm" className="gap-2 font-medium text-xs rounded-lg shadow-xs">
+            <PenTool className="h-3.5 w-3.5" />
+            Inscribe Reflection
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Create a Social Share</DialogTitle>
+          <DialogTitle className="font-serif text-xl tracking-tight">Inscribe a Reflection</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
@@ -144,55 +144,55 @@ export function FeedComposeDialog({
               setSelectedId("");
             }}
           >
-            <TabsList className="w-full glass grid grid-cols-4 p-1">
-              <TabsTrigger value="media" className="gap-1.5 text-xs sm:text-sm">
-                <Film className="h-3.5 w-3.5" />
-                Media
+            <TabsList className="w-full grid grid-cols-4 p-1 bg-accent/30 border border-border/50 rounded-lg">
+              <TabsTrigger value="media" className="gap-1.5 text-xs">
+                <Film className="h-3.5 w-3.5 opacity-70" />
+                Work
               </TabsTrigger>
-              <TabsTrigger value="theme" className="gap-1.5 text-xs sm:text-sm">
-                <Lightbulb className="h-3.5 w-3.5" />
-                Theme
+              <TabsTrigger value="theme" className="gap-1.5 text-xs">
+                <Lightbulb className="h-3.5 w-3.5 opacity-70" />
+                Motif
               </TabsTrigger>
-              <TabsTrigger value="vocab" className="gap-1.5 text-xs sm:text-sm">
-                <BookOpen className="h-3.5 w-3.5" />
-                Vocab
+              <TabsTrigger value="vocab" className="gap-1.5 text-xs">
+                <BookOpen className="h-3.5 w-3.5 opacity-70" />
+                Lexicon
               </TabsTrigger>
-              <TabsTrigger value="quote" className="gap-1.5 text-xs sm:text-sm">
-                <Quote className="h-3.5 w-3.5" />
-                Quote
+              <TabsTrigger value="quote" className="gap-1.5 text-xs">
+                <Quote className="h-3.5 w-3.5 opacity-70" />
+                Passage
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
           {/* Item Selector */}
-          <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              Select {postType === "media" ? "Movie / Book" : postType} from Library
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
+              Select {postType === "media" ? "Film or Book" : postType === "quote" ? "Passage" : postType} from Archive
             </Label>
             {isLoadingContent ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading your library...
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Accessing your archive...
               </div>
             ) : items.length === 0 ? (
-              <p className="text-xs sm:text-sm text-muted-foreground rounded-xl border border-dashed border-border/80 p-4 text-center">
-                No {postType} items found in your library yet. Add some first!
+              <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/80 p-4 text-center font-serif italic">
+                No recorded entries found. Inscribe some into your library first.
               </p>
             ) : (
               <Select value={selectedId} onValueChange={setSelectedId}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full text-xs">
                   <SelectValue
-                    placeholder={`Choose a ${
-                      postType === "media" ? "movie or book" : postType
-                    }...`}
+                    placeholder={`Select a ${
+                      postType === "media" ? "work" : postType === "quote" ? "passage" : postType
+                    }…`}
                   />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
                   {items.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
+                    <SelectItem key={item.id} value={item.id} className="text-xs">
                       <span className="font-medium">{item.label}</span>
                       {postType !== "media" && item.mediaTitle && (
-                        <span className="text-muted-foreground ml-1.5">
+                        <span className="text-muted-foreground ml-1.5 italic font-serif">
                           — {item.mediaTitle}
                         </span>
                       )}
@@ -205,20 +205,20 @@ export function FeedComposeDialog({
 
           {/* Selected Item Preview Pill */}
           {selectedItem && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-accent/40 border border-border/60">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/30 border border-border/60">
               {selectedItem.coverUrl ? (
                 <img
                   src={selectedItem.coverUrl}
                   alt={selectedItem.label}
-                  className="w-12 h-16 object-cover rounded-md shrink-0 shadow-sm"
+                  className="w-12 h-16 object-cover rounded shrink-0 shadow-xs border border-border/60"
                 />
               ) : (
-                <div className="w-12 h-16 rounded-md bg-secondary flex items-center justify-center shrink-0">
-                  <Film className="h-5 w-5 text-muted-foreground" />
+                <div className="w-12 h-16 rounded bg-secondary flex items-center justify-center shrink-0">
+                  <Film className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-sm text-foreground truncate">
+                <p className="font-serif font-semibold text-sm text-foreground truncate">
                   {selectedItem.label}
                 </p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
@@ -238,57 +238,57 @@ export function FeedComposeDialog({
           )}
 
           {/* Visibility selector */}
-          <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              Audience
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
+              Circulation
             </Label>
             <Select
               value={visibility}
               onValueChange={(v) => setVisibility(v as typeof visibility)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="global">Public (Global feed — visible to all)</SelectItem>
-                <SelectItem value="friends">Friends only</SelectItem>
+                <SelectItem value="global" className="text-xs">Public Forum (Open to all)</SelectItem>
+                <SelectItem value="friends" className="text-xs">Fellow Readers (Friends only)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Caption / Review */}
-          <div className="space-y-2">
+          {/* Marginalia & Critical Reflection */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                Your Take / Review / Caption
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
+                Marginalia & Reflection
               </Label>
               <button
                 type="button"
                 onClick={() => setShowImageInput(!showImageInput)}
-                className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition-colors"
               >
                 <ImageIcon className="h-3 w-3" />
-                {showImageInput ? "Hide image URL" : "Attach custom image"}
+                {showImageInput ? "Hide image link" : "Attach image link"}
               </button>
             </div>
             <Textarea
               placeholder={
                 postType === "media"
-                  ? "Write your thoughts or review on this film or book..."
-                  : "Share why this quote, concept, or word resonated with you..."
+                  ? "Record your critical thoughts, reflections, or commentary on this work..."
+                  : "Reflect upon why this passage, motif, or word arrested your attention..."
               }
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               rows={3}
-              className="resize-none"
+              className="resize-none text-xs sm:text-sm font-sans"
             />
           </div>
 
           {/* Optional Custom Image URL */}
           {showImageInput && (
             <div className="space-y-1.5 animate-fade-in">
-              <Label className="text-xs text-muted-foreground">
-                Custom Poster / Image Link (optional)
+              <Label className="text-[11px] text-muted-foreground">
+                Artifact / Poster Link (optional)
               </Label>
               <Input
                 placeholder="https://example.com/poster.jpg"
@@ -297,7 +297,7 @@ export function FeedComposeDialog({
                 className="text-xs"
               />
               {imageUrl && (
-                <div className="mt-2 overflow-hidden rounded-lg border max-h-36">
+                <div className="mt-2 overflow-hidden rounded-md border max-h-36">
                   <img
                     src={imageUrl}
                     alt="Preview"
@@ -313,10 +313,10 @@ export function FeedComposeDialog({
           <Button
             onClick={handlePost}
             disabled={isPosting || !selectedId}
-            className="w-full font-semibold py-5"
+            className="w-full font-medium py-4 text-xs tracking-wide"
           >
-            {isPosting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Publish Post
+            {isPosting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
+            Publish Reflection
           </Button>
         </div>
       </DialogContent>

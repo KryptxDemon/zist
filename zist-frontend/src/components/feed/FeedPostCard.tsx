@@ -19,7 +19,6 @@ import {
   Book,
   Star,
   Share2,
-  Sparkles,
 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
@@ -33,27 +32,27 @@ import { cn } from "@/lib/utils";
 const typeConfig = {
   media: {
     icon: Film,
-    color: "text-amber-400",
-    bg: "bg-amber-500/15 border-amber-500/30",
-    label: "Media",
+    color: "text-amber-300",
+    bg: "bg-amber-500/10 border-amber-500/20",
+    label: "Cinema",
   },
   theme: {
     icon: Lightbulb,
-    color: "text-yellow-400",
-    bg: "bg-yellow-500/15 border-yellow-500/30",
-    label: "Theme",
+    color: "text-yellow-300",
+    bg: "bg-yellow-500/10 border-yellow-500/20",
+    label: "Motif",
   },
   vocab: {
     icon: BookOpen,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/15 border-emerald-500/30",
-    label: "Vocabulary",
+    color: "text-emerald-300",
+    bg: "bg-emerald-500/10 border-emerald-500/20",
+    label: "Lexicon",
   },
   quote: {
     icon: Quote,
-    color: "text-violet-400",
-    bg: "bg-violet-500/15 border-violet-500/30",
-    label: "Quote",
+    color: "text-violet-300",
+    bg: "bg-violet-500/10 border-violet-500/20",
+    label: "Passage",
   },
 };
 
@@ -149,9 +148,8 @@ export function FeedPostCard({
 
   const handleLike = async () => {
     setLikeAnim(true);
-    setTimeout(() => setLikeAnim(false), 600);
+    setTimeout(() => setLikeAnim(false), 400);
 
-    // Optimistic toggle
     const nextLiked = !localPost.isLiked;
     const nextCount = localPost.likes + (nextLiked ? 1 : -1);
     const optimistic = {
@@ -169,8 +167,8 @@ export function FeedPostCard({
         likes: result.count,
       });
     } catch {
-      updatePost(localPost); // revert
-      toast({ title: "Failed to like post", variant: "destructive" });
+      updatePost(localPost);
+      toast({ title: "Could not record appreciation", variant: "destructive" });
     }
   };
 
@@ -182,11 +180,11 @@ export function FeedPostCard({
       const result = await feedService.savePost(localPost.id);
       updatePost({ ...localPost, isSaved: result.active });
       toast({
-        title: result.active ? "Saved to your bookmarks" : "Removed from bookmarks",
+        title: result.active ? "Saved to your commonplace" : "Removed from commonplace",
       });
     } catch {
       updatePost(localPost);
-      toast({ title: "Failed to save post", variant: "destructive" });
+      toast({ title: "Could not bookmark dispatch", variant: "destructive" });
     }
   };
 
@@ -195,8 +193,8 @@ export function FeedPostCard({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Zist post by ${localPost.authorName}`,
-          text: localPost.caption || localPost.mediaTitle || "Check out this post on Zist",
+          title: `${localPost.authorName}'s reflection on Zist`,
+          text: localPost.caption || localPost.mediaTitle || "Critical dispatch on Zist",
           url,
         });
         return;
@@ -208,8 +206,8 @@ export function FeedPostCard({
     try {
       await navigator.clipboard.writeText(url);
       toast({
-        title: "Link copied!",
-        description: "Post link copied to your clipboard.",
+        title: "Link copied",
+        description: "Dispatch link copied to your clipboard.",
       });
     } catch {
       toast({ title: "Could not copy link", variant: "destructive" });
@@ -220,9 +218,9 @@ export function FeedPostCard({
     try {
       await feedService.deletePost(localPost.id);
       onDelete?.(localPost.id);
-      toast({ title: "Post deleted" });
+      toast({ title: "Dispatch withdrawn" });
     } catch {
-      toast({ title: "Failed to delete post", variant: "destructive" });
+      toast({ title: "Failed to delete dispatch", variant: "destructive" });
     }
   };
 
@@ -232,7 +230,7 @@ export function FeedPostCard({
       const data = await feedService.getComments(localPost.id);
       setComments(data);
     } catch {
-      toast({ title: "Failed to load comments", variant: "destructive" });
+      toast({ title: "Could not load observations", variant: "destructive" });
     } finally {
       setIsLoadingComments(false);
     }
@@ -259,7 +257,7 @@ export function FeedPostCard({
         commentsCount: localPost.commentsCount + 1,
       });
     } catch {
-      toast({ title: "Failed to post comment", variant: "destructive" });
+      toast({ title: "Could not inscribe remark", variant: "destructive" });
     } finally {
       setIsSubmittingComment(false);
     }
@@ -274,7 +272,7 @@ export function FeedPostCard({
         commentsCount: Math.max(0, localPost.commentsCount - 1),
       });
     } catch {
-      toast({ title: "Failed to delete comment", variant: "destructive" });
+      toast({ title: "Could not remove remark", variant: "destructive" });
     }
   };
 
@@ -282,10 +280,7 @@ export function FeedPostCard({
   const isMediaPost = localPost.type === "media";
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl transition-all duration-300 hover:border-border/90 hover:shadow-xl hover:shadow-black/10 animate-fade-in">
-      {/* Subtle top ambient glow */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-
+    <article className="group relative overflow-hidden rounded-xl border border-border/60 bg-card/75 backdrop-blur-md transition-all duration-300 hover:border-border/90 hover:shadow-lg animate-fade-in">
       {/* Header */}
       <div className="p-5 pb-3">
         <div className="flex items-center justify-between gap-3">
@@ -294,33 +289,26 @@ export function FeedPostCard({
               userId={localPost.userId}
               name={localPost.authorName}
               avatarUrl={localPost.authorAvatar}
-              className="ring-2 ring-primary/20 transition-transform group-hover:scale-105"
+              className="ring-1 ring-border/80 transition-transform group-hover:scale-102"
             />
             <div className="min-w-0">
               <button
                 type="button"
                 onClick={() => navigate(`/app/user/${localPost.userId}`)}
-                className="font-semibold text-foreground hover:text-primary transition-colors text-left truncate block text-sm sm:text-base"
+                className="font-medium text-foreground hover:text-primary transition-colors text-left truncate block text-sm sm:text-base tracking-tight"
               >
                 {localPost.authorName}
               </button>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/80 mt-0.5">
                 <span>{formatRelativeTime(localPost.createdAt)}</span>
                 <span>·</span>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 font-medium",
-                    localPost.visibility === "global"
-                      ? "text-sky-400"
-                      : "text-primary",
-                  )}
-                >
+                <span className="inline-flex items-center gap-1 font-medium">
                   {localPost.visibility === "global" ? (
-                    <Globe className="h-3 w-3" />
+                    <Globe className="h-3 w-3 opacity-70" />
                   ) : (
-                    <Users className="h-3 w-3" />
+                    <Users className="h-3 w-3 opacity-70" />
                   )}
-                  {localPost.visibility === "global" ? "Public" : "Friends"}
+                  {localPost.visibility === "global" ? "Public" : "Circle"}
                 </span>
               </div>
             </div>
@@ -329,16 +317,16 @@ export function FeedPostCard({
           <div className="flex items-center gap-2 shrink-0">
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border shadow-xs",
+                "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border tracking-wide",
                 config.bg,
                 config.color,
               )}
             >
-              <Icon className="h-3 w-3" />
+              <Icon className="h-3 w-3 opacity-80" />
               {localPost.type === "media"
                 ? localPost.mediaType
                   ? localPost.mediaType.charAt(0).toUpperCase() + localPost.mediaType.slice(1)
-                  : "Media"
+                  : "Work"
                 : config.label}
             </span>
 
@@ -346,18 +334,18 @@ export function FeedPostCard({
               <button
                 type="button"
                 onClick={handleDelete}
-                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                title="Delete post"
+                className="p-1.5 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                title="Withdraw dispatch"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
         </div>
 
-        {/* User Caption / Thoughts */}
+        {/* User Authorial Caption / Marginalia */}
         {localPost.caption && (
-          <div className="mt-3.5 text-foreground/95 text-sm sm:text-base leading-relaxed">
+          <div className="mt-3.5 text-foreground/95 text-sm sm:text-[15px] leading-relaxed font-sans">
             <ExpandableText
               text={localPost.caption}
               wordLimit={60}
@@ -367,53 +355,53 @@ export function FeedPostCard({
         )}
       </div>
 
-      {/* Main Content Showcase */}
+      {/* Main Literary / Film Artifact Showcase */}
       <div className="px-5 pb-4">
-        {/* MEDIA POST SHOWCASE (Letterboxd / Instagram Style) */}
+        {/* MEDIA ARTIFACT */}
         {isMediaPost ? (
-          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-accent/50 via-accent/30 to-background/50 p-4 transition-all">
+          <div className="relative overflow-hidden rounded-lg border border-border/60 bg-accent/25 p-4 transition-all">
             <div className="flex flex-col sm:flex-row gap-4 items-start">
               {coverImage && (
-                <div className="relative shrink-0 w-24 sm:w-28 aspect-[2/3] overflow-hidden rounded-lg shadow-lg ring-1 ring-white/10 group-hover:scale-102 transition-transform">
+                <div className="relative shrink-0 w-24 sm:w-28 aspect-[2/3] overflow-hidden rounded-md border border-border/80 shadow-md">
                   <img
                     src={coverImage}
-                    alt={localPost.mediaTitle || "Media poster"}
+                    alt={localPost.mediaTitle || "Work cover"}
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
                 </div>
               )}
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-display text-lg sm:text-xl font-bold text-foreground">
-                    {localPost.mediaTitle || (localPost.content?.title ?? "Media")}
+                  <h3 className="font-serif text-lg sm:text-xl font-semibold text-foreground tracking-tight">
+                    {localPost.mediaTitle || (localPost.content?.title ?? "Untitled Work")}
                   </h3>
                   {localPost.mediaYear && (
-                    <span className="text-xs px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground font-medium">
+                    <span className="text-xs px-2 py-0.5 rounded border border-border/60 text-muted-foreground font-mono">
                       {localPost.mediaYear}
                     </span>
                   )}
                 </div>
 
                 {localPost.mediaCreator && (
-                  <p className="text-xs sm:text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
                     by{" "}
-                    <span className="text-foreground/80 font-medium">
+                    <span className="text-foreground/90 not-italic font-sans font-medium">
                       {localPost.mediaCreator}
                     </span>
                   </p>
                 )}
 
                 {localPost.mediaRating !== undefined && localPost.mediaRating !== null && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-semibold">
-                    <Star className="h-3.5 w-3.5 fill-amber-400" />
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-amber-500/25 bg-amber-500/10 text-amber-300 text-xs font-semibold">
+                    <Star className="h-3 w-3 fill-amber-300" />
                     <span>{localPost.mediaRating.toFixed(1)} / 10</span>
                   </div>
                 )}
 
                 {localPost.content?.review && (
-                  <div className="pt-1 text-xs sm:text-sm text-muted-foreground italic border-t border-border/40 mt-2">
+                  <div className="pt-2 text-xs sm:text-sm text-muted-foreground font-serif italic border-t border-border/40 mt-2">
                     <ExpandableText
                       text={localPost.content.review}
                       prefix="“"
@@ -428,34 +416,34 @@ export function FeedPostCard({
           </div>
         ) : null}
 
-        {/* THEME CONCEPT SHOWCASE */}
+        {/* MOTIF & THEME CONCEPT */}
         {localPost.type === "theme" && (
-          <div className="relative overflow-hidden rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 sm:p-5">
+          <div className="relative overflow-hidden rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4 sm:p-5">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-yellow-500/10 text-yellow-400 shrink-0">
-                <Lightbulb className="h-5 w-5" />
+              <div className="p-2 rounded-md bg-yellow-500/10 text-yellow-300 shrink-0">
+                <Lightbulb className="h-4 w-4" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-yellow-400/90">
-                    Core Theme
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-yellow-400/90 font-mono">
+                    Motif & Theme
                   </span>
                   {localPost.mediaTitle && (
                     <>
-                      <span className="text-xs text-muted-foreground">·</span>
-                      <span className="text-xs text-muted-foreground font-medium truncate">
+                      <span className="text-xs text-muted-foreground/60">·</span>
+                      <span className="text-xs text-muted-foreground font-serif italic truncate">
                         {localPost.mediaTitle}
                       </span>
                     </>
                   )}
                 </div>
-                <h4 className="font-display text-base sm:text-lg font-bold text-foreground">
+                <h4 className="font-serif text-base sm:text-lg font-semibold text-foreground tracking-tight">
                   {(localPost.content as ThemeConcept).title}
                 </h4>
                 {(localPost.content as ThemeConcept).summary && (
                   <ExpandableText
                     text={(localPost.content as ThemeConcept).summary}
-                    className="text-sm text-muted-foreground mt-2 leading-relaxed"
+                    className="text-xs sm:text-sm text-muted-foreground mt-2 leading-relaxed"
                     wordLimit={45}
                     charLimit={200}
                   />
@@ -464,45 +452,45 @@ export function FeedPostCard({
               {coverImage && (
                 <img
                   src={coverImage}
-                  alt="Poster"
-                  className="hidden sm:block shrink-0 w-14 h-20 object-cover rounded-md shadow ring-1 ring-white/10"
+                  alt="Work poster"
+                  className="hidden sm:block shrink-0 w-14 h-20 object-cover rounded border border-border/60 shadow-xs"
                 />
               )}
             </div>
           </div>
         )}
 
-        {/* VOCABULARY SHOWCASE */}
+        {/* LEXICON INSIGHT */}
         {localPost.type === "vocab" && (
-          <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5">
+          <div className="relative overflow-hidden rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                <BookOpen className="h-5 w-5" />
+              <div className="p-2 rounded-md bg-emerald-500/10 text-emerald-300 shrink-0">
+                <BookOpen className="h-4 w-4" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400/90">
-                    Vocabulary Insight
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90 font-mono">
+                    Lexicon Entry
                   </span>
                   {localPost.mediaTitle && (
                     <>
-                      <span className="text-xs text-muted-foreground">·</span>
-                      <span className="text-xs text-muted-foreground font-medium truncate">
+                      <span className="text-xs text-muted-foreground/60">·</span>
+                      <span className="text-xs text-muted-foreground font-serif italic truncate">
                         {localPost.mediaTitle}
                       </span>
                     </>
                   )}
                 </div>
-                <h4 className="font-display text-lg sm:text-xl font-bold text-emerald-300">
+                <h4 className="font-serif text-lg sm:text-xl font-bold text-emerald-300 tracking-tight">
                   {(localPost.content as VocabItem).word}
                 </h4>
                 {(localPost.content as VocabItem).definition && (
-                  <p className="text-sm text-foreground/90 mt-1 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-foreground/90 mt-1 leading-relaxed">
                     {(localPost.content as VocabItem).definition}
                   </p>
                 )}
                 {(localPost.content as VocabItem).exampleSentence && (
-                  <div className="mt-2.5 pt-2 border-t border-emerald-500/20 text-xs sm:text-sm text-muted-foreground italic">
+                  <div className="mt-2.5 pt-2 border-t border-emerald-500/20 text-xs sm:text-sm text-muted-foreground font-serif italic">
                     “{(localPost.content as VocabItem).exampleSentence}”
                   </div>
                 )}
@@ -510,40 +498,40 @@ export function FeedPostCard({
               {coverImage && (
                 <img
                   src={coverImage}
-                  alt="Poster"
-                  className="hidden sm:block shrink-0 w-14 h-20 object-cover rounded-md shadow ring-1 ring-white/10"
+                  alt="Work poster"
+                  className="hidden sm:block shrink-0 w-14 h-20 object-cover rounded border border-border/60 shadow-xs"
                 />
               )}
             </div>
           </div>
         )}
 
-        {/* QUOTE SHOWCASE */}
+        {/* PASSAGE & QUOTE */}
         {localPost.type === "quote" && (
-          <div className="relative overflow-hidden rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/10 via-violet-500/5 to-transparent p-5">
+          <div className="relative overflow-hidden rounded-lg border border-violet-500/20 bg-violet-500/5 p-5">
             <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-violet-500/10 text-violet-400 shrink-0">
-                <Quote className="h-5 w-5" />
+              <div className="p-2 rounded-md bg-violet-500/10 text-violet-300 shrink-0">
+                <Quote className="h-4 w-4" />
               </div>
               <div className="flex-1 min-w-0">
                 <ExpandableText
                   text={(localPost.content as QuoteItem).text}
                   prefix="“"
                   suffix="”"
-                  className="font-serif text-base sm:text-lg italic text-foreground leading-relaxed"
+                  className="font-serif text-base sm:text-lg italic text-foreground/95 leading-relaxed"
                   wordLimit={50}
                   charLimit={240}
                 />
                 <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-violet-500/20 text-xs sm:text-sm text-muted-foreground">
                   {(localPost.content as QuoteItem).speaker && (
-                    <span className="font-semibold text-violet-300">
+                    <span className="font-semibold text-violet-300 not-italic">
                       — {(localPost.content as QuoteItem).speaker}
                     </span>
                   )}
                   {localPost.mediaTitle && (
                     <>
-                      <span>in</span>
-                      <span className="font-medium text-foreground/80 truncate">
+                      <span className="text-muted-foreground/60">in</span>
+                      <span className="font-serif italic text-foreground/80 truncate">
                         {localPost.mediaTitle}
                       </span>
                     </>
@@ -553,20 +541,20 @@ export function FeedPostCard({
               {coverImage && (
                 <img
                   src={coverImage}
-                  alt="Poster"
-                  className="hidden sm:block shrink-0 w-14 h-20 object-cover rounded-md shadow ring-1 ring-white/10"
+                  alt="Work poster"
+                  className="hidden sm:block shrink-0 w-14 h-20 object-cover rounded border border-border/60 shadow-xs"
                 />
               )}
             </div>
           </div>
         )}
 
-        {/* Attached custom image if not already shown as poster */}
+        {/* Attached custom artifact picture */}
         {!isMediaPost && localPost.imageUrl && localPost.imageUrl !== localPost.mediaCoverUrl && (
-          <div className="mt-3 overflow-hidden rounded-xl border border-border/50 max-h-96">
+          <div className="mt-3 overflow-hidden rounded-lg border border-border/50 max-h-96">
             <img
               src={localPost.imageUrl}
-              alt="Post attachment"
+              alt="Dispatch attachment"
               className="w-full h-full object-cover"
               loading="lazy"
             />
@@ -574,67 +562,62 @@ export function FeedPostCard({
         )}
       </div>
 
-      {/* Engagement Action Bar (Like, Comment, Save, Share) */}
-      <div className="flex items-center justify-between border-t border-border/40 bg-accent/20 px-5 py-3">
+      {/* Literary Action Bar */}
+      <div className="flex items-center justify-between border-t border-border/40 bg-accent/15 px-5 py-2.5">
         <div className="flex items-center gap-5 sm:gap-6">
-          {/* Like Button with Pop Animation */}
+          {/* Appreciation (Like) */}
           <button
             type="button"
             onClick={handleLike}
             className={cn(
-              "group/btn relative flex items-center gap-2 text-sm font-medium transition-all duration-200",
+              "flex items-center gap-1.5 text-xs font-medium transition-all duration-200",
               localPost.isLiked
                 ? "text-rose-500"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <div className="relative">
-              <Heart
-                className={cn(
-                  "h-4 w-4 transition-transform duration-200 group-hover/btn:scale-110",
-                  localPost.isLiked && "fill-current text-rose-500",
-                  likeAnim && "scale-125 animate-bounce",
-                )}
-              />
-              {likeAnim && (
-                <Sparkles className="absolute -top-2 -right-2 h-3 w-3 text-rose-400 animate-ping" />
+            <Heart
+              className={cn(
+                "h-4 w-4 transition-transform duration-200",
+                localPost.isLiked && "fill-current text-rose-500",
+                likeAnim && "scale-110",
               )}
-            </div>
+            />
             <span>{localPost.likes}</span>
           </button>
 
-          {/* Comments Toggle */}
+          {/* Observations (Comments) */}
           {!compact && (
             <button
               type="button"
               onClick={toggleComments}
               className={cn(
-                "group/btn flex items-center gap-2 text-sm font-medium transition-colors",
+                "flex items-center gap-1.5 text-xs font-medium transition-colors",
                 showComments
-                  ? "text-primary"
+                  ? "text-primary font-semibold"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <MessageCircle className="h-4 w-4 transition-transform group-hover/btn:scale-110" />
+              <MessageCircle className="h-4 w-4" />
               <span>{localPost.commentsCount}</span>
             </button>
           )}
 
-          {/* Save / Bookmark Button */}
+          {/* Commonplace (Save) */}
           {!compact && (
             <button
               type="button"
               onClick={handleSave}
               className={cn(
-                "group/btn flex items-center gap-1.5 text-sm font-medium transition-colors",
+                "flex items-center gap-1.5 text-xs font-medium transition-colors",
                 localPost.isSaved
-                  ? "text-primary"
+                  ? "text-primary font-semibold"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Bookmark
                 className={cn(
-                  "h-4 w-4 transition-transform group-hover/btn:scale-110",
+                  "h-4 w-4",
                   localPost.isSaved && "fill-current text-primary",
                 )}
               />
@@ -649,27 +632,27 @@ export function FeedPostCard({
         <button
           type="button"
           onClick={handleShare}
-          className="group/btn flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          title="Share post"
+          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          title="Share dispatch"
         >
-          <Share2 className="h-4 w-4 transition-transform group-hover/btn:scale-110" />
+          <Share2 className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Share</span>
         </button>
       </div>
 
-      {/* Integrated Inline Comments Section */}
+      {/* Discussion & Observations Section */}
       {showComments && !compact && (
         <div className="border-t border-border/50 bg-background/50 p-5 space-y-4 animate-fade-in">
           {isLoadingComments ? (
             <div className="flex justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : comments.length === 0 ? (
-            <p className="text-xs sm:text-sm text-muted-foreground text-center py-3">
-              No comments yet. Share your thoughts to kick off the conversation!
+            <p className="text-xs text-muted-foreground text-center py-2 font-serif italic">
+              No observations recorded yet. Offer the first thought.
             </p>
           ) : (
-            <div className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
               {comments.map((comment) => (
                 <div key={comment.id} className="flex gap-2.5 items-start">
                   <UserAvatar
@@ -679,31 +662,31 @@ export function FeedPostCard({
                     size="sm"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="rounded-xl bg-accent/40 border border-border/40 px-3.5 py-2.5">
+                    <div className="rounded-lg bg-accent/30 border border-border/40 px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => navigate(`/app/user/${comment.userId}`)}
-                          className="text-xs sm:text-sm font-semibold hover:text-primary transition-colors"
+                          className="text-xs font-medium hover:text-primary transition-colors"
                         >
                           {comment.authorName}
                         </button>
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-[10px] text-muted-foreground">
                           {formatRelativeTime(comment.createdAt)}
                         </span>
                       </div>
-                      <p className="text-xs sm:text-sm text-foreground/95 mt-1 leading-relaxed">
+                      <p className="text-xs text-foreground/90 mt-1 leading-relaxed">
                         {comment.body}
                       </p>
                     </div>
                     {user?.id === comment.userId && (
-                      <div className="flex justify-end mt-1 px-1">
+                      <div className="flex justify-end mt-0.5 px-1">
                         <button
                           type="button"
                           onClick={() => handleDeleteComment(comment.id)}
-                          className="text-[11px] text-muted-foreground hover:text-destructive transition-colors"
+                          className="text-[10px] text-muted-foreground/70 hover:text-destructive transition-colors"
                         >
-                          Delete
+                          Withdraw
                         </button>
                       </div>
                     )}
@@ -724,11 +707,11 @@ export function FeedPostCard({
             />
             <div className="flex-1 flex gap-2">
               <Textarea
-                placeholder="Add a comment... (Enter to post)"
+                placeholder="Inscribe a considered remark... (Enter to publish)"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 rows={1}
-                className="min-h-[40px] resize-none text-xs sm:text-sm bg-accent/20"
+                className="min-h-[38px] resize-none text-xs bg-accent/20 border-border/60"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -740,12 +723,12 @@ export function FeedPostCard({
                 size="icon"
                 onClick={handleAddComment}
                 disabled={isSubmittingComment || !commentText.trim()}
-                className="shrink-0"
+                className="shrink-0 h-9 w-9"
               >
                 {isSubmittingComment ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 )}
               </Button>
             </div>

@@ -52,15 +52,15 @@ export function DirectShareFeedDialog({
         visibility,
       });
       toast({
-        title: "Shared to feed!",
-        description: `Your ${item.type} is now published for others to discover.`,
+        title: "Reflection published",
+        description: `Your thoughts on this ${item.type} are now shared with fellow readers.`,
       });
       setCaption("");
       onOpenChange(false);
       onShared?.();
     } catch (e) {
       toast({
-        title: "Failed to share",
+        title: "Could not publish reflection",
         description: e instanceof Error ? e.message : "Please try again.",
         variant: "destructive",
       });
@@ -80,32 +80,33 @@ export function DirectShareFeedDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Rss className="h-5 w-5 text-primary" />
-            Share to Social Feed
+          <DialogTitle className="font-serif text-lg tracking-tight flex items-center gap-2">
+            <Rss className="h-4 w-4 opacity-70" />
+            Inscribe to Dispatches
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Item Preview Card */}
-          <div className="flex gap-3 rounded-xl border border-border/60 bg-accent/30 p-4">
+          <div className="flex gap-3 rounded-lg border border-border/60 bg-accent/25 p-3.5">
             {item.coverUrl && (
               <img
                 src={item.coverUrl}
                 alt={item.title}
-                className="w-14 h-20 object-cover rounded-lg shrink-0 shadow-sm"
+                className="w-12 h-16 object-cover rounded shrink-0 shadow-xs border border-border/60"
               />
             )}
             <div className="space-y-1 min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
-                <Icon className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.14em]">
+                <Icon className="h-3 w-3" />
                 <span>
-                  {item.type} {item.mediaTitle && item.type !== "media" ? `· ${item.mediaTitle}` : ""}
+                  {item.type === "quote" ? "Passage" : item.type === "vocab" ? "Lexicon" : item.type}
+                  {item.mediaTitle && item.type !== "media" ? ` · ${item.mediaTitle}` : ""}
                 </span>
               </div>
-              <p className="font-semibold text-foreground text-sm line-clamp-2">
+              <p className="font-serif font-semibold text-foreground text-sm line-clamp-2">
                 {item.title}
               </p>
               {item.subtitle ? (
@@ -116,10 +117,10 @@ export function DirectShareFeedDialog({
             </div>
           </div>
 
-          {/* Visibility toggle buttons */}
+          {/* Circulation toggle */}
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              Audience
+            <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
+              Circulation
             </Label>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -131,8 +132,8 @@ export function DirectShareFeedDialog({
                     : "border-border/60 text-muted-foreground hover:bg-accent/40"
                 }`}
               >
-                <Globe className="h-3.5 w-3.5" />
-                Public (Global)
+                <Globe className="h-3.5 w-3.5 opacity-70" />
+                Public Forum
               </button>
               <button
                 type="button"
@@ -143,43 +144,46 @@ export function DirectShareFeedDialog({
                     : "border-border/60 text-muted-foreground hover:bg-accent/40"
                 }`}
               >
-                <Users className="h-3.5 w-3.5" />
-                Friends Only
+                <Users className="h-3.5 w-3.5 opacity-70" />
+                Fellow Readers Only
               </button>
             </div>
           </div>
 
           {/* Caption Textarea */}
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              Add Your Thoughts
+            <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
+              Marginalia & Critical Notes
             </Label>
             <Textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="What makes this special to you? Add your review or takeaway..."
+              placeholder="What makes this work memorable? Record your reflections or commentary..."
               rows={3}
-              className="resize-none text-sm"
+              className="resize-none text-xs sm:text-sm font-sans"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isPosting}
+              className="text-xs"
             >
               Cancel
             </Button>
             <Button
               type="button"
+              size="sm"
               onClick={handlePost}
               disabled={isPosting}
-              className="gap-2"
+              className="gap-2 text-xs font-medium"
             >
-              {isPosting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Share Now
+              {isPosting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Publish Reflection
             </Button>
           </div>
         </div>

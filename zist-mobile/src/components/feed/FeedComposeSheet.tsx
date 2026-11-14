@@ -137,8 +137,8 @@ export function FeedComposeSheet({
     <View>
       {showTrigger ? (
         <Button
-          label="Share to Feed"
-          icon={<Share2 size={16} color={colors.primaryForeground} />}
+          label="Inscribe Reflection"
+          icon={<Share2 size={15} color={colors.primaryForeground} />}
           onPress={() => setOpen(true)}
         />
       ) : null}
@@ -147,8 +147,8 @@ export function FeedComposeSheet({
         visible={open}
         onClose={() => setOpen(false)}
         presentation="sheet"
-        title="Share to Community Feed"
-        description="Share a movie, book review, memorable quote, or theme."
+        title="Inscribe a Reflection"
+        description="Share a critical reflection, passage, or motif from your personal library."
       >
         <Segmented<PostType>
           value={postType}
@@ -157,17 +157,17 @@ export function FeedComposeSheet({
             setSelectedId("");
           }}
           items={[
-            { value: "media", label: "Media" },
-            { value: "theme", label: "Themes" },
-            { value: "vocab", label: "Vocab" },
-            { value: "quote", label: "Quotes" },
+            { value: "media", label: "Work" },
+            { value: "theme", label: "Motif" },
+            { value: "vocab", label: "Lexicon" },
+            { value: "quote", label: "Passage" },
           ]}
         />
 
         <View style={{ gap: 6 }}>
-          <Label>Pick from your library</Label>
+          <Label>Pick from your archive</Label>
           {isLoadingContent ? (
-            <Spinner label="Loading your library…" />
+            <Spinner label="Accessing your archive…" />
           ) : items.length === 0 ? (
             <View
               style={{
@@ -179,7 +179,7 @@ export function FeedComposeSheet({
               }}
             >
               <Text variant="small" color="mutedForeground">
-                {`No ${postType} items found. Add some in your media library first.`}
+                {`No recorded entries found. Inscribe some into your library first.`}
               </Text>
             </View>
           ) : (
@@ -187,7 +187,7 @@ export function FeedComposeSheet({
               value={selectedId || null}
               onChange={setSelectedId}
               options={selectOptions}
-              placeholder={`Select ${postType === "media" ? "a movie or book" : `a ${postType}`}…`}
+              placeholder={`Select ${postType === "media" ? "a work" : postType === "quote" ? "a passage" : `a ${postType}`}…`}
             />
           )}
         </View>
@@ -239,24 +239,24 @@ export function FeedComposeSheet({
         ) : null}
 
         <View style={{ gap: 6 }}>
-          <Label>Visibility</Label>
+          <Label>Circulation</Label>
           <Segmented<Visibility>
             value={visibility}
             onChange={setVisibility}
             items={[
-              { value: "global", label: "Public — everyone" },
-              { value: "friends", label: "Friends only" },
+              { value: "global", label: "Public Forum" },
+              { value: "friends", label: "Fellow Readers" },
             ]}
           />
         </View>
 
         <View style={{ gap: 6 }}>
-          <Label>Your thoughts / review</Label>
+          <Label>Marginalia & Critical Notes</Label>
           <Textarea
             placeholder={
               postType === "media"
-                ? "Write your review or thoughts on this title…"
-                : "Share your opinion on this theme, word, or quote…"
+                ? "Record your critical thoughts, reflections, or commentary on this work…"
+                : "Reflect upon why this passage, motif, or word arrested your attention…"
             }
             value={caption}
             onChangeText={setCaption}
@@ -278,7 +278,7 @@ export function FeedComposeSheet({
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Search size={16} color={colors.mutedForeground} />
             <Text variant="small" weight="medium">
-              Not in your library yet? Discover media
+              Not in your archive? Discover works
             </Text>
           </View>
           {showDiscovery ? (
@@ -291,7 +291,7 @@ export function FeedComposeSheet({
         {showDiscovery ? <MediaDiscoverySearch /> : null}
 
         <Button
-          label="Post to feed"
+          label="Publish Reflection"
           loading={isPosting}
           disabled={isPosting || !selectedId}
           fullWidth

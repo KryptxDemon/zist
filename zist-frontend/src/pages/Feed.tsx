@@ -6,7 +6,7 @@ import { MediaDiscoverySearch } from "@/components/feed/MediaDiscoverySearch";
 import { feedService } from "@/services/feedService";
 import { FeedPost } from "@/types";
 import {
-  Plus,
+  PenTool,
   Rss,
   Users,
   Globe,
@@ -14,8 +14,7 @@ import {
   Quote,
   Lightbulb,
   BookOpen,
-  Sparkles,
-  Layers,
+  Library,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FeedPostSkeleton } from "@/components/ui/skeleton-cards";
@@ -38,7 +37,7 @@ export default function Feed() {
       const data = await feedService.getPosts(audienceFilter);
       setPosts(data.items);
     } catch (error) {
-      console.error("Failed to load posts:", error);
+      console.error("Failed to load dispatches:", error);
       setPosts([]);
     } finally {
       setIsLoading(false);
@@ -62,13 +61,13 @@ export default function Feed() {
     return posts.filter((p) => p.type === contentFilter);
   }, [posts, contentFilter]);
 
-  // Recent posters highlight strip
+  // Recent literary & film highlights
   const mediaHighlights = useMemo(() => {
     const list: { id: string; title: string; cover: string; type: string }[] = [];
     const seen = new Set<string>();
     for (const p of posts) {
       const cover = p.imageUrl || p.mediaCoverUrl;
-      const title = p.mediaTitle || (p.content?.title ?? "Media");
+      const title = p.mediaTitle || (p.content?.title ?? "Untitled");
       if (cover && !seen.has(cover)) {
         seen.add(cover);
         list.push({ id: p.id, title, cover, type: p.type });
@@ -80,22 +79,16 @@ export default function Feed() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-24 md:pb-12">
-        {/* Header & Hero */}
+      <div className="max-w-2xl mx-auto space-y-7 animate-fade-in pb-24 md:pb-14">
+        {/* Header & Editorial Intro */}
         <div className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3.5 sm:flex-row sm:items-baseline sm:justify-between border-b border-border/40 pb-5">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                  Social Feed
-                </h1>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold tracking-wide uppercase">
-                  <Sparkles className="h-3 w-3" />
-                  2.0
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Discover movie takeaways, book reviews, themes, and quotes from curious minds
+              <h1 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                Dispatches
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 font-sans leading-relaxed">
+                A quiet forum for marginalia, cinematic reflections, and critical thought.
               </p>
             </div>
             <FeedComposeDialog
@@ -105,19 +98,19 @@ export default function Feed() {
             />
           </div>
 
-          {/* Quick Universal Discovery Search */}
+          {/* Curated Search */}
           <MediaDiscoverySearch
-            placeholder="Search movies, books, TV shows to discuss…"
-            className="w-full shadow-xs"
+            placeholder="Search titles, authors, and directors across the archive…"
+            className="w-full"
           />
         </div>
 
-        {/* Stories / Cinema Highlight Strip (if posters exist) */}
+        {/* Noteworthy Works in Discourse */}
         {mediaHighlights.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Trending on Zist
+              <span className="text-[11px] font-semibold text-muted-foreground tracking-[0.16em] uppercase">
+                Works in Discourse
               </span>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
@@ -130,15 +123,15 @@ export default function Feed() {
                     el?.scrollIntoView({ behavior: "smooth", block: "center" });
                   }}
                 >
-                  <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary group-hover:scale-105 shadow-md">
+                  <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-md">
                     <img
                       src={item.cover}
                       alt={item.title}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-75" />
                   </div>
-                  <p className="mt-1 text-[11px] font-medium text-foreground truncate text-center">
+                  <p className="mt-1 text-[11px] font-medium text-foreground/90 truncate text-center">
                     {item.title}
                   </p>
                 </div>
@@ -147,99 +140,99 @@ export default function Feed() {
           </div>
         )}
 
-        {/* Filter Controls: Audience (Global/Friends) + Content Type Pills */}
+        {/* Filter Controls: Public / Circle + Category Pills */}
         <div className="space-y-3">
           <Tabs
             value={audienceFilter}
             onValueChange={(v) => setAudienceFilter(v as typeof audienceFilter)}
           >
-            <TabsList className="glass w-full grid grid-cols-2 p-1">
-              <TabsTrigger value="global" className="gap-2 text-xs sm:text-sm font-medium">
-                <Globe className="h-3.5 w-3.5" />
-                Global Community
+            <TabsList className="w-full grid grid-cols-2 p-1 bg-accent/30 border border-border/50 rounded-xl">
+              <TabsTrigger value="global" className="gap-2 text-xs font-medium py-1.5">
+                <Globe className="h-3.5 w-3.5 opacity-70" />
+                The Public Forum
               </TabsTrigger>
-              <TabsTrigger value="friends" className="gap-2 text-xs sm:text-sm font-medium">
-                <Users className="h-3.5 w-3.5" />
-                Friends Only
+              <TabsTrigger value="friends" className="gap-2 text-xs font-medium py-1.5">
+                <Users className="h-3.5 w-3.5 opacity-70" />
+                Fellow Readers (Friends)
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          {/* Content Type Filter Pills */}
+          {/* Refined Literary Category Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             <button
               type="button"
               onClick={() => setContentFilter("all")}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border",
                 contentFilter === "all"
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs font-semibold"
-                  : "bg-secondary/60 hover:bg-secondary text-secondary-foreground border-transparent",
+                  ? "bg-foreground text-background border-foreground font-semibold shadow-xs"
+                  : "bg-accent/40 hover:bg-accent text-muted-foreground hover:text-foreground border-border/50",
               )}
             >
-              <Layers className="h-3 w-3" />
-              All Content
+              <Library className="h-3 w-3 opacity-70" />
+              All Reflections
             </button>
 
             <button
               type="button"
               onClick={() => setContentFilter("media")}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border",
                 contentFilter === "media"
-                  ? "bg-amber-500 text-black border-amber-500 shadow-xs font-semibold"
-                  : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/20",
+                  ? "bg-amber-600 text-white border-amber-600 font-semibold shadow-xs"
+                  : "bg-amber-500/5 hover:bg-amber-500/15 text-amber-300/90 border-amber-500/25",
               )}
             >
-              <Film className="h-3 w-3" />
-              Movies & Books
+              <Film className="h-3 w-3 opacity-75" />
+              Cinema & Books
             </button>
 
             <button
               type="button"
               onClick={() => setContentFilter("quote")}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border",
                 contentFilter === "quote"
-                  ? "bg-violet-500 text-white border-violet-500 shadow-xs font-semibold"
-                  : "bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border-violet-500/20",
+                  ? "bg-violet-600 text-white border-violet-600 font-semibold shadow-xs"
+                  : "bg-violet-500/5 hover:bg-violet-500/15 text-violet-300/90 border-violet-500/25",
               )}
             >
-              <Quote className="h-3 w-3" />
-              Quotes
+              <Quote className="h-3 w-3 opacity-75" />
+              Passages
             </button>
 
             <button
               type="button"
               onClick={() => setContentFilter("theme")}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border",
                 contentFilter === "theme"
-                  ? "bg-yellow-500 text-black border-yellow-500 shadow-xs font-semibold"
-                  : "bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 border-yellow-500/20",
+                  ? "bg-yellow-600 text-white border-yellow-600 font-semibold shadow-xs"
+                  : "bg-yellow-500/5 hover:bg-yellow-500/15 text-yellow-300/90 border-yellow-500/25",
               )}
             >
-              <Lightbulb className="h-3 w-3" />
-              Themes
+              <Lightbulb className="h-3 w-3 opacity-75" />
+              Themes & Motifs
             </button>
 
             <button
               type="button"
               onClick={() => setContentFilter("vocab")}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border",
                 contentFilter === "vocab"
-                  ? "bg-emerald-500 text-black border-emerald-500 shadow-xs font-semibold"
-                  : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/20",
+                  ? "bg-emerald-600 text-white border-emerald-600 font-semibold shadow-xs"
+                  : "bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-300/90 border-emerald-500/25",
               )}
             >
-              <BookOpen className="h-3 w-3" />
-              Vocabulary
+              <BookOpen className="h-3 w-3 opacity-75" />
+              Lexicon
             </button>
           </div>
         </div>
 
-        {/* Post List or States */}
+        {/* Dispatches List or Empty States */}
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -251,22 +244,22 @@ export default function Feed() {
             icon={Rss}
             title={
               contentFilter !== "all"
-                ? `No ${contentFilter} posts found`
+                ? `No ${contentFilter} entries recorded`
                 : audienceFilter === "friends"
-                  ? "No friend posts yet"
-                  : "No posts yet"
+                  ? "Your literary circle is quiet"
+                  : "The forum awaits its first entry"
             }
             description={
               contentFilter !== "all"
-                ? `Nobody has shared ${contentFilter} posts in this view yet. Be the first!`
+                ? "No reader has yet inscribed notes under this category. Offer the first observation."
                 : audienceFilter === "friends"
-                  ? "Follow fellow film and book enthusiasts to see their shares here, or switch to Global."
-                  : "Be the first to share a favorite movie, memorable quote, or theme you've learned!"
+                  ? "Follow fellow readers and cinephiles to see their marginalia here, or explore the Public Forum."
+                  : "Inscribe your considered thoughts on a recent volume, scene, or passage to inaugurate the discourse."
             }
             action={
-              <Button onClick={() => setIsComposeOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create First Post
+              <Button onClick={() => setIsComposeOpen(true)} className="gap-2 text-xs font-medium">
+                <PenTool className="h-3.5 w-3.5" />
+                Inscribe a Reflection
               </Button>
             }
           />

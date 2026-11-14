@@ -7,6 +7,7 @@ import {
   Library,
   Brain,
   User,
+  Users,
   LogOut,
   Plus,
   BookOpen,
@@ -18,8 +19,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  Search,
-  SlidersHorizontal,
   Sun,
   Moon,
   LineChart,
@@ -42,7 +41,6 @@ const navItems = [
   { path: "/app/library", label: "Library" },
   { path: "/app/vocabulary", label: "Vocabulary" },
   { path: "/app/insights", label: "Insights" },
-  { path: "/app/friends", label: "Friends" },
 ];
 
 const quizItems = [
@@ -76,60 +74,69 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navbar */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-background/85 backdrop-blur-md border-b border-border/40 shadow-sm shadow-black/5">
+      <header className="fixed top-0 left-0 right-0 z-50 h-[62px] bg-background/80 backdrop-blur-xl border-b border-border/40 shadow-xs">
         <div className="flex h-full items-center justify-between px-4 lg:px-8 max-w-[1600px] mx-auto">
           {/* Logo & Brand Wordmark */}
-          <Link to="/app" className="group flex items-center gap-3">
-            <div className="relative p-1 rounded-xl bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/25 shadow-sm transition-transform duration-200 group-hover:scale-105">
+          <Link to="/app" className="group flex items-center gap-2.5">
+            <div className="relative p-1 rounded-lg bg-accent/40 border border-border/60 transition-transform duration-200 group-hover:scale-105">
               <img
                 src="/zistlogo-2.png"
                 alt="Zist Logo"
-                className="h-8 w-8 rounded-lg object-contain"
+                className="h-7 w-7 rounded-md object-contain"
               />
             </div>
-            <span className="font-brand text-xl tracking-[0.2em] font-black uppercase text-foreground drop-shadow-sm transition-colors group-hover:text-primary">
-              ZIST
-            </span>
+            <div className="flex flex-col">
+              <span className="font-brand text-base tracking-[0.24em] font-extrabold uppercase text-foreground transition-colors group-hover:text-primary leading-tight">
+                ZIST
+              </span>
+              <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/80 font-medium hidden lg:inline">
+                Commonplace & Archive
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation - Center */}
-          <nav className="hidden md:flex items-center gap-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "relative py-2 text-sm font-medium transition-smooth",
-                  location.pathname === item.path
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {item.label}
-                {location.pathname === item.path && (
-                  <span className="absolute -top-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
-                )}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center gap-7">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "relative py-1.5 text-[13px] tracking-wide font-medium transition-all duration-200",
+                    isActive
+                      ? "text-foreground font-semibold"
+                      : "text-muted-foreground/80 hover:text-foreground",
+                  )}
+                >
+                  {item.label}
+                  {isActive && (
+                    <span className="absolute -bottom-2.5 left-0 right-0 h-[2px] bg-primary rounded-full transition-all" />
+                  )}
+                </Link>
+              );
+            })}
 
             {/* Quiz Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
-                  "flex items-center gap-1 py-2 text-sm font-medium transition-smooth outline-none",
+                  "flex items-center gap-1 py-1.5 text-[13px] tracking-wide font-medium transition-all duration-200 outline-none",
                   isQuizActive
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "text-foreground font-semibold"
+                    : "text-muted-foreground/80 hover:text-foreground",
                 )}
               >
                 Quiz
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="center">
+              <DropdownMenuContent align="center" className="rounded-xl border-border/60 bg-popover/95 backdrop-blur-md p-1.5">
                 {quizItems.map((item) => (
                   <DropdownMenuItem
                     key={item.path}
                     onClick={() => navigate(item.path)}
+                    className="text-xs font-medium cursor-pointer rounded-lg"
                   >
                     {item.label}
                   </DropdownMenuItem>
@@ -138,16 +145,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </nav>
 
-          {/* Right side - User Menu */}
-          <div className="flex items-center gap-3">
+          {/* Right side - Actions & User Menu */}
+          <div className="flex items-center gap-2.5">
+            {/* Quick Inscribe / Add Media Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/app/media/new")}
+              className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border-border/70 hover:border-primary/50 hover:bg-primary/5 transition-all"
+            >
+              <Plus className="h-3.5 w-3.5 text-primary" />
+              <span>Record Work</span>
+            </Button>
+
             {/* Notifications Bell */}
             <NotificationsBell />
 
             {/* User Avatar & Settings Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-rose-700 to-purple-800">
+                <Button variant="ghost" size="icon" className="rounded-full ring-1 ring-border/80 hover:ring-primary/40 p-0 h-9 w-9">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-rose-700 to-purple-800">
                     {user?.avatar ? (
                       <img
                         src={user.avatar}
@@ -155,52 +173,56 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="text-white font-medium">
+                      <span className="text-white text-xs font-semibold">
                         {user?.displayName?.[0]?.toUpperCase() || "U"}
                       </span>
                     )}
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuContent align="end" className="w-56 rounded-xl border-border/60 bg-popover/95 backdrop-blur-md p-1.5 shadow-xl">
+                <div className="px-2.5 py-2 border-b border-border/50 mb-1">
+                  <p className="text-xs font-semibold text-foreground truncate">{user?.displayName || "Reader"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+                </div>
                 <DropdownMenuItem
                   onClick={() => navigate("/app/profile")}
-                  className="gap-2"
+                  className="gap-2.5 text-xs font-medium cursor-pointer rounded-lg"
                 >
-                  <User className="h-4 w-4" />
-                  Profile
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  Profile & Studio
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => navigate("/app/friends")}
-                  className="gap-2"
+                  className="gap-2.5 text-xs font-medium cursor-pointer rounded-lg"
                 >
-                  <User className="h-4 w-4" />
-                  Friends
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  Literary Circle (Friends)
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1 bg-border/40" />
                 <DropdownMenuItem
                   onClick={toggleTheme}
-                  className="gap-2 cursor-pointer"
+                  className="gap-2.5 text-xs font-medium cursor-pointer rounded-lg"
                 >
                   {theme === "light" ? (
                     <>
-                      <Moon className="h-4 w-4 text-primary" />
-                      <span>Dark Theme</span>
+                      <Moon className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Night Mode</span>
                     </>
                   ) : (
                     <>
-                      <Sun className="h-4 w-4 text-primary" />
-                      <span>Light Theme</span>
+                      <Sun className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Day Mode</span>
                     </>
                   )}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1 bg-border/40" />
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="gap-2 text-destructive"
+                  className="gap-2.5 text-xs font-medium text-destructive cursor-pointer rounded-lg focus:bg-destructive/10"
                 >
-                  <LogOut className="h-4 w-4" />
-                  Logout
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -209,7 +231,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden h-9 w-9 rounded-lg"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? (

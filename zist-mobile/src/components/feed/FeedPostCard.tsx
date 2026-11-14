@@ -37,26 +37,26 @@ const TYPE_CONFIG = {
   media: {
     Icon: Film,
     color: "#f59e0b",
-    bg: "rgba(245, 158, 11, 0.20)",
-    label: "Media",
+    bg: "rgba(245, 158, 11, 0.15)",
+    label: "Work",
   },
   theme: {
     Icon: Lightbulb,
     color: "#fbbf24",
-    bg: "rgba(245, 158, 11, 0.20)",
-    label: "Theme",
+    bg: "rgba(245, 158, 11, 0.15)",
+    label: "Motif",
   },
   vocab: {
     Icon: BookOpen,
     color: "#34d399",
-    bg: "rgba(16, 185, 129, 0.20)",
-    label: "Vocabulary",
+    bg: "rgba(16, 185, 129, 0.15)",
+    label: "Lexicon",
   },
   quote: {
     Icon: Quote,
     color: "#a78bfa",
-    bg: "rgba(139, 92, 246, 0.20)",
-    label: "Quote",
+    bg: "rgba(139, 92, 246, 0.15)",
+    label: "Passage",
   },
 } as const;
 
@@ -193,7 +193,7 @@ export function FeedPostCard({
       updatePost({ ...optimistic, isLiked: result.active, likes: result.count });
     } catch {
       updatePost(current);
-      toast({ title: "Failed to like post", variant: "destructive" });
+      toast({ title: "Could not record appreciation", variant: "destructive" });
     } finally {
       setLikePending(false);
     }
@@ -209,11 +209,11 @@ export function FeedPostCard({
       const result = await feedService.savePost(current.id);
       updatePost({ ...optimistic, isSaved: result.active });
       toast({
-        title: result.active ? "Saved to bookmarks" : "Removed from bookmarks",
+        title: result.active ? "Saved to commonplace" : "Removed from commonplace",
       });
     } catch {
       updatePost(current);
-      toast({ title: "Failed to save post", variant: "destructive" });
+      toast({ title: "Could not bookmark dispatch", variant: "destructive" });
     } finally {
       setSavePending(false);
     }
@@ -222,7 +222,7 @@ export function FeedPostCard({
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${localPost.caption || localPost.mediaTitle || "Check out this post on Zist"}\nhttps://zist-media.netlify.app/app/feed`,
+        message: `${localPost.caption || localPost.mediaTitle || "Reflections on Zist"}\nhttps://zist-media.netlify.app/app/feed`,
       });
     } catch {
       // User dismissed
@@ -233,9 +233,9 @@ export function FeedPostCard({
     try {
       await feedService.deletePost(localPostRef.current.id);
       onDelete?.(localPostRef.current.id);
-      toast({ title: "Post deleted" });
+      toast({ title: "Dispatch withdrawn" });
     } catch {
-      toast({ title: "Failed to delete post", variant: "destructive" });
+      toast({ title: "Failed to withdraw dispatch", variant: "destructive" });
     }
   };
 
@@ -485,7 +485,7 @@ export function FeedPostCard({
                 variant="caption"
                 tint={localPost.visibility === "global" ? "#38bdf8" : colors.primary}
               >
-                {localPost.visibility === "global" ? "Public" : "Friends"}
+                {localPost.visibility === "global" ? "Public" : "Circle"}
               </Text>
             </View>
           </View>

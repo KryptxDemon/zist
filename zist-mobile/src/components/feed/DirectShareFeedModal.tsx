@@ -56,15 +56,15 @@ export function DirectShareFeedModal({
         visibility,
       });
       toast({
-        title: "Shared to feed!",
-        description: `Your ${item.type} is now published.`,
+        title: "Reflection published",
+        description: `Your thoughts on this ${item.type} are now shared.`,
       });
       setCaption("");
       onClose();
       onShared?.();
     } catch (e) {
       toast({
-        title: "Failed to share",
+        title: "Could not publish reflection",
         description: e instanceof Error ? e.message : "Please try again.",
         variant: "destructive",
       });
@@ -83,7 +83,7 @@ export function DirectShareFeedModal({
           : Quote;
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="Share to Feed">
+    <Sheet visible={visible} onClose={onClose} title="Inscribe to Dispatches">
       <View style={{ gap: 16 }}>
         {/* Item preview snippet */}
         <Card
@@ -114,7 +114,7 @@ export function DirectShareFeedModal({
                   style={{ textTransform: "uppercase", letterSpacing: 0.6 }}
                   color="primary"
                 >
-                  {item.type}
+                  {item.type === "quote" ? "Passage" : item.type === "vocab" ? "Lexicon" : item.type}
                   {item.mediaTitle && item.type !== "media" ? ` · ${item.mediaTitle}` : ""}
                 </Text>
               </View>
@@ -133,7 +133,7 @@ export function DirectShareFeedModal({
         {/* Audience */}
         <View style={{ gap: 6 }}>
           <Text variant="label" weight="medium">
-            Audience
+            Circulation
           </Text>
           <Segmented<"global" | "friends">
             value={visibility}
@@ -141,12 +141,12 @@ export function DirectShareFeedModal({
             items={[
               {
                 value: "global",
-                label: "Public (Global)",
+                label: "Public Forum",
                 icon: <Globe size={14} color={colors.mutedForeground} />,
               },
               {
                 value: "friends",
-                label: "Friends Only",
+                label: "Fellow Readers",
                 icon: <Users size={14} color={colors.mutedForeground} />,
               },
             ]}
@@ -156,12 +156,12 @@ export function DirectShareFeedModal({
         {/* Caption */}
         <View style={{ gap: 6 }}>
           <Text variant="label" weight="medium">
-            Add Your Thoughts
+            Marginalia & Critical Notes
           </Text>
           <Textarea
             value={caption}
             onChangeText={setCaption}
-            placeholder="What makes this special to you? Add a takeaway or note…"
+            placeholder="Record your reflections, critical analysis, or commentary…"
             rows={3}
           />
         </View>
@@ -169,7 +169,7 @@ export function DirectShareFeedModal({
         <View style={{ flexDirection: "row", gap: 10, justifyContent: "flex-end" }}>
           <Button label="Cancel" variant="outline" onPress={onClose} disabled={isPosting} />
           <Button
-            label="Share Now"
+            label="Publish Reflection"
             icon={<Rss size={14} color={colors.primaryForeground} />}
             onPress={handlePost}
             loading={isPosting}

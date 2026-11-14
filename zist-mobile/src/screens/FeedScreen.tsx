@@ -6,6 +6,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,11 +15,11 @@ import {
   BookOpen,
   Film,
   Globe,
+  Library,
   Lightbulb,
   Plus,
   Quote,
   Rss,
-  Sparkles,
   Users,
 } from "lucide-react-native";
 
@@ -81,7 +82,7 @@ export function FeedScreen() {
       } catch (err) {
         if (id !== requestIdRef.current) return;
         if (mode !== "more") setPosts([]);
-        setError(err instanceof Error ? err.message : "Failed to load posts");
+        setError(err instanceof Error ? err.message : "Failed to load dispatches");
       } finally {
         if (id === requestIdRef.current) {
           setIsLoading(false);
@@ -127,13 +128,13 @@ export function FeedScreen() {
     return posts.filter((p) => p.type === contentType);
   }, [posts, contentType]);
 
-  // Trending media covers strip
+  // Works currently in discourse
   const mediaHighlights = useMemo(() => {
     const list: { id: string; title: string; cover: string }[] = [];
     const seen = new Set<string>();
     for (const p of posts) {
       const cover = p.imageUrl || p.mediaCoverUrl;
-      const title = p.mediaTitle || (p.content?.title ?? "Media");
+      const title = p.mediaTitle || (p.content?.title ?? "Untitled");
       if (cover && !seen.has(cover)) {
         seen.add(cover);
         list.push({ id: p.id, title, cover });
@@ -155,44 +156,26 @@ export function FeedScreen() {
           }}
         >
           <View style={{ flex: 1, gap: 2 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text variant="h2">Feed</Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 3,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 999,
-                  backgroundColor: colors.primary + "20",
-                }}
-              >
-                <Sparkles size={10} color={colors.primary} />
-                <Text variant="caption" tint={colors.primary} weight="bold">
-                  2.0
-                </Text>
-              </View>
-            </View>
+            <Text variant="h2">Dispatches</Text>
             <Text variant="muted" numberOfLines={2}>
-              Social film takes, book reviews, quotes, and vocabulary
+              A quiet forum for marginalia, cinematic reflections, and critical thought
             </Text>
           </View>
           <Button
-            label="Post"
+            label="Inscribe"
             size="sm"
-            icon={<Plus size={16} color={colors.primaryForeground} />}
+            icon={<Plus size={15} color={colors.primaryForeground} />}
             onPress={() => setComposeOpen(true)}
           />
         </View>
-        <MediaDiscoverySearch />
+        <MediaDiscoverySearch placeholder="Search titles, authors, and directors…" />
       </View>
 
-      {/* Trending highlights reel */}
+      {/* Works in discourse reel */}
       {mediaHighlights.length > 0 ? (
         <View style={{ gap: 6 }}>
-          <Text variant="caption" weight="semibold" color="mutedForeground" style={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Trending Media
+          <Text variant="caption" weight="semibold" color="mutedForeground" style={{ textTransform: "uppercase", letterSpacing: 0.6 }}>
+            Works in Discourse
           </Text>
           <ScrollView
             horizontal
@@ -208,6 +191,8 @@ export function FeedScreen() {
                     height: 100,
                     borderRadius: radius.md,
                     backgroundColor: colors.border,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: colors.border,
                   }}
                   resizeMode="cover"
                 />
@@ -227,13 +212,13 @@ export function FeedScreen() {
         items={[
           {
             value: "global",
-            label: "Global Community",
-            icon: <Globe size={15} color={colors.mutedForeground} />,
+            label: "Public Forum",
+            icon: <Globe size={14} color={colors.mutedForeground} />,
           },
           {
             value: "friends",
-            label: "Friends Only",
-            icon: <Users size={15} color={colors.mutedForeground} />,
+            label: "Fellow Readers",
+            icon: <Users size={14} color={colors.mutedForeground} />,
           },
         ]}
       />
@@ -249,16 +234,16 @@ export function FeedScreen() {
           style={{
             paddingHorizontal: 12,
             paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: contentType === "all" ? colors.primary : colors.accent,
+            borderRadius: radius.md,
+            backgroundColor: contentType === "all" ? colors.foreground : colors.accent,
           }}
         >
           <Text
             variant="caption"
             weight="semibold"
-            tint={contentType === "all" ? colors.primaryForeground : colors.foreground}
+            tint={contentType === "all" ? colors.background : colors.mutedForeground}
           >
-            All
+            All Reflections
           </Text>
         </Pressable>
 
@@ -270,17 +255,17 @@ export function FeedScreen() {
             gap: 4,
             paddingHorizontal: 12,
             paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: contentType === "media" ? "#f59e0b" : "rgba(245, 158, 11, 0.15)",
+            borderRadius: radius.md,
+            backgroundColor: contentType === "media" ? "#d97706" : "rgba(245, 158, 11, 0.12)",
           }}
         >
-          <Film size={12} color={contentType === "media" ? "#000" : "#f59e0b"} />
+          <Film size={12} color={contentType === "media" ? "#fff" : "#f59e0b"} />
           <Text
             variant="caption"
             weight="semibold"
-            tint={contentType === "media" ? "#000" : "#f59e0b"}
+            tint={contentType === "media" ? "#fff" : "#f59e0b"}
           >
-            Media
+            Cinema & Books
           </Text>
         </Pressable>
 
@@ -292,8 +277,8 @@ export function FeedScreen() {
             gap: 4,
             paddingHorizontal: 12,
             paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: contentType === "quote" ? "#8b5cf6" : "rgba(139, 92, 246, 0.15)",
+            borderRadius: radius.md,
+            backgroundColor: contentType === "quote" ? "#7c3aed" : "rgba(139, 92, 246, 0.12)",
           }}
         >
           <Quote size={12} color={contentType === "quote" ? "#fff" : "#a78bfa"} />
@@ -302,7 +287,7 @@ export function FeedScreen() {
             weight="semibold"
             tint={contentType === "quote" ? "#fff" : "#a78bfa"}
           >
-            Quotes
+            Passages
           </Text>
         </Pressable>
 
@@ -314,15 +299,15 @@ export function FeedScreen() {
             gap: 4,
             paddingHorizontal: 12,
             paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: contentType === "theme" ? "#eab308" : "rgba(234, 179, 8, 0.15)",
+            borderRadius: radius.md,
+            backgroundColor: contentType === "theme" ? "#ca8a04" : "rgba(234, 179, 8, 0.12)",
           }}
         >
-          <Lightbulb size={12} color={contentType === "theme" ? "#000" : "#fbbf24"} />
+          <Lightbulb size={12} color={contentType === "theme" ? "#fff" : "#fbbf24"} />
           <Text
             variant="caption"
             weight="semibold"
-            tint={contentType === "theme" ? "#000" : "#fbbf24"}
+            tint={contentType === "theme" ? "#fff" : "#fbbf24"}
           >
             Themes
           </Text>
@@ -336,17 +321,17 @@ export function FeedScreen() {
             gap: 4,
             paddingHorizontal: 12,
             paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: contentType === "vocab" ? "#10b981" : "rgba(16, 185, 129, 0.15)",
+            borderRadius: radius.md,
+            backgroundColor: contentType === "vocab" ? "#059669" : "rgba(16, 185, 129, 0.12)",
           }}
         >
-          <BookOpen size={12} color={contentType === "vocab" ? "#000" : "#34d399"} />
+          <BookOpen size={12} color={contentType === "vocab" ? "#fff" : "#34d399"} />
           <Text
             variant="caption"
             weight="semibold"
-            tint={contentType === "vocab" ? "#000" : "#34d399"}
+            tint={contentType === "vocab" ? "#fff" : "#34d399"}
           >
-            Vocab
+            Lexicon
           </Text>
         </Pressable>
       </ScrollView>
@@ -361,24 +346,24 @@ export function FeedScreen() {
     </View>
   ) : error ? (
     <EmptyState
-      icon={<AlertCircle size={28} color={colors.destructive} />}
-      title="Couldn't load the feed"
+      icon={<AlertCircle size={26} color={colors.destructive} />}
+      title="Could not retrieve dispatches"
       description={error}
-      action={<Button label="Try again" onPress={() => void load(1, "initial")} />}
+      action={<Button label="Retry" onPress={() => void load(1, "initial")} />}
     />
   ) : (
     <EmptyState
-      icon={<Rss size={28} color={colors.mutedForeground} />}
-      title={filter === "friends" ? "No friend posts yet" : "No posts yet"}
+      icon={<Rss size={26} color={colors.mutedForeground} />}
+      title={filter === "friends" ? "Your literary circle is quiet" : "The forum awaits its first entry"}
       description={
         filter === "friends"
-          ? "Follow friends to see their shares here, or switch to Global."
-          : "Be the first to share something you've learned!"
+          ? "Follow fellow readers and cinephiles to see their marginalia here, or switch to the Public Forum."
+          : "Inscribe your considered thoughts on a recent volume or film to inaugurate the discussion."
       }
       action={
         <Button
-          label="Share something"
-          icon={<Plus size={16} color={colors.primaryForeground} />}
+          label="Inscribe a reflection"
+          icon={<Plus size={15} color={colors.primaryForeground} />}
           onPress={() => setComposeOpen(true)}
         />
       }
