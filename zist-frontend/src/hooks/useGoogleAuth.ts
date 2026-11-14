@@ -42,6 +42,7 @@ function getAllowedOrigins(): string[] {
   }
   allowed.add(authService.getBackendOrigin().replace(/\/+$/, ""));
   allowed.add(window.location.origin.replace(/\/+$/, ""));
+  allowed.add("https://zist-g4h2.onrender.com");
   return Array.from(allowed);
 }
 

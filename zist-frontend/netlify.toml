@@ -3,6 +3,7 @@
   publish = "dist"
 
 [build.environment]
+  VITE_BACKEND_ORIGIN = "https://zist-g4h2.onrender.com"
   # Required: Neon Auth endpoint. Format:
   #   https://ep-<id>.neonauth.<region>.aws.neon.tech/neondb/auth
   # Without this, the Google and Neon passwordless flows silently fail.

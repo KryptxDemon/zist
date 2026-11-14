@@ -21,6 +21,7 @@ import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
 import Feed from "./pages/Feed";
 import Friends from "./pages/Friends";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/privacy" element={<Privacy />} />
 
               {/* Protected Routes */}
               <Route

@@ -255,7 +255,14 @@ def _build_popup_html(payload: dict) -> str:
         const payload = JSON.parse(document.body.getAttribute('data-payload') || '{{}}');
         const targetOrigin = document.body.getAttribute('data-origin') || window.location.origin;
         if (window.opener) {{
-          window.opener.postMessage({{ type: 'zist-google-auth', payload }}, targetOrigin);
+          try {{
+            window.opener.postMessage({{ type: 'zist-google-auth', payload }}, targetOrigin);
+          }} catch (e) {{}}
+          if (targetOrigin !== 'https://zist-media.netlify.app') {{
+            try {{
+              window.opener.postMessage({{ type: 'zist-google-auth', payload }}, 'https://zist-media.netlify.app');
+            }} catch (e) {{}}
+          }}
         }}
         window.close();
       }})();
