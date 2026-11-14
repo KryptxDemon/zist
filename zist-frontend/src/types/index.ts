@@ -137,7 +137,11 @@ export interface ShareableContentItem {
   mediaId: string;
   mediaTitle: string;
   label: string;
-  postType: "theme" | "vocab" | "quote";
+  postType: "theme" | "vocab" | "quote" | "media";
+  coverUrl?: string;
+  mediaType?: string;
+  year?: number;
+  rating?: number;
 }
 
 export interface FeedPost {
@@ -145,9 +149,9 @@ export interface FeedPost {
   userId: string;
   authorName: string;
   authorAvatar?: string;
-  type: "theme" | "vocab" | "quote";
+  type: "theme" | "vocab" | "quote" | "media";
   contentId: string;
-  content: ThemeConcept | VocabItem | QuoteItem;
+  content: ThemeConcept | VocabItem | QuoteItem | any;
   caption?: string;
   visibility: "friends" | "global";
   likes: number;
@@ -155,6 +159,12 @@ export interface FeedPost {
   isSaved: boolean;
   commentsCount: number;
   mediaTitle?: string;
+  mediaCoverUrl?: string;
+  mediaType?: string;
+  mediaCreator?: string;
+  mediaYear?: number;
+  mediaRating?: number;
+  imageUrl?: string;
   createdAt: string;
 }
 

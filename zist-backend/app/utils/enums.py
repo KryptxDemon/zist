@@ -37,6 +37,7 @@ class FeedPostType(str, Enum):
     theme = "theme"
     vocab = "vocab"
     quote = "quote"
+    media = "media"
 
 
 class QuizType(str, Enum):

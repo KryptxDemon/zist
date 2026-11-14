@@ -4,21 +4,21 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { feedService } from "@/services/feedService";
-import { BookOpen, Globe, Lightbulb, Loader2, Quote, Rss, Users } from "lucide-react";
+import { BookOpen, Film, Globe, Lightbulb, Loader2, Quote, Rss, Users } from "lucide-react";
 
 export interface DirectShareItem {
-  type: "theme" | "vocab" | "quote";
+  type: "theme" | "vocab" | "quote" | "media";
   id: string;
   title: string;
   subtitle?: string;
   mediaTitle?: string;
+  coverUrl?: string;
 }
 
 interface DirectShareFeedDialogProps {
@@ -48,6 +48,7 @@ export function DirectShareFeedDialog({
         type: item.type,
         contentId: item.id,
         caption: caption.trim() || undefined,
+        imageUrl: item.coverUrl,
         visibility,
       });
       toast({
@@ -69,11 +70,13 @@ export function DirectShareFeedDialog({
   };
 
   const Icon =
-    item.type === "theme"
-      ? Lightbulb
-      : item.type === "vocab"
-        ? BookOpen
-        : Quote;
+    item.type === "media"
+      ? Film
+      : item.type === "theme"
+        ? Lightbulb
+        : item.type === "vocab"
+          ? BookOpen
+          : Quote;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -81,67 +84,63 @@ export function DirectShareFeedDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Rss className="h-5 w-5 text-primary" />
-            Share to Feed
+            Share to Social Feed
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Item Preview Card */}
-          <div className="rounded-xl border border-border/60 bg-accent/30 p-4 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
-              <Icon className="h-3.5 w-3.5" />
-              <span>
-                {item.type} {item.mediaTitle ? `· ${item.mediaTitle}` : ""}
-              </span>
-            </div>
-            <p className="font-semibold text-foreground text-sm line-clamp-2">
-              {item.title}
-            </p>
-            {item.subtitle ? (
-              <p className="text-xs text-muted-foreground line-clamp-3">
-                {item.subtitle}
+          <div className="flex gap-3 rounded-xl border border-border/60 bg-accent/30 p-4">
+            {item.coverUrl && (
+              <img
+                src={item.coverUrl}
+                alt={item.title}
+                className="w-14 h-20 object-cover rounded-lg shrink-0 shadow-sm"
+              />
+            )}
+            <div className="space-y-1 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
+                <Icon className="h-3.5 w-3.5" />
+                <span>
+                  {item.type} {item.mediaTitle && item.type !== "media" ? `· ${item.mediaTitle}` : ""}
+                </span>
+              </div>
+              <p className="font-semibold text-foreground text-sm line-clamp-2">
+                {item.title}
               </p>
-            ) : null}
+              {item.subtitle ? (
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {item.subtitle}
+                </p>
+              ) : null}
+            </div>
           </div>
 
-          {/* Caption Input */}
+          {/* Visibility toggle buttons */}
           <div className="space-y-1.5">
-            <Label htmlFor="feedCaption" className="text-xs font-medium">
-              Your Thoughts / Caption (Optional)
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+              Audience
             </Label>
-            <Textarea
-              id="feedCaption"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="What made this memorable? Share your insights with fellow learners..."
-              className="resize-none"
-              rows={3}
-            />
-          </div>
-
-          {/* Visibility Picker */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Audience</Label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setVisibility("global")}
-                className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-semibold transition-all ${
+                className={`flex items-center justify-center gap-2 rounded-lg border p-2 text-xs font-medium transition-colors ${
                   visibility === "global"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:bg-accent"
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-border/60 text-muted-foreground hover:bg-accent/40"
                 }`}
               >
                 <Globe className="h-3.5 w-3.5" />
-                Global Community
+                Public (Global)
               </button>
               <button
                 type="button"
                 onClick={() => setVisibility("friends")}
-                className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-semibold transition-all ${
+                className={`flex items-center justify-center gap-2 rounded-lg border p-2 text-xs font-medium transition-colors ${
                   visibility === "friends"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:bg-accent"
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-border/60 text-muted-foreground hover:bg-accent/40"
                 }`}
               >
                 <Users className="h-3.5 w-3.5" />
@@ -149,26 +148,41 @@ export function DirectShareFeedDialog({
               </button>
             </div>
           </div>
-        </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPosting}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handlePost} disabled={isPosting} className="gap-2">
-            {isPosting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Rss className="h-4 w-4" />
-            )}
-            Post to Feed
-          </Button>
-        </DialogFooter>
+          {/* Caption Textarea */}
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+              Add Your Thoughts
+            </Label>
+            <Textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="What makes this special to you? Add your review or takeaway..."
+              rows={3}
+              className="resize-none text-sm"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isPosting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePost}
+              disabled={isPosting}
+              className="gap-2"
+            >
+              {isPosting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Share Now
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { View } from "react-native";
-import { BookOpen, Globe, Lightbulb, Quote, Rss, Users } from "lucide-react-native";
+import { Image, View } from "react-native";
+import { BookOpen, Film, Globe, Lightbulb, Quote, Rss, Users } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import {
@@ -15,11 +15,12 @@ import {
 import { feedService } from "@/services/feedService";
 
 export interface DirectShareItem {
-  type: "theme" | "vocab" | "quote";
+  type: "theme" | "vocab" | "quote" | "media";
   id: string;
   title: string;
   subtitle?: string;
   mediaTitle?: string;
+  coverUrl?: string;
 }
 
 interface DirectShareFeedModalProps {
@@ -51,6 +52,7 @@ export function DirectShareFeedModal({
         type: item.type,
         contentId: item.id,
         caption: caption.trim() || undefined,
+        imageUrl: item.coverUrl,
         visibility,
       });
       toast({
@@ -72,11 +74,13 @@ export function DirectShareFeedModal({
   };
 
   const Icon =
-    item.type === "theme"
-      ? Lightbulb
-      : item.type === "vocab"
-        ? BookOpen
-        : Quote;
+    item.type === "media"
+      ? Film
+      : item.type === "theme"
+        ? Lightbulb
+        : item.type === "vocab"
+          ? BookOpen
+          : Quote;
 
   return (
     <Sheet visible={visible} onClose={onClose} title="Share to Feed">
@@ -93,71 +97,82 @@ export function DirectShareFeedModal({
             borderRadius: radius.lg,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Icon size={14} color={colors.primary} />
-            <Text
-              variant="caption"
-              weight="semibold"
-              uppercase
-              letterSpacing={1.2}
-              tint={colors.primary}
-            >
-              {item.type} {item.mediaTitle ? `· ${item.mediaTitle}` : ""}
-            </Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {item.coverUrl ? (
+              <Image
+                source={{ uri: item.coverUrl }}
+                style={{ width: 44, height: 64, borderRadius: radius.sm }}
+                resizeMode="cover"
+              />
+            ) : null}
+            <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Icon size={14} color={colors.primary} />
+                <Text
+                  variant="caption"
+                  weight="semibold"
+                  style={{ textTransform: "uppercase", letterSpacing: 0.6 }}
+                  color="primary"
+                >
+                  {item.type}
+                  {item.mediaTitle && item.type !== "media" ? ` · ${item.mediaTitle}` : ""}
+                </Text>
+              </View>
+              <Text variant="label" weight="semibold" numberOfLines={2}>
+                {item.title}
+              </Text>
+              {item.subtitle ? (
+                <Text variant="caption" color="mutedForeground" numberOfLines={2}>
+                  {item.subtitle}
+                </Text>
+              ) : null}
+            </View>
           </View>
-          <Text variant="small" weight="bold" numberOfLines={2}>
-            {item.title}
-          </Text>
-          {item.subtitle ? (
-            <Text variant="caption" color="mutedForeground" numberOfLines={3}>
-              {item.subtitle}
-            </Text>
-          ) : null}
         </Card>
 
-        {/* Caption input */}
+        {/* Audience */}
         <View style={{ gap: 6 }}>
-          <Text variant="small" weight="medium">
-            Your Take / Caption (Optional)
-          </Text>
-          <Textarea
-            value={caption}
-            onChangeText={setCaption}
-            placeholder="What did you learn or feel from this? Add context for friends..."
-            style={{ minHeight: 84 }}
-          />
-        </View>
-
-        {/* Audience / Visibility */}
-        <View style={{ gap: 6 }}>
-          <Text variant="small" weight="medium">
+          <Text variant="label" weight="medium">
             Audience
           </Text>
           <Segmented<"global" | "friends">
             value={visibility}
             onChange={setVisibility}
             items={[
-              { value: "global", label: "Global Community" },
-              { value: "friends", label: "Friends Only" },
+              {
+                value: "global",
+                label: "Public (Global)",
+                icon: <Globe size={14} color={colors.mutedForeground} />,
+              },
+              {
+                value: "friends",
+                label: "Friends Only",
+                icon: <Users size={14} color={colors.mutedForeground} />,
+              },
             ]}
           />
         </View>
 
-        {/* Action buttons */}
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
-          <Button
-            variant="outline"
-            label="Cancel"
-            onPress={onClose}
-            disabled={isPosting}
-            style={{ flex: 1 }}
+        {/* Caption */}
+        <View style={{ gap: 6 }}>
+          <Text variant="label" weight="medium">
+            Add Your Thoughts
+          </Text>
+          <Textarea
+            value={caption}
+            onChangeText={setCaption}
+            placeholder="What makes this special to you? Add a takeaway or note…"
+            rows={3}
           />
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 10, justifyContent: "flex-end" }}>
+          <Button label="Cancel" variant="outline" onPress={onClose} disabled={isPosting} />
           <Button
-            label={isPosting ? "Sharing..." : "Post to Feed"}
-            icon={<Rss size={16} color="#ffffff" />}
+            label="Share Now"
+            icon={<Rss size={14} color={colors.primaryForeground} />}
             onPress={handlePost}
             loading={isPosting}
-            style={{ flex: 1 }}
           />
         </View>
       </View>

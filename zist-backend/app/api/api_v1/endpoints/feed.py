@@ -29,6 +29,9 @@ router = APIRouter()
 
 
 def _validate_content_ownership(db: Session, post_type: FeedPostType, content_id: str, user_id: str) -> bool:
+    if post_type == FeedPostType.media:
+        item = db.query(MediaItem).filter(MediaItem.id == content_id, MediaItem.user_id == user_id).first()
+        return bool(item)
     if post_type == FeedPostType.theme:
         item = db.query(ThemeConcept).join(ThemeConcept.media).filter(ThemeConcept.id == content_id).first()
         return bool(item and item.media.user_id == user_id)
@@ -106,6 +109,7 @@ def get_shareable_content(
             .limit(100)
             .all()
         ):
+            media_obj = next((m for m in media_items if m.id == theme.media_id), None)
             themes.append(
                 ShareableContentItem(
                     id=theme.id,
@@ -113,6 +117,10 @@ def get_shareable_content(
                     media_title=media_by_id.get(theme.media_id, "Media"),
                     label=theme.title,
                     post_type=FeedPostType.theme,
+                    cover_url=media_obj.cover_url if media_obj else None,
+                    media_type=media_obj.type if media_obj else None,
+                    year=media_obj.year if media_obj else None,
+                    rating=media_obj.rating if media_obj else None,
                 )
             )
 
@@ -123,6 +131,7 @@ def get_shareable_content(
             .limit(100)
             .all()
         ):
+            media_obj = next((m for m in media_items if m.id == item.media_id), None)
             vocab.append(
                 ShareableContentItem(
                     id=item.id,
@@ -130,6 +139,10 @@ def get_shareable_content(
                     media_title=media_by_id.get(item.media_id, "Media"),
                     label=item.word,
                     post_type=FeedPostType.vocab,
+                    cover_url=media_obj.cover_url if media_obj else None,
+                    media_type=media_obj.type if media_obj else None,
+                    year=media_obj.year if media_obj else None,
+                    rating=media_obj.rating if media_obj else None,
                 )
             )
 
@@ -140,6 +153,7 @@ def get_shareable_content(
             .limit(100)
             .all()
         ):
+            media_obj = next((m for m in media_items if m.id == quote.media_id), None)
             preview = quote.text[:80] + ("..." if len(quote.text) > 80 else "")
             quotes.append(
                 ShareableContentItem(
@@ -148,10 +162,29 @@ def get_shareable_content(
                     media_title=media_by_id.get(quote.media_id, "Media"),
                     label=preview,
                     post_type=FeedPostType.quote,
+                    cover_url=media_obj.cover_url if media_obj else None,
+                    media_type=media_obj.type if media_obj else None,
+                    year=media_obj.year if media_obj else None,
+                    rating=media_obj.rating if media_obj else None,
                 )
             )
 
-    return ShareableContentResponse(themes=themes, vocab=vocab, quotes=quotes)
+    media_shares = [
+        ShareableContentItem(
+            id=m.id,
+            media_id=m.id,
+            media_title=m.title,
+            label=f"{m.title} ({m.type.capitalize()}{f' · {m.year}' if m.year else ''})",
+            post_type=FeedPostType.media,
+            cover_url=m.cover_url,
+            media_type=m.type,
+            year=m.year,
+            rating=m.rating,
+        )
+        for m in media_items
+    ]
+
+    return ShareableContentResponse(media=media_shares, themes=themes, vocab=vocab, quotes=quotes)
 
 
 @router.post("/feed", response_model=FeedPostResponse, status_code=status.HTTP_201_CREATED)
@@ -168,6 +201,7 @@ def create_feed_post(
         post_type=payload.post_type.value,
         content_id=payload.content_id,
         caption=payload.caption,
+        image_url=payload.image_url,
         visibility=payload.visibility.value,
     )
     db.add(post)

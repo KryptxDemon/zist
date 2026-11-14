@@ -1,16 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, type TextStyle, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  Share,
+  StyleSheet,
+  type TextStyle,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
 import {
   Bookmark,
   BookOpen,
   ChevronDown,
   ChevronUp,
+  Film,
   Globe,
   Heart,
   Lightbulb,
   MessageCircle,
   Quote,
+  Share2,
+  Star,
   Trash2,
   Users,
 } from "lucide-react-native";
@@ -23,16 +33,13 @@ import { formatRelativeTime } from "@/lib/time";
 import type { FeedPost, QuoteItem, ThemeConcept, VocabItem } from "@/types";
 import { FeedCommentsSheet } from "./FeedCommentsSheet";
 
-/**
- * Feed post card — author header, shared content payload (theme / vocab /
- * quote), engagement row and the comment sheet.
- *
- * Ported from `zist-frontend/src/components/feed/FeedPostCard.tsx`. Like and
- * save are optimistic on mobile (the web awaited the service first); both revert
- * and surface a toast when the request fails.
- */
-
 const TYPE_CONFIG = {
+  media: {
+    Icon: Film,
+    color: "#f59e0b",
+    bg: "rgba(245, 158, 11, 0.20)",
+    label: "Media",
+  },
   theme: {
     Icon: Lightbulb,
     color: "#fbbf24",
@@ -156,13 +163,13 @@ export function FeedPostCard({
     localPostRef.current = localPost;
   }, [localPost]);
 
-  // Keep in sync when the parent replaces the post (reload / refresh).
   useEffect(() => {
     setLocalPost(post);
   }, [post]);
 
-  const config = TYPE_CONFIG[localPost.type];
+  const config = TYPE_CONFIG[localPost.type] || TYPE_CONFIG.theme;
   const isOwner = user?.id === localPost.userId;
+  const coverImage = localPost.imageUrl || localPost.mediaCoverUrl;
 
   const updatePost = (next: FeedPost) => {
     localPostRef.current = next;
@@ -185,8 +192,8 @@ export function FeedPostCard({
       const result = await feedService.likePost(current.id);
       updatePost({ ...optimistic, isLiked: result.active, likes: result.count });
     } catch {
-      updatePost(current); // revert
-      toast({ title: "Failed to upvote", variant: "destructive" });
+      updatePost(current);
+      toast({ title: "Failed to like post", variant: "destructive" });
     } finally {
       setLikePending(false);
     }
@@ -201,11 +208,24 @@ export function FeedPostCard({
     try {
       const result = await feedService.savePost(current.id);
       updatePost({ ...optimistic, isSaved: result.active });
+      toast({
+        title: result.active ? "Saved to bookmarks" : "Removed from bookmarks",
+      });
     } catch {
-      updatePost(current); // revert
+      updatePost(current);
       toast({ title: "Failed to save post", variant: "destructive" });
     } finally {
       setSavePending(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `${localPost.caption || localPost.mediaTitle || "Check out this post on Zist"}\nhttps://zist-media.netlify.app/app/feed`,
+      });
+    } catch {
+      // User dismissed
     }
   };
 
@@ -228,20 +248,109 @@ export function FeedPostCard({
   };
 
   const renderContent = () => {
+    if (localPost.type === "media") {
+      return (
+        <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {coverImage ? (
+              <Image
+                source={{ uri: coverImage }}
+                style={{
+                  width: 72,
+                  height: 108,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.border,
+                }}
+                resizeMode="cover"
+              />
+            ) : null}
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text variant="h4" numberOfLines={2}>
+                {localPost.mediaTitle || localPost.content?.title || "Media"}
+              </Text>
+              {localPost.mediaCreator ? (
+                <Text variant="caption" color="mutedForeground">
+                  by {localPost.mediaCreator}
+                </Text>
+              ) : null}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+                {localPost.mediaYear ? (
+                  <View
+                    style={{
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: radius.sm,
+                      backgroundColor: colors.border,
+                    }}
+                  >
+                    <Text variant="caption" weight="medium">
+                      {localPost.mediaYear}
+                    </Text>
+                  </View>
+                ) : null}
+                {localPost.mediaRating !== undefined && localPost.mediaRating !== null ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: radius.sm,
+                      backgroundColor: "rgba(245, 158, 11, 0.15)",
+                    }}
+                  >
+                    <Star size={12} color="#f59e0b" fill="#f59e0b" />
+                    <Text variant="caption" tint="#f59e0b" weight="semibold">
+                      {localPost.mediaRating.toFixed(1)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </View>
+          {localPost.content?.review ? (
+            <View style={{ borderTopWidth: 1, borderColor: colors.border, paddingTop: 8 }}>
+              <ExpandableText
+                text={localPost.content.review}
+                variant="small"
+                color="mutedForeground"
+                italic
+                prefix="“"
+                suffix="”"
+                wordLimit={35}
+              />
+            </View>
+          ) : null}
+        </View>
+      );
+    }
+
     if (localPost.type === "theme") {
       const content = localPost.content as ThemeConcept;
       return (
-        <View style={{ gap: 4 }}>
-          <Text variant="h4">{content.title}</Text>
-          {content.summary ? (
-            <ExpandableText
-              text={content.summary}
-              variant="small"
-              color="mutedForeground"
-              wordLimit={40}
-              charLimit={180}
-            />
-          ) : null}
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text variant="h4">{content.title}</Text>
+              {content.summary ? (
+                <ExpandableText
+                  text={content.summary}
+                  variant="small"
+                  color="mutedForeground"
+                  wordLimit={40}
+                  charLimit={180}
+                />
+              ) : null}
+            </View>
+            {coverImage ? (
+              <Image
+                source={{ uri: coverImage }}
+                style={{ width: 44, height: 64, borderRadius: radius.sm }}
+                resizeMode="cover"
+              />
+            ) : null}
+          </View>
         </View>
       );
     }
@@ -249,17 +358,35 @@ export function FeedPostCard({
     if (localPost.type === "vocab") {
       const content = localPost.content as VocabItem;
       return (
-        <View style={{ gap: 4 }}>
-          <Text variant="h4">{content.word}</Text>
-          {content.definition ? (
-            <ExpandableText
-              text={content.definition}
-              variant="small"
-              color="mutedForeground"
-              wordLimit={40}
-              charLimit={180}
-            />
-          ) : null}
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text variant="h4" tint="#34d399">
+                {content.word}
+              </Text>
+              {content.definition ? (
+                <ExpandableText
+                  text={content.definition}
+                  variant="small"
+                  color="mutedForeground"
+                  wordLimit={40}
+                  charLimit={180}
+                />
+              ) : null}
+              {content.exampleSentence ? (
+                <Text variant="caption" color="mutedForeground" style={{ fontStyle: "italic", marginTop: 4 }}>
+                  “{content.exampleSentence}”
+                </Text>
+              ) : null}
+            </View>
+            {coverImage ? (
+              <Image
+                source={{ uri: coverImage }}
+                style={{ width: 44, height: 64, borderRadius: radius.sm }}
+                resizeMode="cover"
+              />
+            ) : null}
+          </View>
         </View>
       );
     }
@@ -267,20 +394,31 @@ export function FeedPostCard({
     const content = localPost.content as QuoteItem;
     return (
       <View style={{ gap: 8 }}>
-        <ExpandableText
-          text={content.text}
-          variant="body"
-          italic
-          prefix={`\u201C`}
-          suffix={`\u201D`}
-          wordLimit={45}
-          charLimit={200}
-        />
-        {content.speaker ? (
-          <Text variant="small" color="mutedForeground">
-            {`— ${content.speaker}`}
-          </Text>
-        ) : null}
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <View style={{ flex: 1, gap: 6 }}>
+            <ExpandableText
+              text={content.text}
+              variant="body"
+              italic
+              prefix={`\u201C`}
+              suffix={`\u201D`}
+              wordLimit={45}
+              charLimit={200}
+            />
+            {content.speaker ? (
+              <Text variant="small" tint="#a78bfa" weight="medium">
+                {`— ${content.speaker}`}
+              </Text>
+            ) : null}
+          </View>
+          {coverImage ? (
+            <Image
+              source={{ uri: coverImage }}
+              style={{ width: 44, height: 64, borderRadius: radius.sm }}
+              resizeMode="cover"
+            />
+          ) : null}
+        </View>
       </View>
     );
   };
@@ -294,7 +432,7 @@ export function FeedPostCard({
           borderColor: colors.border,
           backgroundColor: colors.card,
           padding: 16,
-          gap: 16,
+          gap: 14,
         },
         shadow("sm"),
       ]}
@@ -319,7 +457,7 @@ export function FeedPostCard({
             {localPost.mediaTitle ? (
               <>
                 <Text variant="caption">·</Text>
-                <Text variant="caption" numberOfLines={1} style={{ maxWidth: 180 }}>
+                <Text variant="caption" numberOfLines={1} style={{ maxWidth: 160 }}>
                   {localPost.mediaTitle}
                 </Text>
               </>
@@ -339,15 +477,15 @@ export function FeedPostCard({
               }}
             >
               {localPost.visibility === "global" ? (
-                <Globe size={12} color="#38bdf8" />
+                <Globe size={11} color="#38bdf8" />
               ) : (
-                <Users size={12} color={colors.primary} />
+                <Users size={11} color={colors.primary} />
               )}
               <Text
                 variant="caption"
                 tint={localPost.visibility === "global" ? "#38bdf8" : colors.primary}
               >
-                {localPost.visibility === "global" ? "Global" : "Friends"}
+                {localPost.visibility === "global" ? "Public" : "Friends"}
               </Text>
             </View>
           </View>
@@ -365,8 +503,12 @@ export function FeedPostCard({
           }}
         >
           <config.Icon size={12} color={config.color} />
-          <Text variant="caption" tint={config.color} weight="medium">
-            {config.label}
+          <Text variant="caption" tint={config.color} weight="semibold">
+            {localPost.type === "media"
+              ? localPost.mediaType
+                ? localPost.mediaType.toUpperCase()
+                : "MEDIA"
+              : config.label}
           </Text>
         </View>
       </View>
@@ -386,69 +528,81 @@ export function FeedPostCard({
         style={{
           backgroundColor: colors.accent,
           borderRadius: radius.xl,
-          padding: 16,
+          padding: 14,
         }}
       >
         {renderContent()}
       </View>
 
-      {/* Actions */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 20 }}>
-        <Pressable
-          onPress={handleLike}
-          hitSlop={8}
-          style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-        >
-          <Heart
-            size={16}
-            color={localPost.isLiked ? LIKED_COLOR : colors.mutedForeground}
-            fill={localPost.isLiked ? LIKED_COLOR : "none"}
-          />
-          <Text variant="small" tint={localPost.isLiked ? LIKED_COLOR : colors.mutedForeground}>
-            {localPost.likes}
-          </Text>
-        </Pressable>
-
-        {!compact ? (
-          <>
-            <Pressable
-              onPress={handleSave}
-              hitSlop={8}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            >
-              <Bookmark
-                size={16}
-                color={localPost.isSaved ? colors.primary : colors.mutedForeground}
-                fill={localPost.isSaved ? colors.primary : "none"}
-              />
-              <Text variant="small" tint={localPost.isSaved ? colors.primary : colors.mutedForeground}>
-                Save
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setCommentsOpen(true)}
-              hitSlop={8}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            >
-              <MessageCircle size={16} color={colors.mutedForeground} />
-              <Text variant="small" color="mutedForeground">
-                {localPost.commentsCount}
-              </Text>
-            </Pressable>
-          </>
-        ) : null}
-
-        {isOwner ? (
+      {/* Actions Row */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 20 }}>
           <Pressable
-            onPress={handleDelete}
+            onPress={handleLike}
             hitSlop={8}
-            style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4 }}
-            accessibilityLabel="Delete post"
+            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
           >
-            <Trash2 size={16} color={colors.mutedForeground} />
+            <Heart
+              size={18}
+              color={localPost.isLiked ? LIKED_COLOR : colors.mutedForeground}
+              fill={localPost.isLiked ? LIKED_COLOR : "none"}
+            />
+            <Text variant="small" tint={localPost.isLiked ? LIKED_COLOR : colors.mutedForeground} weight="medium">
+              {localPost.likes}
+            </Text>
           </Pressable>
-        ) : null}
+
+          {!compact ? (
+            <>
+              <Pressable
+                onPress={() => setCommentsOpen(true)}
+                hitSlop={8}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              >
+                <MessageCircle size={18} color={colors.mutedForeground} />
+                <Text variant="small" color="mutedForeground" weight="medium">
+                  {localPost.commentsCount}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleSave}
+                hitSlop={8}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              >
+                <Bookmark
+                  size={18}
+                  color={localPost.isSaved ? colors.primary : colors.mutedForeground}
+                  fill={localPost.isSaved ? colors.primary : "none"}
+                />
+                <Text variant="small" tint={localPost.isSaved ? colors.primary : colors.mutedForeground} weight="medium">
+                  {localPost.isSaved ? "Saved" : "Save"}
+                </Text>
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+          <Pressable
+            onPress={handleShare}
+            hitSlop={8}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <Share2 size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          {isOwner ? (
+            <Pressable
+              onPress={handleDelete}
+              hitSlop={8}
+              style={{ flexDirection: "row", alignItems: "center" }}
+              accessibilityLabel="Delete post"
+            >
+              <Trash2 size={18} color={colors.destructive} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {!compact ? (

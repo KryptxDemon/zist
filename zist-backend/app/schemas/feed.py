@@ -11,6 +11,7 @@ class FeedPostCreate(BaseModel):
     content_id: str
     caption: str | None = None
     visibility: FeedVisibility = FeedVisibility.global_
+    image_url: str | None = None
 
 
 class FeedPostResponse(BaseModel):
@@ -30,6 +31,12 @@ class FeedPostResponse(BaseModel):
     comments_count: int = 0
     content: dict[str, Any] | None = None
     media_title: str | None = None
+    media_cover_url: str | None = None
+    media_type: str | None = None
+    media_creator: str | None = None
+    media_year: int | None = None
+    media_rating: int | None = None
+    image_url: str | None = None
 
 
 class FeedListResponse(BaseModel):
@@ -70,9 +77,14 @@ class ShareableContentItem(BaseModel):
     media_title: str
     label: str
     post_type: FeedPostType
+    cover_url: str | None = None
+    media_type: str | None = None
+    year: int | None = None
+    rating: int | None = None
 
 
 class ShareableContentResponse(BaseModel):
+    media: list[ShareableContentItem] = Field(default_factory=list)
     themes: list[ShareableContentItem]
     vocab: list[ShareableContentItem]
     quotes: list[ShareableContentItem]

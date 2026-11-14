@@ -12,44 +12,77 @@ from app.schemas.feed import FeedCommentResponse, FeedPostResponse
 from app.utils.enums import FeedPostType
 
 
-def _load_content(db: Session, post_type: str, content_id: str) -> tuple[dict[str, Any] | None, str | None]:
+def _load_content(
+    db: Session, post_type: str, content_id: str
+) -> tuple[dict[str, Any] | None, str | None, MediaItem | None]:
+    if post_type == FeedPostType.media.value:
+        media = db.query(MediaItem).filter(MediaItem.id == content_id).first()
+        if not media:
+            return None, None, None
+        return (
+            {
+                "id": media.id,
+                "title": media.title,
+                "type": media.type,
+                "year": media.year,
+                "creator": media.creator,
+                "cover_url": media.cover_url,
+                "rating": media.rating,
+                "description": media.description,
+            },
+            media.title,
+            media,
+        )
+
     if post_type == FeedPostType.theme.value:
         item = db.query(ThemeConcept).filter(ThemeConcept.id == content_id).first()
         if not item:
-            return None, None
+            return None, None, None
         media = db.query(MediaItem).filter(MediaItem.id == item.media_id).first()
-        return {
-            "id": item.id,
-            "media_id": item.media_id,
-            "title": item.title,
-            "summary": item.summary,
-            "user_understanding": item.user_understanding,
-        }, media.title if media else None
+        return (
+            {
+                "id": item.id,
+                "media_id": item.media_id,
+                "title": item.title,
+                "summary": item.summary,
+                "user_understanding": item.user_understanding,
+            },
+            media.title if media else None,
+            media,
+        )
 
     if post_type == FeedPostType.vocab.value:
         item = db.query(VocabItem).filter(VocabItem.id == content_id).first()
         if not item:
-            return None, None
+            return None, None, None
         media = db.query(MediaItem).filter(MediaItem.id == item.media_id).first()
-        return {
-            "id": item.id,
-            "media_id": item.media_id,
-            "word": item.word,
-            "definition": item.definition,
-            "example_sentence": item.example_sentence,
-        }, media.title if media else None
+        return (
+            {
+                "id": item.id,
+                "media_id": item.media_id,
+                "word": item.word,
+                "definition": item.definition,
+                "example_sentence": item.example_sentence,
+            },
+            media.title if media else None,
+            media,
+        )
 
     item = db.query(QuoteItem).filter(QuoteItem.id == content_id).first()
     if not item:
-        return None, None
+        return None, None, None
     media = db.query(MediaItem).filter(MediaItem.id == item.media_id).first()
-    return {
-        "id": item.id,
-        "media_id": item.media_id,
-        "text": item.text,
-        "speaker": item.speaker,
-        "user_meaning": item.user_meaning,
-    }, media.title if media else None
+    return (
+        {
+            "id": item.id,
+            "media_id": item.media_id,
+            "text": item.text,
+            "speaker": item.speaker,
+            "user_meaning": item.user_meaning,
+        },
+        media.title if media else None,
+        media,
+    )
 
 
 def serialize_feed_post(db: Session, post: FeedPost, current_user_id: str) -> FeedPostResponse:
@@ -69,7 +102,10 @@ def serialize_feed_post(db: Session, post: FeedPost, current_user_id: str) -> Fe
     comments_count = db.query(FeedPostComment).filter(FeedPostComment.post_id == post.id).count()
 
     author = db.query(User).filter(User.id == post.user_id).first()
-    content, media_title = _load_content(db, post.post_type, post.content_id)
+    content, media_title, media = _load_content(db, post.post_type, post.content_id)
+
+    raw_image_url = getattr(post, "image_url", None)
+    cover_url = raw_image_url or (media.cover_url if media else None)
 
     return FeedPostResponse(
         id=post.id,
@@ -88,6 +124,12 @@ def serialize_feed_post(db: Session, post: FeedPost, current_user_id: str) -> Fe
         comments_count=comments_count,
         content=content,
         media_title=media_title,
+        media_cover_url=media.cover_url if media else None,
+        media_type=media.type if media else None,
+        media_creator=media.creator if media else None,
+        media_year=media.year if media else None,
+        media_rating=media.rating if media else None,
+        image_url=cover_url,
     )
 
 

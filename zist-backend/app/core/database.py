@@ -104,6 +104,19 @@ def ensure_media_columns() -> None:
         connection.execute(text("ALTER TABLE media_items ADD COLUMN tags TEXT"))
 
 
+def ensure_feed_columns() -> None:
+    inspector = inspect(engine)
+    if "feed_posts" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        column["name"] for column in inspector.get_columns("feed_posts")
+    }
+    if "image_url" not in existing_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE feed_posts ADD COLUMN image_url VARCHAR"))
+
+
 def ensure_ai_cache_table() -> None:
     inspector = inspect(engine)
     if "ai_cache" in inspector.get_table_names():

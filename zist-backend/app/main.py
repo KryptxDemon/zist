@@ -9,6 +9,7 @@ from app.core.database import (
     Base,
     engine,
     ensure_ai_cache_table,
+    ensure_feed_columns,
     ensure_media_columns,
     ensure_user_profile_columns,
 )
@@ -80,6 +81,7 @@ def create_application() -> FastAPI:
         Base.metadata.create_all(bind=engine)
         ensure_user_profile_columns()
         ensure_media_columns()
+        ensure_feed_columns()
         ensure_ai_cache_table()
     except Exception as exc:
         logger.warning("Database initialization deferred/failed: %s", exc)

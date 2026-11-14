@@ -25,6 +25,7 @@ class FeedPost(Base):
     post_type: Mapped[str] = mapped_column(String, nullable=False)
     content_id: Mapped[str] = mapped_column(String, nullable=False)
     caption: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     visibility: Mapped[str] = mapped_column(String, nullable=False, default=FeedVisibility.global_.value)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(

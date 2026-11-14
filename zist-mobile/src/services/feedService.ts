@@ -27,6 +27,12 @@ interface BackendFeedPost {
   comments_count: number;
   content?: ApiObject | null;
   media_title?: string | null;
+  media_cover_url?: string | null;
+  media_type?: string | null;
+  media_creator?: string | null;
+  media_year?: number | null;
+  media_rating?: number | null;
+  image_url?: string | null;
 }
 
 interface BackendFeedList {
@@ -50,9 +56,24 @@ function mapContent(
   postType: string,
   content: ApiObject | null | undefined,
   contentId: string,
-): ThemeConcept | VocabItem | QuoteItem {
+): ThemeConcept | VocabItem | QuoteItem | any {
   const mediaId = String(content?.media_id ?? content?.mediaId ?? "");
   const now = new Date().toISOString();
+
+  if (postType === "media") {
+    return {
+      id: String(content?.id ?? contentId),
+      mediaId: String(content?.id ?? contentId),
+      title: String(content?.title ?? "Media"),
+      type: (content?.type as string) ?? "movie",
+      creator: (content?.creator as string) ?? undefined,
+      year: (content?.year as number) ?? undefined,
+      rating: (content?.rating as number) ?? undefined,
+      review: (content?.review as string) ?? undefined,
+      coverUrl: (content?.cover_url as string) ?? undefined,
+      genres: (content?.genres as string[]) ?? [],
+    };
+  }
 
   if (postType === "theme") {
     return {
@@ -117,6 +138,12 @@ function mapFeedPost(post: BackendFeedPost): FeedPost {
     isSaved: post.is_saved,
     commentsCount: post.comments_count,
     mediaTitle: post.media_title ?? undefined,
+    mediaCoverUrl: post.media_cover_url ?? undefined,
+    mediaType: post.media_type ?? undefined,
+    mediaCreator: post.media_creator ?? undefined,
+    mediaYear: post.media_year ?? undefined,
+    mediaRating: post.media_rating ?? undefined,
+    imageUrl: post.image_url ?? undefined,
     createdAt: post.created_at,
   };
 }
@@ -136,10 +163,14 @@ function mapComment(comment: BackendComment): FeedComment {
 function mapShareableItem(item: ApiObject): ShareableContentItem {
   return {
     id: String(item.id),
-    mediaId: String(item.media_id ?? item.mediaId),
-    mediaTitle: String(item.media_title ?? item.mediaTitle ?? "Media"),
+    mediaId: String(item.media_id ?? item.mediaId ?? item.id),
+    mediaTitle: String(item.media_title ?? item.mediaTitle ?? item.label ?? "Media"),
     label: String(item.label),
     postType: (item.post_type ?? item.postType) as ShareableContentItem["postType"],
+    coverUrl: (item.cover_url ?? item.coverUrl) as string | undefined,
+    mediaType: (item.media_type ?? item.mediaType) as string | undefined,
+    year: (item.year as number) ?? undefined,
+    rating: (item.rating as number) ?? undefined,
   };
 }
 
@@ -175,17 +206,20 @@ export const feedService = {
   },
 
   async getShareableContent(): Promise<{
+    media: ShareableContentItem[];
     themes: ShareableContentItem[];
     vocab: ShareableContentItem[];
     quotes: ShareableContentItem[];
   }> {
     const response = await apiClient.get<{
+      media?: ApiObject[];
       themes: ApiObject[];
       vocab: ApiObject[];
       quotes: ApiObject[];
     }>("/feed/shareable-content");
 
     return {
+      media: (response.media ?? []).map(mapShareableItem),
       themes: response.themes.map(mapShareableItem),
       vocab: response.vocab.map(mapShareableItem),
       quotes: response.quotes.map(mapShareableItem),
@@ -193,15 +227,17 @@ export const feedService = {
   },
 
   async createPost(data: {
-    type: "theme" | "vocab" | "quote";
+    type: "theme" | "vocab" | "quote" | "media";
     contentId: string;
     caption?: string;
+    imageUrl?: string;
     visibility: "friends" | "global";
   }): Promise<FeedPost> {
     const response = await apiClient.post<BackendFeedPost>("/feed", {
       post_type: data.type,
       content_id: data.contentId,
       caption: data.caption,
+      image_url: data.imageUrl,
       visibility: data.visibility,
     });
     return mapFeedPost(response);

@@ -1,7 +1,26 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AlertCircle, Globe, Plus, Rss, Users } from "lucide-react-native";
+import {
+  AlertCircle,
+  BookOpen,
+  Film,
+  Globe,
+  Lightbulb,
+  Plus,
+  Quote,
+  Rss,
+  Sparkles,
+  Users,
+} from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import {
@@ -18,23 +37,17 @@ import { FeedComposeSheet } from "@/components/feed/FeedComposeSheet";
 import { FeedPostCard } from "@/components/feed/FeedPostCard";
 import { MediaDiscoverySearch } from "@/components/feed/MediaDiscoverySearch";
 
-/**
- * Social feed (port of `zist-frontend/src/pages/Feed.tsx`).
- *
- * Global/Friends visibility switch, paged loading, pull-to-refresh and the
- * compose + discovery flows. The post list is a `FlatList` so it can grow
- * unbounded; the header (title, discovery search, filter) scrolls with it.
- */
-
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 
 type FeedFilter = "global" | "friends";
+type ContentTypeFilter = "all" | "media" | "quote" | "theme" | "vocab";
 
 export function FeedScreen() {
-  const { colors } = useTheme();
+  const { colors, radius } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [filter, setFilter] = useState<FeedFilter>("global");
+  const [contentType, setContentType] = useState<ContentTypeFilter>("all");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -55,7 +68,7 @@ export function FeedScreen() {
 
       try {
         const data = await feedService.getPosts(filter, targetPage, PAGE_SIZE);
-        if (id !== requestIdRef.current) return; // a newer request superseded us
+        if (id !== requestIdRef.current) return;
 
         setPosts((prev) => {
           if (mode !== "more") return data.items;
@@ -80,7 +93,6 @@ export function FeedScreen() {
     [filter],
   );
 
-  // Initial load + reload whenever the visibility filter changes.
   useEffect(() => {
     void load(1, "initial");
   }, [load]);
@@ -110,9 +122,30 @@ export function FeedScreen() {
     void load(1, "refresh");
   }, [load]);
 
+  const filteredPosts = useMemo(() => {
+    if (contentType === "all") return posts;
+    return posts.filter((p) => p.type === contentType);
+  }, [posts, contentType]);
+
+  // Trending media covers strip
+  const mediaHighlights = useMemo(() => {
+    const list: { id: string; title: string; cover: string }[] = [];
+    const seen = new Set<string>();
+    for (const p of posts) {
+      const cover = p.imageUrl || p.mediaCoverUrl;
+      const title = p.mediaTitle || (p.content?.title ?? "Media");
+      if (cover && !seen.has(cover)) {
+        seen.add(cover);
+        list.push({ id: p.id, title, cover });
+        if (list.length >= 8) break;
+      }
+    }
+    return list;
+  }, [posts]);
+
   const header = (
-    <View style={{ gap: 16 }}>
-      <View style={{ gap: 12 }}>
+    <View style={{ gap: 14 }}>
+      <View style={{ gap: 10 }}>
         <View
           style={{
             flexDirection: "row",
@@ -121,14 +154,32 @@ export function FeedScreen() {
             gap: 12,
           }}
         >
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="h2">Feed</Text>
-            <Text variant="muted">
-              Share quotes, themes, and vocabulary with your take on them
+          <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text variant="h2">Feed</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 3,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 999,
+                  backgroundColor: colors.primary + "20",
+                }}
+              >
+                <Sparkles size={10} color={colors.primary} />
+                <Text variant="caption" tint={colors.primary} weight="bold">
+                  2.0
+                </Text>
+              </View>
+            </View>
+            <Text variant="muted" numberOfLines={2}>
+              Social film takes, book reviews, quotes, and vocabulary
             </Text>
           </View>
           <Button
-            label="Share"
+            label="Post"
             size="sm"
             icon={<Plus size={16} color={colors.primaryForeground} />}
             onPress={() => setComposeOpen(true)}
@@ -137,22 +188,168 @@ export function FeedScreen() {
         <MediaDiscoverySearch />
       </View>
 
+      {/* Trending highlights reel */}
+      {mediaHighlights.length > 0 ? (
+        <View style={{ gap: 6 }}>
+          <Text variant="caption" weight="semibold" color="mutedForeground" style={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Trending Media
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingVertical: 2 }}
+          >
+            {mediaHighlights.map((item) => (
+              <View key={item.id} style={{ width: 68, alignItems: "center", gap: 4 }}>
+                <Image
+                  source={{ uri: item.cover }}
+                  style={{
+                    width: 68,
+                    height: 100,
+                    borderRadius: radius.md,
+                    backgroundColor: colors.border,
+                  }}
+                  resizeMode="cover"
+                />
+                <Text variant="caption" numberOfLines={1} style={{ textAlign: "center", fontSize: 10 }}>
+                  {item.title}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {/* Audience selector */}
       <Segmented<FeedFilter>
         value={filter}
         onChange={setFilter}
         items={[
           {
             value: "global",
-            label: "Global",
-            icon: <Globe size={16} color={colors.mutedForeground} />,
+            label: "Global Community",
+            icon: <Globe size={15} color={colors.mutedForeground} />,
           },
           {
             value: "friends",
-            label: "Friends",
-            icon: <Users size={16} color={colors.mutedForeground} />,
+            label: "Friends Only",
+            icon: <Users size={15} color={colors.mutedForeground} />,
           },
         ]}
       />
+
+      {/* Content category pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 6 }}
+      >
+        <Pressable
+          onPress={() => setContentType("all")}
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: contentType === "all" ? colors.primary : colors.accent,
+          }}
+        >
+          <Text
+            variant="caption"
+            weight="semibold"
+            tint={contentType === "all" ? colors.primaryForeground : colors.foreground}
+          >
+            All
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setContentType("media")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: contentType === "media" ? "#f59e0b" : "rgba(245, 158, 11, 0.15)",
+          }}
+        >
+          <Film size={12} color={contentType === "media" ? "#000" : "#f59e0b"} />
+          <Text
+            variant="caption"
+            weight="semibold"
+            tint={contentType === "media" ? "#000" : "#f59e0b"}
+          >
+            Media
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setContentType("quote")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: contentType === "quote" ? "#8b5cf6" : "rgba(139, 92, 246, 0.15)",
+          }}
+        >
+          <Quote size={12} color={contentType === "quote" ? "#fff" : "#a78bfa"} />
+          <Text
+            variant="caption"
+            weight="semibold"
+            tint={contentType === "quote" ? "#fff" : "#a78bfa"}
+          >
+            Quotes
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setContentType("theme")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: contentType === "theme" ? "#eab308" : "rgba(234, 179, 8, 0.15)",
+          }}
+        >
+          <Lightbulb size={12} color={contentType === "theme" ? "#000" : "#fbbf24"} />
+          <Text
+            variant="caption"
+            weight="semibold"
+            tint={contentType === "theme" ? "#000" : "#fbbf24"}
+          >
+            Themes
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setContentType("vocab")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: contentType === "vocab" ? "#10b981" : "rgba(16, 185, 129, 0.15)",
+          }}
+        >
+          <BookOpen size={12} color={contentType === "vocab" ? "#000" : "#34d399"} />
+          <Text
+            variant="caption"
+            weight="semibold"
+            tint={contentType === "vocab" ? "#000" : "#34d399"}
+          >
+            Vocab
+          </Text>
+        </Pressable>
+      </ScrollView>
     </View>
   );
 
@@ -201,7 +398,7 @@ export function FeedScreen() {
       contentContainerStyle={{ paddingTop: 0, paddingBottom: 0, gap: 0 }}
     >
       <FlatList
-        data={posts}
+        data={filteredPosts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <FeedPostCard

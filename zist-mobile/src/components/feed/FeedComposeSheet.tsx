@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
-import { ChevronDown, ChevronUp, Plus, Search, Share2 } from "lucide-react-native";
+import { Image, Pressable, View } from "react-native";
+import { ChevronDown, ChevronUp, Film, Plus, Search, Share2, Star } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import {
@@ -18,24 +18,14 @@ import { feedService } from "@/services/feedService";
 import type { ShareableContentItem } from "@/types";
 import { MediaDiscoverySearch } from "./MediaDiscoverySearch";
 
-/**
- * "Share from your library" composer.
- *
- * Replaces the web `FeedComposeDialog`: pick one of your shareable items
- * (theme / vocab / quote), write a caption, choose visibility and optionally
- * discover a brand-new title to add to your library first.
- */
 export interface FeedComposeSheetProps {
-  /** Controlled visibility. Omit to let the sheet manage it (with `showTrigger`). */
   visible?: boolean;
   onClose?: () => void;
-  /** Called after a successful post so the feed can refresh. */
   onPost: () => void;
-  /** Render the built-in "Share" trigger button (default true). */
   showTrigger?: boolean;
 }
 
-type PostType = "theme" | "vocab" | "quote";
+type PostType = "media" | "theme" | "vocab" | "quote";
 type Visibility = "friends" | "global";
 
 export function FeedComposeSheet({
@@ -44,7 +34,7 @@ export function FeedComposeSheet({
   onPost,
   showTrigger = true,
 }: FeedComposeSheetProps) {
-  const { colors } = useTheme();
+  const { colors, radius } = useTheme();
   const { toast } = useToast();
 
   const [internalOpen, setInternalOpen] = useState(false);
@@ -56,10 +46,11 @@ export function FeedComposeSheet({
 
   const [isPosting, setIsPosting] = useState(false);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
-  const [postType, setPostType] = useState<PostType>("theme");
+  const [postType, setPostType] = useState<PostType>("media");
   const [visibility, setVisibility] = useState<Visibility>("global");
   const [caption, setCaption] = useState("");
   const [selectedId, setSelectedId] = useState("");
+  const [mediaList, setMediaList] = useState<ShareableContentItem[]>([]);
   const [themes, setThemes] = useState<ShareableContentItem[]>([]);
   const [vocab, setVocab] = useState<ShareableContentItem[]>([]);
   const [quotes, setQuotes] = useState<ShareableContentItem[]>([]);
@@ -74,15 +65,16 @@ export function FeedComposeSheet({
       try {
         const data = await feedService.getShareableContent();
         if (cancelled) return;
-        setThemes(data.themes);
-        setVocab(data.vocab);
-        setQuotes(data.quotes);
+        setMediaList(data.media || []);
+        setThemes(data.themes || []);
+        setVocab(data.vocab || []);
+        setQuotes(data.quotes || []);
         setSelectedId("");
       } catch {
         if (cancelled) return;
         toast({
-          title: "Could not load your library content",
-          description: "Add themes, vocabulary, or quotes to a media item first.",
+          title: "Could not load library content",
+          description: "Add movies, books, or notes to your library first.",
           variant: "destructive",
         });
       } finally {
@@ -96,9 +88,18 @@ export function FeedComposeSheet({
   }, [open, toast]);
 
   const items = useMemo(
-    () => (postType === "theme" ? themes : postType === "vocab" ? vocab : quotes),
-    [postType, themes, vocab, quotes],
+    () =>
+      postType === "media"
+        ? mediaList
+        : postType === "theme"
+          ? themes
+          : postType === "vocab"
+            ? vocab
+            : quotes,
+    [postType, mediaList, themes, vocab, quotes],
   );
+
+  const selectedItem = items.find((i) => i.id === selectedId);
 
   const handlePost = async () => {
     if (!selectedId) {
@@ -112,6 +113,7 @@ export function FeedComposeSheet({
         type: postType,
         contentId: selectedId,
         caption: caption.trim() || undefined,
+        imageUrl: selectedItem?.coverUrl,
         visibility,
       });
       toast({ title: "Shared to feed!" });
@@ -128,7 +130,7 @@ export function FeedComposeSheet({
 
   const selectOptions = items.map((item) => ({
     value: item.id,
-    label: `${item.label} — ${item.mediaTitle}`,
+    label: postType === "media" ? item.label : `${item.label} — ${item.mediaTitle}`,
   }));
 
   return (
@@ -146,7 +148,7 @@ export function FeedComposeSheet({
         onClose={() => setOpen(false)}
         presentation="sheet"
         title="Share to Community Feed"
-        description="Pick something you've saved from your library and share your take."
+        description="Share a movie, book review, memorable quote, or theme."
       >
         <Segmented<PostType>
           value={postType}
@@ -155,6 +157,7 @@ export function FeedComposeSheet({
             setSelectedId("");
           }}
           items={[
+            { value: "media", label: "Media" },
             { value: "theme", label: "Themes" },
             { value: "vocab", label: "Vocab" },
             { value: "quote", label: "Quotes" },
@@ -162,7 +165,7 @@ export function FeedComposeSheet({
         />
 
         <View style={{ gap: 6 }}>
-          <Label>Pick content</Label>
+          <Label>Pick from your library</Label>
           {isLoadingContent ? (
             <Spinner label="Loading your library…" />
           ) : items.length === 0 ? (
@@ -184,10 +187,56 @@ export function FeedComposeSheet({
               value={selectedId || null}
               onChange={setSelectedId}
               options={selectOptions}
-              placeholder={`Select a ${postType}…`}
+              placeholder={`Select ${postType === "media" ? "a movie or book" : `a ${postType}`}…`}
             />
           )}
         </View>
+
+        {/* Selected Item Preview */}
+        {selectedItem ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              padding: 10,
+              borderRadius: radius.md,
+              backgroundColor: colors.accent,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            {selectedItem.coverUrl ? (
+              <Image
+                source={{ uri: selectedItem.coverUrl }}
+                style={{ width: 40, height: 60, borderRadius: 6 }}
+                resizeMode="cover"
+              />
+            ) : null}
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="small" weight="semibold" numberOfLines={1}>
+                {selectedItem.label}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {selectedItem.mediaType ? (
+                  <Text variant="caption" color="mutedForeground">
+                    {selectedItem.mediaType}
+                  </Text>
+                ) : null}
+                {selectedItem.year ? (
+                  <Text variant="caption" color="mutedForeground">
+                    · {selectedItem.year}
+                  </Text>
+                ) : null}
+                {selectedItem.rating !== undefined && selectedItem.rating !== null ? (
+                  <Text variant="caption" tint="#f59e0b" weight="semibold">
+                    ★ {selectedItem.rating.toFixed(1)}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         <View style={{ gap: 6 }}>
           <Label>Visibility</Label>
@@ -195,16 +244,20 @@ export function FeedComposeSheet({
             value={visibility}
             onChange={setVisibility}
             items={[
-              { value: "global", label: "Global — everyone" },
-              { value: "friends", label: "Friends" },
+              { value: "global", label: "Public — everyone" },
+              { value: "friends", label: "Friends only" },
             ]}
           />
         </View>
 
         <View style={{ gap: 6 }}>
-          <Label>Your thoughts</Label>
+          <Label>Your thoughts / review</Label>
           <Textarea
-            placeholder="Share your opinion on this theme, word, or quote…"
+            placeholder={
+              postType === "media"
+                ? "Write your review or thoughts on this title…"
+                : "Share your opinion on this theme, word, or quote…"
+            }
             value={caption}
             onChangeText={setCaption}
           />
