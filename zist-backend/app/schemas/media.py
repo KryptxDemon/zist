@@ -17,7 +17,7 @@ class MediaBase(BaseModel):
     external_source: str | None = None
     external_id: str | None = None
     status: MediaStatus = MediaStatus.planned
-    rating: int | None = Field(default=None, ge=1, le=10)
+    rating: float | None = Field(default=None, ge=0, le=10)
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -46,7 +46,7 @@ class MediaUpdate(BaseModel):
     cover_url: str | None = None
     tags: list[str] | None = None
     status: MediaStatus | None = None
-    rating: int | None = Field(default=None, ge=1, le=10)
+    rating: float | None = Field(default=None, ge=0, le=10)
 
 
 # ---------- Response ----------

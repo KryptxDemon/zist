@@ -279,6 +279,27 @@ export default function MediaDetail() {
               {media.year}
             </p>
           </div>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() =>
+              setDirectShareItem({
+                type: "media",
+                id: media.id,
+                title: media.title,
+                subtitle: media.creator
+                  ? `by ${media.creator}${media.year ? ` · ${media.year}` : ""}`
+                  : media.year
+                    ? String(media.year)
+                    : undefined,
+                mediaTitle: media.title,
+                coverUrl: media.coverUrl,
+              })
+            }
+          >
+            <Rss className="h-4 w-4" />
+            Share Work
+          </Button>
           <Link to={`/app/quiz/${media.id}`}>
             <Button variant="outline" className="gap-2">
               <Brain className="h-4 w-4" />

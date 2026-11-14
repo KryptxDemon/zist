@@ -192,6 +192,11 @@ def _verify_with_jwks(token: str) -> dict[str, Any]:
             issuer=settings.NEON_AUTH_ISSUER,
             audience=settings.NEON_AUTH_ISSUER,
         )
+    except jwt.ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Signature has expired",
+        ) from exc
     except InvalidTokenError as exc:
         logger.warning(f"auth.jwks_failed: {exc}")
         raise HTTPException(
@@ -341,11 +346,15 @@ def get_current_user(
             "auth.no_jwks_configured",
             extra={"token_prefix": token[:12]},
         )
+        raise credentials_exception
+    if verified_via == "jwks":
         # External tokens may declare a type, but refuse anything that is
         # explicitly *not* an access token (e.g. a refresh token).
-        raise credentials_exception
+        token_type = payload.get("type")
+        if token_type is not None and token_type != "access":
+            logger.warning("auth.invalid_external_token_type")
+            raise credentials_exception
 
-    if verified_via == "jwks":
         # External Neon Auth tokens identify the upstream user by their
         # ``sub`` claim, which is NOT our internal ``User.id``. Upsert by
         # Neon user id (with email-verified linking) to find or create the

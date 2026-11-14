@@ -64,12 +64,16 @@ def _generate_rsa_keypair() -> tuple[dict[str, Any], dict[str, str]]:
 
 
 def _base_claims() -> dict[str, Any]:
-    return {
+    claims: dict[str, Any] = {
         "sub": "00000000-0000-0000-0000-000000000000",
         "type": "access",
         "iat": int(time.time()),
         "exp": int(time.time()) + 300,
     }
+    if settings.NEON_AUTH_ISSUER:
+        claims["iss"] = settings.NEON_AUTH_ISSUER
+        claims["aud"] = settings.NEON_AUTH_ISSUER
+    return claims
 
 
 def _sign_token(
@@ -223,6 +227,9 @@ def test_neon_token_without_type_claim_is_accepted_via_jwks(
         "iat": int(time.time()),
         "exp": int(time.time()) + 300,
     }
+    if settings.NEON_AUTH_ISSUER:
+        claims["iss"] = settings.NEON_AUTH_ISSUER
+        claims["aud"] = settings.NEON_AUTH_ISSUER
     token = _sign_token(claims, private_key["pem"], kid=public_jwk["kid"])
 
     # JWKS path returns the claims successfully even without ``type``.

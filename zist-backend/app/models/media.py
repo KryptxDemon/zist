@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, DateTime, ForeignKey, Text
+from sqlalchemy import String, DateTime, ForeignKey, Text, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -44,7 +44,7 @@ class MediaItem(Base):
         String, default="planned"
     )  # planned | in-progress | completed
 
-    rating: Mapped[int | None] = mapped_column(nullable=True)
+    rating: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow

@@ -11,6 +11,7 @@ import {
   MoreVertical,
   Pencil,
   Quote,
+  Rss,
   Trash2,
 } from "lucide-react-native";
 
@@ -35,6 +36,7 @@ import {
   type TabItem,
 } from "@/components/ui";
 import { MediaPoster } from "@/components/media/MediaCard";
+import { DirectShareFeedModal } from "@/components/feed/DirectShareFeedModal";
 import {
   factService,
   mediaService,
@@ -92,6 +94,7 @@ export function MediaDetailScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   const [nonces, setNonces] = useState<Record<DetailTab, number>>({
     overview: 0,
@@ -319,6 +322,12 @@ export function MediaDetailScreen() {
         </IconButton>
         <Row gap={4}>
           <IconButton
+            accessibilityLabel="Share to Dispatches"
+            onPress={() => setShareModalVisible(true)}
+          >
+            <Rss size={20} color={colors.foreground} />
+          </IconButton>
+          <IconButton
             accessibilityLabel="Take quiz"
             onPress={() => router.push(`/quiz/${media.id}`)}
           >
@@ -477,6 +486,11 @@ export function MediaDetailScreen() {
         title={media.title}
         actions={[
           {
+            label: "Share to Dispatches",
+            icon: <Rss size={18} color={colors.foreground} />,
+            onPress: () => setShareModalVisible(true),
+          },
+          {
             label: "Edit media",
             icon: <Pencil size={18} color={colors.foreground} />,
             onPress: () => setEditVisible(true),
@@ -506,6 +520,19 @@ export function MediaDetailScreen() {
           void handleDeleteMedia();
         }}
         onCancel={() => setDeleteVisible(false)}
+      />
+
+      <DirectShareFeedModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        item={{
+          type: "media",
+          id: media.id,
+          title: media.title,
+          subtitle: subtitle || undefined,
+          mediaTitle: media.title,
+          coverUrl: media.coverUrl || undefined,
+        }}
       />
 
       {editVisible ? (
