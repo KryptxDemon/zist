@@ -92,6 +92,7 @@ export function UserProfileScreen() {
   const [loadFailure, setLoadFailure] = useState<LoadFailure | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"shares" | "friends" | "about">("shares");
 
   const displayUserId =
     typeof userId === "string" && userId.length > 0 ? userId : currentUser?.id;
@@ -414,503 +415,516 @@ export function UserProfileScreen() {
           ) : null}
         </View>
 
-        {/* Stats Grid */}
+        {/* Unified Minimalist Stats Strip */}
         <View
           style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             paddingTop: 16,
             borderTopWidth: 1,
             borderTopColor: colors.border,
           }}
         >
-          <StatCard
-            label="Media"
-            value={stats?.mediaItems ?? 0}
-            description="Saved in library"
-            onPress={isOwnProfile ? () => router.push("/library") : undefined}
-          />
-          <StatCard
-            label="Friends"
-            value={stats?.following ?? friends.length}
-            description="Connected friends"
-            onPress={isOwnProfile ? () => router.push("/friends") : undefined}
-          />
-          <StatCard
-            label="Shares"
-            value={stats?.sharedPosts ?? posts.length}
-            description="Posts shared"
-          />
-          <StatCard
-            label="Upvotes"
-            value={stats?.totalUpvotes ?? 0}
-            description="Total post likes"
-            icon={<Heart size={12} color={colors.mutedForeground} />}
-          />
-          <StatCard
-            label="Followers"
-            value={stats?.followers ?? 0}
-            description="Community followers"
-          />
+          <Pressable
+            onPress={isOwnProfile ? () => router.push('/library') : undefined}
+            style={{ flex: 1, alignItems: 'center' }}
+          >
+            <Text variant="h3" weight="bold">{stats?.mediaItems ?? 0}</Text>
+            <Text variant="caption" uppercase letterSpacing={0.5} tint={colors.mutedForeground}>Media</Text>
+          </Pressable>
+          <View style={{ width: 1, height: 24, backgroundColor: colors.border }} />
+          <Pressable
+            onPress={() => setActiveTab('shares')}
+            style={{ flex: 1, alignItems: 'center' }}
+          >
+            <Text variant="h3" weight="bold">{stats?.sharedPosts ?? posts.length}</Text>
+            <Text variant="caption" uppercase letterSpacing={0.5} tint={colors.mutedForeground}>Shares</Text>
+          </Pressable>
+          <View style={{ width: 1, height: 24, backgroundColor: colors.border }} />
+          <Pressable
+            onPress={() => setActiveTab('friends')}
+            style={{ flex: 1, alignItems: 'center' }}
+          >
+            <Text variant="h3" weight="bold">{friends.length}</Text>
+            <Text variant="caption" uppercase letterSpacing={0.5} tint={colors.mutedForeground}>Friends</Text>
+          </Pressable>
+          <View style={{ width: 1, height: 24, backgroundColor: colors.border }} />
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <Heart size={13} color={colors.primary} fill={colors.primary + '33'} />
+              <Text variant="h3" weight="bold">{stats?.totalUpvotes ?? 0}</Text>
+            </View>
+            <Text variant="caption" uppercase letterSpacing={0.5} tint={colors.mutedForeground}>Upvotes</Text>
+          </View>
         </View>
       </Card>
 
-      {/* Account & Settings Hub (for signed-in user) */}
-      {isOwnProfile ? (
-        <Card variant="glass" style={{ gap: 12 }}>
-          <Text variant="caption" uppercase letterSpacing={2}>
-            Account & Quick Actions
-          </Text>
-
-          <View style={{ gap: 8 }}>
-            {/* Edit Profile */}
-            <Pressable
-              onPress={() => router.push("/profile-edit")}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: 14,
-                backgroundColor: colors.muted,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: colors.primary + "1a",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <PencilLine size={18} color={colors.primary} />
-                </View>
-                <View>
-                  <Text variant="label" weight="semibold">
-                    Edit Profile
-                  </Text>
-                  <Text variant="caption">
-                    Update avatar, bio, and social links
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={18} color={colors.mutedForeground} />
-            </Pressable>
-
-            {/* Friends & Requests */}
-            <Pressable
-              onPress={() => router.push("/friends")}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: 14,
-                backgroundColor: colors.muted,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: colors.primary + "1a",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Users size={18} color={colors.primary} />
-                </View>
-                <View>
-                  <Text variant="label" weight="semibold">
-                    Friends & Requests
-                  </Text>
-                  <Text variant="caption">
-                    {friends.length} friends connected
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={18} color={colors.mutedForeground} />
-            </Pressable>
-
-            {/* My Library */}
-            <Pressable
-              onPress={() => router.push("/library")}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: 14,
-                backgroundColor: colors.muted,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: colors.primary + "1a",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Library size={18} color={colors.primary} />
-                </View>
-                <View>
-                  <Text variant="label" weight="semibold">
-                    My Library
-                  </Text>
-                  <Text variant="caption">
-                    {stats?.mediaItems ?? 0} saved titles & themes
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={18} color={colors.mutedForeground} />
-            </Pressable>
-
-            {/* Theme Toggle */}
-            <Pressable
-              onPress={toggleTheme}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: 14,
-                backgroundColor: colors.muted,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: colors.primary + "1a",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {theme === "light" ? (
-                    <Moon size={18} color={colors.primary} />
-                  ) : (
-                    <Sun size={18} color={colors.primary} />
-                  )}
-                </View>
-                <View>
-                  <Text variant="label" weight="semibold">
-                    Appearance
-                  </Text>
-                  <Text variant="caption">
-                    {theme === "light" ? "Light theme active" : "Dark theme active"}
-                  </Text>
-                </View>
-              </View>
-              <Badge variant="secondary" label={theme === "light" ? "Light" : "Dark"} />
-            </Pressable>
-
-            {/* Sign Out */}
-            <Pressable
-              onPress={() => setLogoutConfirmOpen(true)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: 14,
-                backgroundColor: colors.destructive + "12",
-                borderWidth: 1,
-                borderColor: colors.destructive + "33",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: colors.destructive + "1f",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <LogOut size={18} color={colors.destructive} />
-                </View>
-                <View>
-                  <Text variant="label" weight="semibold" tint={colors.destructive}>
-                    Log out
-                  </Text>
-                  <Text variant="caption">
-                    Sign out of this device
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={18} color={colors.destructive} />
-            </Pressable>
-          </View>
-        </Card>
-      ) : null}
-
-      {/* Social Links Card */}
-      <Card variant="glass" style={{ gap: 14 }}>
-        <View
+      {/* Modern Segmented Tab Switcher */}
+      <View
+        style={{
+          flexDirection: 'row',
+          backgroundColor: colors.muted,
+          borderRadius: 16,
+          padding: 4,
+          marginVertical: 4,
+        }}
+      >
+        <Pressable
+          onPress={() => setActiveTab('shares')}
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
+            flex: 1,
+            paddingVertical: 9,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 12,
+            backgroundColor: activeTab === 'shares' ? colors.card : 'transparent',
+            shadowColor: activeTab === 'shares' ? '#000' : 'transparent',
+            shadowOpacity: activeTab === 'shares' ? 0.08 : 0,
+            shadowRadius: 3,
+            elevation: activeTab === 'shares' ? 2 : 0,
           }}
         >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="caption" uppercase letterSpacing={2}>
-              Socials
-            </Text>
-            <Text variant="h3" weight="bold">
-              Connect and share
-            </Text>
-          </View>
-          {isOwnProfile ? (
-            <Button
-              variant="outline"
-              size="sm"
-              label="Edit links"
-              onPress={() => router.push("/profile-edit")}
-            />
-          ) : null}
-        </View>
+          <Text
+            weight={activeTab === 'shares' ? 'bold' : 'medium'}
+            variant="small"
+            tint={activeTab === 'shares' ? colors.foreground : colors.mutedForeground}
+          >
+            Shares ({posts.length})
+          </Text>
+        </Pressable>
 
-        {hasSocial ? (
-          <View style={{ gap: 10 }}>
-            {socialFields.map(({ key, label, icon: Icon }) => {
-              const value = profile[key as keyof UserProfile] as
-                | string
-                | undefined;
-              if (!value) return null;
-              return (
+        <Pressable
+          onPress={() => setActiveTab('friends')}
+          style={{
+            flex: 1,
+            paddingVertical: 9,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 12,
+            backgroundColor: activeTab === 'friends' ? colors.card : 'transparent',
+            shadowColor: activeTab === 'friends' ? '#000' : 'transparent',
+            shadowOpacity: activeTab === 'friends' ? 0.08 : 0,
+            shadowRadius: 3,
+            elevation: activeTab === 'friends' ? 2 : 0,
+          }}
+        >
+          <Text
+            weight={activeTab === 'friends' ? 'bold' : 'medium'}
+            variant="small"
+            tint={activeTab === 'friends' ? colors.foreground : colors.mutedForeground}
+          >
+            Friends ({friends.length})
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setActiveTab('about')}
+          style={{
+            flex: 1,
+            paddingVertical: 9,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 12,
+            backgroundColor: activeTab === 'about' ? colors.card : 'transparent',
+            shadowColor: activeTab === 'about' ? '#000' : 'transparent',
+            shadowOpacity: activeTab === 'about' ? 0.08 : 0,
+            shadowRadius: 3,
+            elevation: activeTab === 'about' ? 2 : 0,
+          }}
+        >
+          <Text
+            weight={activeTab === 'about' ? 'bold' : 'medium'}
+            variant="small"
+            tint={activeTab === 'about' ? colors.foreground : colors.mutedForeground}
+          >
+            About & Links
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* TAB 1: Shares & Feed Posts */}
+      {activeTab === 'shares' && (
+        <View style={{ gap: 14 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Share2 size={18} color={colors.primary} />
+              <Text variant="h4" weight="bold">
+                Recent Shares
+              </Text>
+            </View>
+            {isOwnProfile ? (
+              <FeedComposeSheet onPost={() => void loadProfile()} showTrigger />
+            ) : null}
+          </View>
+
+          {posts.length === 0 ? (
+            <EmptyState
+              icon={<Share2 size={24} color={colors.primary} />}
+              title="No shared content yet"
+              description={
+                isOwnProfile
+                  ? "Share a theme, quote, or vocabulary note from your library with friends!"
+                  : "This user hasn't shared any content yet."
+              }
+            />
+          ) : (
+            <View style={{ gap: 14 }}>
+              {posts.map((post) => (
+                <FeedPostCard
+                  key={post.id}
+                  post={post}
+                  compact
+                  onDelete={(id) =>
+                    setPosts((prev) => prev.filter((p) => p.id !== id))
+                  }
+                  onUpdate={(updated) =>
+                    setPosts((prev) =>
+                      prev.map((p) => (p.id === updated.id ? updated : p)),
+                    )
+                  }
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* TAB 2: Friends & Requests */}
+      {activeTab === 'friends' && (
+        <Card variant="glass" style={{ gap: 14 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <View style={{ gap: 2 }}>
+              <Text variant="caption" uppercase letterSpacing={2}>
+                {isOwnProfile ? 'Your network' : 'Friends'}
+              </Text>
+              <Text variant="h3" weight="bold">
+                {friends.length} connected
+              </Text>
+            </View>
+            {isOwnProfile ? (
+              <Button
+                variant="outline"
+                size="sm"
+                label="Manage"
+                onPress={() => router.push('/friends')}
+              />
+            ) : null}
+          </View>
+
+          {friends.length === 0 ? (
+            <View style={{ gap: 10 }}>
+              <Text variant="muted">
+                {isOwnProfile
+                  ? 'No friends yet. Discover other learners in the community feed!'
+                  : 'No friends to show yet.'}
+              </Text>
+              {isOwnProfile ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Find people"
+                  onPress={() => router.push('/friends')}
+                />
+              ) : null}
+            </View>
+          ) : (
+            <View style={{ gap: 8 }}>
+              {friends.map((friend) => (
+                <FriendMiniRow key={friend.id} friend={friend} />
+              ))}
+            </View>
+          )}
+        </Card>
+      )}
+
+      {/* TAB 3: About, Socials & Quick Actions */}
+      {activeTab === 'about' && (
+        <View style={{ gap: 14 }}>
+          {/* Social Links Card */}
+          <Card variant="glass" style={{ gap: 14 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="caption" uppercase letterSpacing={2}>
+                  Socials
+                </Text>
+                <Text variant="h3" weight="bold">
+                  Connected profiles
+                </Text>
+              </View>
+              {isOwnProfile ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Edit links"
+                  onPress={() => router.push('/profile-edit')}
+                />
+              ) : null}
+            </View>
+
+            {hasSocial ? (
+              <View style={{ gap: 8 }}>
+                {socialFields.map(({ key, label, icon: Icon }) => {
+                  const value = profile[key as keyof UserProfile] as
+                    | string
+                    | undefined;
+                  if (!value) return null;
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => void Linking.openURL(withProtocol(value))}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        borderRadius: 12,
+                        backgroundColor: colors.muted,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          backgroundColor: colors.primary + '1a',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Icon size={16} color={colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text variant="label" weight="medium">
+                          {label}
+                        </Text>
+                        <Text variant="caption" numberOfLines={1}>
+                          {value}
+                        </Text>
+                      </View>
+                      <ChevronRight size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                <Text variant="muted">
+                  {isOwnProfile
+                    ? 'No social links added yet. Add your profiles to connect with other learners!'
+                    : 'No social links added yet.'}
+                </Text>
+                {isOwnProfile ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label="Add social profiles"
+                    onPress={() => router.push('/profile-edit')}
+                  />
+                ) : null}
+              </View>
+            )}
+          </Card>
+
+          {/* Account & Settings Hub (for signed-in user) */}
+          {isOwnProfile ? (
+            <Card variant="glass" style={{ gap: 12 }}>
+              <Text variant="caption" uppercase letterSpacing={2}>
+                Preferences & Settings
+              </Text>
+
+              <View style={{ gap: 8 }}>
+                {/* Edit Profile */}
                 <Pressable
-                  key={key}
-                  onPress={() => handleOpenLink(value)}
+                  onPress={() => router.push('/profile-edit')}
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    borderRadius: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    backgroundColor: colors.muted,
                     borderWidth: 1,
                     borderColor: colors.border,
-                    backgroundColor: colors.muted,
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
                   }}
                 >
-                  <View
-                    style={{
-                      height: 40,
-                      width: 40,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: 12,
-                      backgroundColor: colors.primary + "1a",
-                    }}
-                  >
-                    <Icon size={16} color={colors.primary} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: colors.primary + '1a',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <PencilLine size={18} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text variant="label" weight="semibold">
+                        Edit Profile Details
+                      </Text>
+                      <Text variant="caption">
+                        Avatar, bio, and names
+                      </Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="label" weight="medium">
-                      {label}
-                    </Text>
-                    <Text variant="caption" numberOfLines={1}>
-                      {value}
-                    </Text>
-                  </View>
-                  <ChevronRight size={16} color={colors.mutedForeground} />
+                  <ChevronRight size={18} color={colors.mutedForeground} />
                 </Pressable>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            <Text variant="muted">
-              {isOwnProfile
-                ? "No social links added yet. Add your profiles to connect with other learners!"
-                : "No social links added yet."}
-            </Text>
-            {isOwnProfile ? (
-              <Button
-                variant="outline"
-                size="sm"
-                label="Add social profiles"
-                onPress={() => router.push("/profile-edit")}
-              />
-            ) : null}
-          </View>
-        )}
-      </Card>
 
-      {/* Friends Card */}
-      <Card variant="glass" style={{ gap: 14 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <View style={{ gap: 2 }}>
-            <Text variant="caption" uppercase letterSpacing={2}>
-              {isOwnProfile ? "Your friends" : "Friends"}
-            </Text>
-            <Text variant="h3" weight="bold">
-              {friends.length} connected
-            </Text>
-          </View>
-          {isOwnProfile ? (
-            <Button
-              variant="outline"
-              size="sm"
-              label="Manage"
-              onPress={() => router.push("/friends")}
-            />
+                {/* My Library */}
+                <Pressable
+                  onPress={() => router.push('/library')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    backgroundColor: colors.muted,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: colors.primary + '1a',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Library size={18} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text variant="label" weight="semibold">
+                        My Library
+                      </Text>
+                      <Text variant="caption">
+                        {stats?.mediaItems ?? 0} saved titles & themes
+                      </Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={18} color={colors.mutedForeground} />
+                </Pressable>
+
+                {/* Theme Toggle */}
+                <Pressable
+                  onPress={toggleTheme}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    backgroundColor: colors.muted,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: colors.primary + '1a',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {theme === 'light' ? (
+                        <Moon size={18} color={colors.primary} />
+                      ) : (
+                        <Sun size={18} color={colors.primary} />
+                      )}
+                    </View>
+                    <View>
+                      <Text variant="label" weight="semibold">
+                        Theme Appearance
+                      </Text>
+                      <Text variant="caption">
+                        {theme === 'light' ? 'Light mode active' : 'Dark mode active'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Badge variant="secondary" label={theme === 'light' ? 'Light' : 'Dark'} />
+                </Pressable>
+
+                {/* Sign Out */}
+                <Pressable
+                  onPress={() => setLogoutConfirmOpen(true)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    backgroundColor: colors.destructive + '12',
+                    borderWidth: 1,
+                    borderColor: colors.destructive + '33',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: colors.destructive + '1f',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <LogOut size={18} color={colors.destructive} />
+                    </View>
+                    <View>
+                      <Text variant="label" weight="semibold" tint={colors.destructive}>
+                        Log out
+                      </Text>
+                      <Text variant="caption">
+                        Sign out of this session
+                      </Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={18} color={colors.destructive} />
+                </Pressable>
+              </View>
+            </Card>
           ) : null}
         </View>
-
-        {friends.length === 0 ? (
-          <View style={{ gap: 10 }}>
-            <Text variant="muted">
-              {isOwnProfile
-                ? "No friends yet. Discover other learners in the community feed!"
-                : "No friends to show yet."}
-            </Text>
-            {isOwnProfile ? (
-              <Button
-                variant="outline"
-                size="sm"
-                label="Find people"
-                onPress={() => router.push("/friends")}
-              />
-            ) : null}
-          </View>
-        ) : (
-          <View style={{ gap: 8 }}>
-            {friends.slice(0, 8).map((friend) => (
-              <FriendMiniRow key={friend.id} friend={friend} />
-            ))}
-            {friends.length > 8 && isOwnProfile ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                label={`View all ${friends.length} friends`}
-                onPress={() => router.push("/friends")}
-              />
-            ) : null}
-          </View>
-        )}
-
-        <View
-          style={{
-            gap: 10,
-            paddingTop: 14,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <BarChart3 size={20} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text variant="label" weight="medium">
-                Learning footprint
-              </Text>
-              <Text variant="caption">
-                {stats?.mediaItems ?? 0} media entries tracked
-              </Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Sparkles size={20} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text variant="label" weight="medium">
-                Account status
-              </Text>
-              <Text variant="caption">
-                {profile.emailVerified
-                  ? "Verified and active"
-                  : "Unverified account"}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Card>
-
-      {/* Recent Shares Feed Section */}
-      <View style={{ gap: 14 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Share2 size={18} color={colors.primary} />
-            <Text variant="h4" weight="bold">
-              Recent Shares
-            </Text>
-          </View>
-          {isOwnProfile ? (
-            <FeedComposeSheet onPost={() => void loadProfile()} showTrigger />
-          ) : null}
-        </View>
-
-        {posts.length === 0 ? (
-          <EmptyState
-            icon={<Share2 size={24} color={colors.primary} />}
-            title="No shared content yet"
-            description={
-              isOwnProfile
-                ? "Share a theme, quote, or vocabulary note from your library with friends!"
-                : "This user hasn't shared any content yet."
-            }
-          />
-        ) : (
-          <View style={{ gap: 14 }}>
-            {posts.map((post) => (
-              <FeedPostCard
-                key={post.id}
-                post={post}
-                compact
-                onDelete={(id) =>
-                  setPosts((prev) => prev.filter((p) => p.id !== id))
-                }
-                onUpdate={(updated) =>
-                  setPosts((prev) =>
-                    prev.map((p) => (p.id === updated.id ? updated : p)),
-                  )
-                }
-              />
-            ))}
-          </View>
-        )}
-      </View>
+      )}
 
       {/* Logout Confirmation Dialog */}
       <ConfirmDialog

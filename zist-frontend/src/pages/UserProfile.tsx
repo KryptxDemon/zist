@@ -5,6 +5,7 @@ import { FeedPostCard } from "@/components/feed/FeedPostCard";
 import { FeedComposeDialog } from "@/components/feed/FeedComposeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FeedPostSkeleton } from "@/components/ui/skeleton-cards";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
@@ -27,30 +28,28 @@ import {
   Linkedin,
   Youtube,
   Twitter,
-  Link as LinkIcon,
   BadgeCheck,
   Sparkles,
-  BarChart3,
-  Clock3,
+  BookOpen,
   PencilLine,
   RefreshCcw,
+  Check,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 
-const socialFields = [
-  { key: "websiteUrl", label: "Website", icon: Globe },
-  { key: "githubUrl", label: "GitHub", icon: Github },
-  { key: "linkedinUrl", label: "LinkedIn", icon: Linkedin },
-  { key: "instagramUrl", label: "Instagram", icon: Instagram },
-  { key: "xUrl", label: "X", icon: Twitter },
-  { key: "youtubeUrl", label: "YouTube", icon: Youtube },
+const socialConfig = [
+  { key: "websiteUrl", label: "Website", icon: Globe, prefix: "" },
+  { key: "githubUrl", label: "GitHub", icon: Github, prefix: "github.com/" },
+  { key: "xUrl", label: "X (Twitter)", icon: Twitter, prefix: "x.com/" },
+  { key: "linkedinUrl", label: "LinkedIn", icon: Linkedin, prefix: "linkedin.com/in/" },
+  { key: "instagramUrl", label: "Instagram", icon: Instagram, prefix: "instagram.com/" },
+  { key: "youtubeUrl", label: "YouTube", icon: Youtube, prefix: "youtube.com/" },
 ] as const;
 
 function formatJoinedDate(createdAt?: string | null): string {
-  if (!createdAt) {
-    return "Joined recently";
-  }
-
-  return formatRelativeTime(createdAt);
+  if (!createdAt) return "Joined recently";
+  return `Joined ${formatRelativeTime(createdAt)}`;
 }
 
 export default function UserProfilePage() {
@@ -63,7 +62,8 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [friends, setFriends] = useState<UserRef[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // Discriminated failure mode so we can show a useful empty/retry state.
+  const [copiedLink, setCopiedLink] = useState(false);
+
   type LoadFailure =
     | { kind: "not_found" }
     | { kind: "auth" }
@@ -71,13 +71,11 @@ export default function UserProfilePage() {
   const [loadFailure, setLoadFailure] = useState<LoadFailure | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // If no userId provided and user is logged in, show their own profile
   const displayUserId = userId || currentUser?.id;
 
   useEffect(() => {
     if (!displayUserId) return;
     loadProfile();
-    // reloadKey is included so the "Retry" button below can force a re-run.
   }, [displayUserId, reloadKey]);
 
   async function loadProfile() {
@@ -103,8 +101,6 @@ export default function UserProfilePage() {
 
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          // Token rejected — bounce to login rather than rendering a stale
-          // empty state.
           toast({
             title: "Session expired",
             description: "Please sign in again to view profiles.",
@@ -117,13 +113,11 @@ export default function UserProfilePage() {
           setLoadFailure({ kind: "not_found" });
           toast({
             title: "Profile not found",
-            description:
-              "This user profile doesn't exist or hasn't finished syncing yet.",
+            description: "This user profile doesn't exist or hasn't finished syncing yet.",
             variant: "destructive",
           });
           return;
         }
-        // 5xx — render a retry affordance.
         setLoadFailure({
           kind: "transient",
           message: error.message || `Server error (${error.status})`,
@@ -136,11 +130,9 @@ export default function UserProfilePage() {
         return;
       }
 
-      // Network or unknown failure.
       setLoadFailure({
         kind: "transient",
-        message:
-          error instanceof Error ? error.message : "Network request failed",
+        message: error instanceof Error ? error.message : "Network request failed",
       });
       toast({
         title: "Network error",
@@ -154,11 +146,28 @@ export default function UserProfilePage() {
 
   const isOwnProfile = currentUser?.id === displayUserId;
 
+  const handleCopyProfileLink = () => {
+    const url = `${window.location.origin}/app/user/${profile?.id || displayUserId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    toast({
+      title: "Profile link copied",
+      description: "Link has been copied to your clipboard.",
+    });
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="max-w-4xl mx-auto space-y-6 pb-20 md:pb-0">
-          {[1, 2, 3].map((i) => (
+        <div className="max-w-4xl mx-auto space-y-6 pb-20 md:pb-8">
+          <div className="h-48 rounded-3xl bg-muted/40 animate-pulse border border-border/40" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 rounded-2xl bg-muted/30 animate-pulse border border-border/40" />
+            ))}
+          </div>
+          {[1, 2].map((i) => (
             <FeedPostSkeleton key={i} />
           ))}
         </div>
@@ -185,15 +194,9 @@ export default function UserProfilePage() {
           <EmptyState
             icon={RefreshCcw}
             title="Couldn't load this profile"
-            description={
-              loadFailure.message ||
-              "Our servers hiccuped. Try again in a moment."
-            }
+            description={loadFailure.message || "Our servers hiccuped. Try again in a moment."}
             action={
-              <Button
-                onClick={() => setReloadKey((n) => n + 1)}
-                className="gap-2"
-              >
+              <Button onClick={() => setReloadKey((n) => n + 1)} className="gap-2">
                 <RefreshCcw className="h-4 w-4" />
                 Try again
               </Button>
@@ -214,346 +217,384 @@ export default function UserProfilePage() {
     );
   }
 
+  const stats = profile.stats;
+  const activeSocials = socialConfig.filter((s) => Boolean(profile[s.key as keyof UserProfile]));
+
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 md:pb-0">
-        <div className="glass grain relative overflow-hidden rounded-[2rem] p-6 md:p-8 border border-border/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-500/10 pointer-events-none" />
-          <div className="relative flex flex-col lg:flex-row gap-6 lg:items-center">
-            <div className="relative">
-              <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-primary/30 via-cyan-400/20 to-fuchsia-500/20 blur-2xl" />
-              <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-[1.75rem] overflow-hidden border border-white/10 bg-gradient-to-br from-primary/40 to-primary/10 shadow-2xl">
-                {profile.avatar ? (
-                  <img
-                    src={profile.avatar}
-                    alt={profile.displayName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-4xl md:text-5xl font-display font-bold text-primary">
-                    {profile.displayName[0]?.toUpperCase() || "U"}
-                  </span>
-                )}
-              </div>
-            </div>
+      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 md:pb-12">
+        {/* ==================== 1. HERO PROFILE CARD ==================== */}
+        <div className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-card/80 backdrop-blur-xl shadow-sm">
+          {/* Ambient Cover Banner */}
+          <div className="relative h-36 sm:h-44 w-full bg-gradient-to-r from-primary/20 via-sky-500/10 to-indigo-500/20 border-b border-border/40">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/15 via-transparent to-transparent opacity-80" />
+            <div className="absolute inset-0 bg-grid-white/[0.03] bg-[size:24px_24px]" />
+          </div>
 
-            <div className="relative flex-1 space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-3xl md:text-5xl font-bold text-foreground">
-                  {profile.displayName}
-                </h1>
-                {profile.emailVerified ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    <BadgeCheck className="h-3.5 w-3.5" /> Verified
-                  </span>
-                ) : null}
-                {isOwnProfile ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground">
-                    <Sparkles className="h-3.5 w-3.5" /> Your profile
-                  </span>
-                ) : null}
+          {/* Profile Details Container */}
+          <div className="px-6 sm:px-10 pb-8">
+            {/* Avatar & Action Row */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5 -mt-16 sm:-mt-20">
+              {/* Avatar with Double Ring */}
+              <div className="relative group shrink-0">
+                <div className="relative h-28 w-28 sm:h-36 sm:w-36 rounded-3xl overflow-hidden ring-4 ring-background border-2 border-border/60 bg-muted shadow-2xl transition-transform duration-300 group-hover:scale-[1.02]">
+                  {profile.avatar ? (
+                    <img
+                      src={profile.avatar}
+                      alt={profile.displayName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl sm:text-5xl font-display font-bold text-primary bg-primary/10">
+                      {profile.displayName[0]?.toUpperCase() || "U"}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                {isOwnProfile && currentUser?.email ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Mail className="h-4 w-4" />
-                    {currentUser.email}
-                  </span>
-                ) : null}
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {formatJoinedDate(profile.createdAt)}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Clock3 className="h-4 w-4" />
-                  Learning in progress
-                </span>
-              </div>
-
-              {profile.bio ? (
-                <p className="max-w-2xl text-base md:text-lg text-foreground/90 leading-7">
-                  {profile.bio}
-                </p>
-              ) : (
-                <p className="max-w-2xl text-sm text-muted-foreground">
-                  No bio yet. Use edit profile to add one that matches your
-                  vibe.
-                </p>
-              )}
-
-              <div className="flex flex-wrap gap-3 pt-2">
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5">
                 {isOwnProfile ? (
                   <>
                     <Button
                       onClick={() => navigate("/app/profile/edit")}
-                      className="gap-2"
+                      className="gap-2 shadow-sm rounded-xl font-medium"
+                      size="sm"
                     >
                       <PencilLine className="h-4 w-4" />
                       Edit Profile
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        const url = `${window.location.origin}/app/user/${profile.id}`;
-                        navigator.clipboard.writeText(url);
-                        toast({
-                          title: "Profile link copied!",
-                          description: url,
-                        });
-                      }}
-                      className="gap-2"
+                      size="sm"
+                      onClick={handleCopyProfileLink}
+                      className="gap-2 rounded-xl border-border/70 hover:bg-muted"
                     >
-                      <Share2 className="h-4 w-4" />
-                      Share Profile
+                      {copiedLink ? (
+                        <>
+                          <Check className="h-4 w-4 text-emerald-500" />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-4 w-4" />
+                          <span>Share</span>
+                        </>
+                      )}
                     </Button>
                   </>
                 ) : currentUser ? (
-                  <FriendActionButton
-                    targetUserId={displayUserId!}
-                    targetUserName={profile.displayName}
-                    onChange={loadProfile}
-                  />
+                  <div className="flex items-center gap-2">
+                    <FriendActionButton
+                      targetUserId={displayUserId!}
+                      targetUserName={profile.displayName}
+                      onChange={loadProfile}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyProfileLink}
+                      className="rounded-xl border-border/70"
+                    >
+                      {copiedLink ? <Check className="h-4 w-4 text-emerald-500" /> : <Share2 className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
             </div>
+
+            {/* Identity Info */}
+            <div className="mt-4 space-y-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                    {profile.displayName}
+                  </h1>
+                  {profile.emailVerified && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                      Verified
+                    </span>
+                  )}
+                  {isOwnProfile && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      You
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-0.5">
+                  @{profile.displayName.toLowerCase().replace(/\s+/g, "")}
+                </p>
+              </div>
+
+              {/* Bio */}
+              {profile.bio ? (
+                <p className="max-w-2xl text-sm sm:text-base text-foreground/90 leading-relaxed font-normal">
+                  {profile.bio}
+                </p>
+              ) : (
+                <p className="max-w-2xl text-xs sm:text-sm text-muted-foreground italic">
+                  {isOwnProfile
+                    ? "Welcome to your profile. Click 'Edit Profile' above to introduce yourself to fellow learners."
+                    : "No bio shared yet."}
+                </p>
+              )}
+
+              {/* Metadata Badges */}
+              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground pt-1">
+                {isOwnProfile && currentUser?.email && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-primary/70" />
+                    {currentUser.email}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                  {formatJoinedDate(profile.createdAt)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5 text-primary/70" />
+                  Learning active
+                </span>
+              </div>
+
+              {/* Social Links as Minimalist Chips */}
+              {activeSocials.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  {activeSocials.map(({ key, label, icon: Icon }) => {
+                    const value = profile[key as keyof UserProfile] as string;
+                    const href = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+                    return (
+                      <a
+                        key={key}
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/80 hover:bg-accent/40 px-3 py-1 text-xs font-medium text-foreground transition-all duration-200 hover:border-primary/40 group shadow-2xs"
+                      >
+                        <Icon className="h-3.5 w-3.5 text-primary transition-transform group-hover:scale-110" />
+                        <span>{label}</span>
+                        <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-60" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="relative grid gap-4 pt-8 mt-8 border-t border-border/70 md:grid-cols-5">
-            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Media
-              </p>
-              <p className="mt-1 text-3xl font-bold text-primary">
-                {profile.stats?.mediaItems || 0}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Saved titles and collections
-              </p>
+          {/* ==================== 2. UNIFIED METRICS RIBBON ==================== */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-border/50 divide-x divide-y sm:divide-y-0 divide-border/50 bg-muted/20">
+            <div className="p-4 sm:p-5 text-center transition-colors hover:bg-muted/30">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground block">
+                {stats?.mediaItems ?? 0}
+              </span>
+              <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5 block">
+                Media Tracked
+              </span>
             </div>
-            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Shares
-              </p>
-              <p className="mt-1 text-3xl font-bold text-primary">
-                {profile.stats?.sharedPosts || 0}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Posts shared from learning
-              </p>
+
+            <div className="p-4 sm:p-5 text-center transition-colors hover:bg-muted/30">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground block">
+                {stats?.sharedPosts ?? posts.length}
+              </span>
+              <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5 block">
+                Posts Shared
+              </span>
             </div>
-            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-                <Heart className="h-3 w-3" />
-                Upvotes
-              </p>
-              <p className="mt-1 text-3xl font-bold text-primary">
-                {profile.stats?.totalUpvotes || 0}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Total upvotes on shared posts
-              </p>
-            </div>
-            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Followers
-              </p>
-              <p className="mt-1 text-3xl font-bold text-primary">
-                {profile.stats?.followers || 0}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                People following your journey
-              </p>
-            </div>
-            <div className="rounded-2xl bg-background/70 p-4 border border-border/50">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+
+            <div className="p-4 sm:p-5 text-center transition-colors hover:bg-muted/30">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground block">
+                {friends.length}
+              </span>
+              <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5 block">
                 Friends
-              </p>
-              <p className="mt-1 text-3xl font-bold text-primary">
-                {profile.stats?.following || 0}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                People you are friends with
-              </p>
+              </span>
+            </div>
+
+            <div className="p-4 sm:p-5 text-center transition-colors hover:bg-muted/30">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground inline-flex items-center justify-center gap-1">
+                <Heart className="h-4 w-4 text-rose-500 fill-rose-500/20" />
+                {stats?.totalUpvotes ?? 0}
+              </span>
+              <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5 block">
+                Total Upvotes
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-          <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  Socials
-                </p>
-                <h2 className="font-display text-2xl font-bold text-foreground">
-                  Connect and share
-                </h2>
-              </div>
-              {isOwnProfile ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/app/profile/edit")}
-                >
-                  Edit links
-                </Button>
-              ) : null}
-            </div>
+        {/* ==================== 3. STRUCTURED TAB CONTENT ==================== */}
+        <Tabs defaultValue="shares" className="w-full space-y-6">
+          <div className="flex items-center justify-between border-b border-border/50 pb-3">
+            <TabsList className="bg-muted/50 p-1 rounded-2xl border border-border/40">
+              <TabsTrigger
+                value="shares"
+                className="rounded-xl px-4 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm flex items-center gap-2"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                <span>Shares ({posts.length})</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="friends"
+                className="rounded-xl px-4 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm flex items-center gap-2"
+              >
+                <Users className="h-3.5 w-3.5" />
+                <span>Friends ({friends.length})</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="about"
+                className="rounded-xl px-4 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm flex items-center gap-2"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>About</span>
+              </TabsTrigger>
+            </TabsList>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {socialFields.map(({ key, label, icon: Icon }) => {
-                const value = profile[key as keyof UserProfile] as
-                  | string
-                  | undefined;
-                if (!value) return null;
-                return (
-                  <a
-                    key={key}
-                    href={value}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-3 transition-all hover:border-primary/40 hover:bg-primary/5"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        {label}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {value}
-                      </p>
-                    </div>
-                  </a>
-                );
-              })}
-
-              {socialFields.every(
-                ({ key }) => !profile[key as keyof UserProfile],
-              ) ? (
-                <div className="rounded-2xl border border-dashed border-border/70 bg-background/50 p-5 text-sm text-muted-foreground sm:col-span-2">
-                  No social links added yet. Add them in edit profile to make
-                  this page feel alive.
-                </div>
-              ) : null}
-            </div>
+            {isOwnProfile && (
+              <FeedComposeDialog onPost={loadProfile} showTrigger />
+            )}
           </div>
 
-          <div className="glass grain rounded-[2rem] p-6 border border-border/50 space-y-5">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                {isOwnProfile ? "Your friends" : "Friends"}
-              </p>
-              <h2 className="font-display text-2xl font-bold text-foreground">
-                {friends.length} connected
-              </h2>
-            </div>
-
-            {friends.length === 0 ? (
-              <p className="text-sm text-muted-foreground rounded-2xl border border-dashed border-border/70 p-4">
-                {isOwnProfile
-                  ? "No friends yet. Visit profiles and tap Add Friend."
-                  : "No friends to show yet."}
-              </p>
+          {/* TAB: Shared Posts */}
+          <TabsContent value="shares" className="mt-0 space-y-4">
+            {posts.length === 0 ? (
+              <EmptyState
+                icon={Share2}
+                title="No shared content yet"
+                description={
+                  isOwnProfile
+                    ? "Share an interesting theme, quote, or vocab item from your library to inspire others!"
+                    : "This user hasn't shared any content to the feed yet."
+                }
+              />
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <FeedPostCard
+                    key={post.id}
+                    post={post}
+                    compact
+                    onDelete={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* TAB: Friends */}
+          <TabsContent value="friends" className="mt-0">
+            {friends.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title="No friends connected yet"
+                description={
+                  isOwnProfile
+                    ? "Explore the feed or discover other learners to build your circle."
+                    : "This user has not connected with friends yet."
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {friends.map((friend) => (
-                  <button
+                  <div
                     key={friend.id}
-                    type="button"
                     onClick={() => navigate(`/app/user/${friend.id}`)}
-                    className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-background/70 px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
+                    className="group flex items-center gap-3 p-3.5 rounded-2xl border border-border/60 bg-card hover:bg-accent/40 hover:border-primary/40 transition-all duration-200 cursor-pointer shadow-2xs"
                   >
                     <UserAvatar
                       userId={friend.id}
                       name={friend.displayName}
                       avatarUrl={friend.avatar}
-                      size="sm"
+                      size="md"
                     />
-                    <span className="text-sm font-medium text-foreground truncate">
-                      {friend.displayName}
-                    </span>
-                  </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                        {friend.displayName}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{friend.displayName.toLowerCase().replace(/\s+/g, "")}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
+          </TabsContent>
 
-            <div className="pt-2 border-t border-border/60">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Snapshot
-              </p>
-              <h2 className="font-display text-xl font-bold text-foreground mt-1">
-                Profile energy
-              </h2>
-            </div>
+          {/* TAB: About & Learning Overview */}
+          <TabsContent value="about" className="mt-0 space-y-6">
+            <div className="rounded-3xl border border-border/60 bg-card/60 p-6 sm:p-8 space-y-6">
+              <div>
+                <h3 className="font-display text-lg font-bold text-foreground">
+                  About {profile.displayName}
+                </h3>
+                <p className="text-sm text-foreground/80 leading-relaxed mt-2">
+                  {profile.bio || "No detailed bio provided."}
+                </p>
+              </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 p-4">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Learning footprint
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {profile.stats?.mediaItems || 0} media entries tracked
-                  </p>
+              <div className="border-t border-border/50 pt-5">
+                <h4 className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3">
+                  Learning Journey Summary
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-2xl border border-border/50 bg-background/60">
+                    <span className="text-xs text-muted-foreground block">Library Size</span>
+                    <span className="text-lg font-bold text-foreground mt-0.5 block">
+                      {stats?.mediaItems || 0} items
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl border border-border/50 bg-background/60">
+                    <span className="text-xs text-muted-foreground block">Community Shares</span>
+                    <span className="text-lg font-bold text-foreground mt-0.5 block">
+                      {stats?.sharedPosts || 0} posts
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl border border-border/50 bg-background/60">
+                    <span className="text-xs text-muted-foreground block">Account Status</span>
+                    <span className="text-lg font-bold text-primary mt-0.5 block">
+                      {profile.emailVerified ? "Verified User" : "Active Member"}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 p-4">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Account vibe
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {profile.emailVerified
-                      ? "Verified and ready"
-                      : "Unverified account"}
-                  </p>
+
+              {activeSocials.length > 0 && (
+                <div className="border-t border-border/50 pt-5">
+                  <h4 className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3">
+                    Connected Networks
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {activeSocials.map(({ key, label, icon: Icon }) => {
+                      const value = profile[key as keyof UserProfile] as string;
+                      const href = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+                      return (
+                        <a
+                          key={key}
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-background hover:border-primary/40 hover:bg-primary/5 transition-all"
+                        >
+                          <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-foreground">{label}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{value}</p>
+                          </div>
+                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-50 shrink-0" />
+                        </a>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Share2 className="h-5 w-5 text-primary" />
-              <h2 className="font-display text-xl font-bold">Recent Shares</h2>
-            </div>
-            {isOwnProfile ? (
-              <FeedComposeDialog onPost={loadProfile} showTrigger />
-            ) : null}
-          </div>
-
-          {posts.length === 0 ? (
-            <EmptyState
-              icon={Share2}
-              title="No shared content yet"
-              description={
-                isOwnProfile
-                  ? "Share a theme, quote, or vocab item from the feed!"
-                  : "This user hasn't shared any content yet."
-              }
-            />
-          ) : (
-            <div className="space-y-4">
-              {posts.map((post) => (
-                <FeedPostCard
-                  key={post.id}
-                  post={post}
-                  compact
-                  onDelete={(id) =>
-                    setPosts((prev) => prev.filter((p) => p.id !== id))
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
