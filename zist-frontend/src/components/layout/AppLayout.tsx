@@ -89,9 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <span className="font-brand text-base tracking-[0.24em] font-extrabold uppercase text-foreground transition-colors group-hover:text-primary leading-tight">
                 ZIST
               </span>
-              <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/80 font-medium hidden lg:inline">
-                Commonplace & Archive
-              </span>
+              
             </div>
           </Link>
 
