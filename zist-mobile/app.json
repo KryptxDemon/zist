@@ -13,6 +13,8 @@
     },
     "android": {
       "package": "app.zist.mobile",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -37,7 +39,7 @@
       "tsconfigPaths": true
     },
     "extra": {
-      "apiUrl": "http://localhost:8000/api/v1"
+      "apiUrl": "https://zist-g4h2.onrender.com/api/v1"
     }
   }
 }
