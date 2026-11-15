@@ -4,6 +4,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/services/apiClient";
+import { storage, STORAGE_KEYS } from "@/services/storage";
 import {
   mediaService,
   themeService,
@@ -14,6 +17,7 @@ import { aiService } from "@/services/externalServices";
 import {
   MediaItem,
   QuoteItem,
+  QuizAttempt,
   QuizQuestion,
   ThemeConcept,
   VocabItem,
@@ -46,7 +50,7 @@ async function buildQuizQuestions(
     .map((theme, index) => ({
       id: `theme-${index}`,
       type: "multiple-choice" as const,
-      question: `Which theme best matches this idea from ${mediaTitleById.get(theme.mediaId) || "your media"}? \"${theme.summary || theme.title}\"`,
+      question: `Which theme best matches this idea from ${mediaTitleById.get(theme.mediaId) || "your media"}? "${theme.summary || theme.title}"`,
       correctAnswer: theme.title,
       category: "theme" as const,
       context:
@@ -63,7 +67,7 @@ async function buildQuizQuestions(
     .map((word, index) => ({
       id: `vocab-${index}`,
       type: "multiple-choice" as const,
-      question: `What is the definition of \"${word.word}\"?`,
+      question: `What is the definition of "${word.word}"?`,
       correctAnswer: word.definition as string,
       category: "vocab" as const,
       context: [word.exampleSentence, word.whereFound, word.memoryTip]
@@ -81,7 +85,7 @@ async function buildQuizQuestions(
     .map((quote, index) => ({
       id: `quote-${index}`,
       type: "multiple-choice" as const,
-      question: `Which media does this quote belong to? \"${quote.text}\"`,
+      question: `Which media does this quote belong to? "${quote.text}"`,
       correctAnswer: mediaTitleById.get(quote.mediaId) || "Unknown media",
       category: "quote" as const,
       context: [
@@ -161,6 +165,7 @@ export default function QuizSession() {
   const { mediaId } = useParams<{ mediaId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [media, setMedia] = useState<MediaItem | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -243,20 +248,6 @@ export default function QuizSession() {
     setAnswers({ ...answers, [currentQuestion.id]: answer });
   };
 
-  const handleNext = () => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setShowResults(true);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
-
   const calculateScore = () => {
     let correct = 0;
     questions.forEach((q) => {
@@ -271,6 +262,58 @@ export default function QuizSession() {
       }
     });
     return correct;
+  };
+
+  const finishQuiz = async () => {
+    const score = calculateScore();
+    const isCollective = mediaId === "collective";
+    const attempt: QuizAttempt = {
+      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `attempt-${Date.now()}`,
+      mediaId: isCollective ? "collective" : mediaId || "",
+      userId: user?.id || "",
+      questions,
+      answers,
+      score,
+      totalQuestions: questions.length,
+      completedAt: new Date().toISOString(),
+    };
+
+    // 1. Save to local storage for instant offline/dashboard access
+    try {
+      const existing = storage.get<QuizAttempt[]>(STORAGE_KEYS.QUIZZES) || [];
+      storage.set(STORAGE_KEYS.QUIZZES, [...existing, attempt]);
+    } catch (e) {
+      console.warn("Failed to persist quiz attempt to storage:", e);
+    }
+
+    // 2. Submit to backend API
+    try {
+      await apiClient.post("/quiz/submit", {
+        media_id: isCollective ? "collective" : mediaId,
+        quiz_type: "mixed",
+        questions: questions.map((q) => ({
+          id: q.id,
+          type: q.type,
+          category: q.category,
+          question: q.question,
+          options: q.options || [],
+          correct_answer: q.correctAnswer,
+        })),
+        answers,
+      });
+    } catch (e) {
+      console.warn("Failed to persist quiz attempt to backend:", e);
+    }
+
+    setShowResults(true);
+  };
+
+  const handleNext = () => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      void finishQuiz();
+    }
   };
 
   const handleRestart = () => {

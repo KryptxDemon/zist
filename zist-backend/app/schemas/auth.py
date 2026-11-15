@@ -56,3 +56,11 @@ class DisplayNameAvailabilityResponse(BaseModel):
 
 class GoogleAuthStartResponse(BaseModel):
     auth_url: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str

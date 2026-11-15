@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/authService";
 import { Loader2, ArrowLeft, Mail, Sun, Moon } from "lucide-react";
 
 export default function ForgotPassword() {
@@ -18,15 +19,25 @@ export default function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    setIsLoading(false);
-    setIsSubmitted(true);
-    toast({
-      title: "Reset link sent",
-      description: "Check your email for password reset instructions.",
-    });
+    try {
+      await authService.forgotPassword(email);
+      setIsSubmitted(true);
+      toast({
+        title: "Reset link sent",
+        description: "Check your email for password reset instructions.",
+      });
+    } catch (error) {
+      toast({
+        title: "Request failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to request password reset. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

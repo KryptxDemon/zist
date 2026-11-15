@@ -153,6 +153,8 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
         (n.type === "friend_request" || n.type === "friend_accepted")
       ) {
         navigate(`/app/user/${n.actor.id}`);
+      } else if (n.type === "post_like" || n.type === "post_comment") {
+        navigate("/app/feed");
       }
     },
     [handleMarkRead, navigate, onClose],

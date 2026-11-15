@@ -93,6 +93,7 @@ export default function MediaDetail() {
   const [vocab, setVocab] = useState<VocabItem[]>([]);
   const [quotes, setQuotes] = useState<QuoteItem[]>([]);
   const [directShareItem, setDirectShareItem] = useState<DirectShareItem | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -282,6 +283,14 @@ export default function MediaDetail() {
           <Button
             variant="outline"
             className="gap-2"
+            onClick={() => setIsEditDialogOpen(true)}
+          >
+            <Edit2 className="h-4 w-4" />
+            Edit Work
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
             onClick={() =>
               setDirectShareItem({
                 type: "media",
@@ -387,6 +396,7 @@ export default function MediaDetail() {
             <TabsTrigger value="themes">Themes</TabsTrigger>
             <TabsTrigger value="vocab">Vocabulary</TabsTrigger>
             <TabsTrigger value="quotes">Quotes</TabsTrigger>
+            <TabsTrigger value="facts">Facts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -430,6 +440,14 @@ export default function MediaDetail() {
               onDirectShare={(item) => setDirectShareItem(item)}
             />
           </TabsContent>
+
+          <TabsContent value="facts">
+            <FactsTab
+              mediaId={media.id}
+              facts={facts}
+              setFacts={setFacts}
+            />
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -437,6 +455,13 @@ export default function MediaDetail() {
         open={!!directShareItem}
         onOpenChange={(open) => !open && setDirectShareItem(null)}
         item={directShareItem}
+      />
+
+      <EditMediaDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        media={media}
+        onSave={(updated) => setMedia(updated)}
       />
     </AppLayout>
   );
@@ -700,9 +725,8 @@ function ThemesTab({
       setThemes(
         Array.from(byId.values()).sort(
           (a, b) =>
-            parseTimestamp(b.updatedAt)?.getTime() ??
-              0 -
-              (parseTimestamp(a.updatedAt)?.getTime() ?? 0),
+            (parseTimestamp(b.updatedAt)?.getTime() ?? 0) -
+            (parseTimestamp(a.updatedAt)?.getTime() ?? 0),
         ),
       );
 
@@ -1196,13 +1220,38 @@ function FactsTab({
                     {categoryLabels[category as keyof typeof categoryLabels]}
                   </h4>
                   {categoryFacts.map((fact) => (
-                    <div key={fact.id} className="glass rounded-xl p-4">
-                      <p className="text-foreground">{fact.content}</p>
-                      {fact.source && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Source: {fact.source}
-                        </p>
-                      )}
+                    <div
+                      key={fact.id}
+                      className="glass rounded-xl p-4 flex items-start justify-between gap-4"
+                    >
+                      <div className="flex-1">
+                        <p className="text-foreground">{fact.content}</p>
+                        {fact.source && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Source: {fact.source}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                        title="Remove fact"
+                        onClick={async () => {
+                          try {
+                            await factService.delete(fact.id);
+                            setFacts(facts.filter((f) => f.id !== fact.id));
+                            toast({ title: "Fact removed" });
+                          } catch {
+                            toast({
+                              title: "Failed to remove fact",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1211,6 +1260,256 @@ function FactsTab({
         </div>
       )}
     </div>
+  );
+}
+
+function EditMediaDialog({
+  open,
+  onOpenChange,
+  media,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  media: MediaItem;
+  onSave: (updated: MediaItem) => void;
+}) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    title: media.title || "",
+    type: media.type || "movie",
+    creator: media.creator || "",
+    year: media.year ? String(media.year) : "",
+    rating:
+      media.rating !== undefined && media.rating !== null
+        ? String(media.rating)
+        : "",
+    status: media.status || "planned",
+    coverUrl: media.coverUrl || "",
+    description: media.description || "",
+    tags: Array.isArray(media.tags) ? media.tags.join(", ") : "",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        title: media.title || "",
+        type: media.type || "movie",
+        creator: media.creator || "",
+        year: media.year ? String(media.year) : "",
+        rating:
+          media.rating !== undefined && media.rating !== null
+            ? String(media.rating)
+            : "",
+        status: media.status || "planned",
+        coverUrl: media.coverUrl || "",
+        description: media.description || "",
+        tags: Array.isArray(media.tags) ? media.tags.join(", ") : "",
+      });
+    }
+  }, [open, media]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title.trim()) {
+      toast({ title: "Title is required", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const parsedTags = formData.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const parsedYear = formData.year.trim()
+        ? parseInt(formData.year.trim(), 10)
+        : undefined;
+      const parsedRating = formData.rating.trim()
+        ? parseFloat(formData.rating.trim())
+        : undefined;
+
+      const updated = await mediaService.update(media.id, {
+        title: formData.title.trim(),
+        type: formData.type as MediaType,
+        creator: formData.creator.trim() || undefined,
+        year: parsedYear,
+        rating: parsedRating,
+        status: formData.status as MediaStatus,
+        coverUrl: formData.coverUrl.trim() || undefined,
+        description: formData.description.trim() || undefined,
+        tags: parsedTags,
+      });
+
+      onSave(updated);
+      onOpenChange(false);
+      toast({ title: "Work updated successfully" });
+    } catch (error) {
+      toast({
+        title: "Failed to update work",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto rounded-xl">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-lg tracking-tight">
+            Edit Work
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-title">Title</Label>
+            <Input
+              id="edit-title"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-type">Medium</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(val) =>
+                  setFormData({ ...formData, type: val as MediaType })
+                }
+              >
+                <SelectTrigger id="edit-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="movie">Movie</SelectItem>
+                  <SelectItem value="tv">TV Show</SelectItem>
+                  <SelectItem value="book">Book</SelectItem>
+                  <SelectItem value="documentary">Documentary</SelectItem>
+                  <SelectItem value="podcast">Podcast</SelectItem>
+                  <SelectItem value="game">Game</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(val) =>
+                  setFormData({ ...formData, status: val as MediaStatus })
+                }
+              >
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="planned">Planned</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-creator">Author / Director</Label>
+              <Input
+                id="edit-creator"
+                value={formData.creator}
+                onChange={(e) =>
+                  setFormData({ ...formData, creator: e.target.value })
+                }
+                placeholder="e.g. Christopher Nolan"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-year">Year</Label>
+              <Input
+                id="edit-year"
+                type="number"
+                value={formData.year}
+                onChange={(e) =>
+                  setFormData({ ...formData, year: e.target.value })
+                }
+                placeholder="e.g. 2010"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-rating">Rating (0 - 10)</Label>
+            <Input
+              id="edit-rating"
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              value={formData.rating}
+              onChange={(e) =>
+                setFormData({ ...formData, rating: e.target.value })
+              }
+              placeholder="e.g. 8.5"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-cover">Poster / Cover URL</Label>
+            <Input
+              id="edit-cover"
+              value={formData.coverUrl}
+              onChange={(e) =>
+                setFormData({ ...formData, coverUrl: e.target.value })
+              }
+              placeholder="https://..."
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-tags">Tags (comma separated)</Label>
+            <Input
+              id="edit-tags"
+              value={formData.tags}
+              onChange={(e) =>
+                setFormData({ ...formData, tags: e.target.value })
+              }
+              placeholder="sci-fi, philosophy, favorite"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-desc">Synopsis / Notes</Label>
+            <Textarea
+              id="edit-desc"
+              rows={3}
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Brief summary or personal reaction..."
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1765,9 +2064,8 @@ function QuotesTab({
       setQuotes(
         Array.from(byId.values()).sort(
           (a, b) =>
-            parseTimestamp(b.createdAt)?.getTime() ??
-              0 -
-              (parseTimestamp(a.createdAt)?.getTime() ?? 0),
+            (parseTimestamp(b.createdAt)?.getTime() ?? 0) -
+            (parseTimestamp(a.createdAt)?.getTime() ?? 0),
         ),
       );
 

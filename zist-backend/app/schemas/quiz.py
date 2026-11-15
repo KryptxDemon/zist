@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from app.utils.enums import QuizType
 
@@ -12,7 +12,9 @@ class QuizQuestion(BaseModel):
     category: str
     question: str
     options: list[str] = Field(default_factory=list)
-    correct_answer: str
+    correct_answer: str = Field(
+        validation_alias=AliasChoices("correct_answer", "correctAnswer")
+    )
 
 
 class QuizGenerateResponse(BaseModel):
@@ -22,8 +24,8 @@ class QuizGenerateResponse(BaseModel):
 
 
 class QuizSubmitRequest(BaseModel):
-    media_id: str
-    quiz_type: QuizType
+    media_id: str | None = None
+    quiz_type: QuizType = QuizType.mixed
     questions: list[QuizQuestion]
     answers: dict[str, str]
 
@@ -40,7 +42,7 @@ class QuizSubmitResponse(BaseModel):
 class QuizAttemptResponse(BaseModel):
     id: str
     user_id: str
-    media_id: str
+    media_id: str | None = None
     quiz_type: str
     score: int
     total_questions: int

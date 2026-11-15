@@ -21,9 +21,9 @@ class QuizAttempt(Base):
         nullable=False,
         index=True,
     )
-    media_id: Mapped[str] = mapped_column(
+    media_id: Mapped[str | None] = mapped_column(
         ForeignKey("media_items.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     quiz_type: Mapped[str] = mapped_column(String, nullable=False)

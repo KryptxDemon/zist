@@ -124,3 +124,17 @@ def ensure_ai_cache_table() -> None:
 
     from app.models.ai_cache import AICache
     Base.metadata.create_all(bind=engine, tables=[AICache.__table__])
+
+
+def ensure_quiz_columns() -> None:
+    inspector = inspect(engine)
+    if "quiz_attempts" not in inspector.get_table_names():
+        return
+
+    if not settings.DATABASE_URL.startswith("sqlite"):
+        try:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE quiz_attempts ALTER COLUMN media_id DROP NOT NULL"))
+        except Exception:
+            pass
+

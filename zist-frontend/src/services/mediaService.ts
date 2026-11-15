@@ -20,6 +20,7 @@ interface CreateMediaInput {
   coverUrl?: string;
   tags?: string[];
   status: MediaStatus;
+  rating?: number;
   externalSource?: string;
   externalId?: string;
 }
@@ -165,6 +166,8 @@ export const mediaService = {
         year: data.year,
         creator: data.creator,
         status: data.status,
+        rating: data.rating,
+        tags: data.tags ?? [],
         external_source: data.externalSource,
         external_id: data.externalId,
       });
@@ -184,6 +187,8 @@ export const mediaService = {
       if (data.year !== undefined) payload.year = data.year;
       if (data.creator !== undefined) payload.creator = data.creator;
       if (data.coverUrl !== undefined) payload.cover_url = data.coverUrl;
+      if (data.description !== undefined) payload.description = data.description;
+      if (data.tags !== undefined) payload.tags = data.tags;
       if (data.status !== undefined) payload.status = data.status;
       if (data.rating !== undefined) payload.rating = data.rating;
 

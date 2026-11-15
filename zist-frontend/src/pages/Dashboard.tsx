@@ -645,7 +645,7 @@ export default function Dashboard() {
         />
 
         <HorizontalRail
-          title={`Because You Explored \"${topTheme}\"`}
+          title={`Because You Explored "${topTheme}"`}
           subtitle="Recommendations inferred from your current concept focus"
           items={recommendedForTheme}
           coverById={coverById}

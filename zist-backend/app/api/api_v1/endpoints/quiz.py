@@ -41,12 +41,19 @@ def generate_quiz(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _get_owned_media_or_404(db, media_id, current_user.id)
-
-    themes = db.query(ThemeConcept).filter(ThemeConcept.media_id == media_id).all()
-    facts = db.query(FactItem).filter(FactItem.media_id == media_id).all()
-    vocab_items = db.query(VocabItem).filter(VocabItem.media_id == media_id).all()
-    quotes = db.query(QuoteItem).filter(QuoteItem.media_id == media_id).all()
+    if media_id == "collective":
+        user_media = db.query(MediaItem).filter(MediaItem.user_id == current_user.id).all()
+        user_media_ids = [m.id for m in user_media]
+        themes = db.query(ThemeConcept).filter(ThemeConcept.media_id.in_(user_media_ids)).all() if user_media_ids else []
+        facts = db.query(FactItem).filter(FactItem.media_id.in_(user_media_ids)).all() if user_media_ids else []
+        vocab_items = db.query(VocabItem).filter(VocabItem.media_id.in_(user_media_ids)).all() if user_media_ids else []
+        quotes = db.query(QuoteItem).filter(QuoteItem.media_id.in_(user_media_ids)).all() if user_media_ids else []
+    else:
+        _get_owned_media_or_404(db, media_id, current_user.id)
+        themes = db.query(ThemeConcept).filter(ThemeConcept.media_id == media_id).all()
+        facts = db.query(FactItem).filter(FactItem.media_id == media_id).all()
+        vocab_items = db.query(VocabItem).filter(VocabItem.media_id == media_id).all()
+        quotes = db.query(QuoteItem).filter(QuoteItem.media_id == media_id).all()
 
     questions = generate_questions(type, themes, facts, vocab_items, quotes, limit=10)
     return QuizGenerateResponse(media_id=media_id, quiz_type=type, questions=questions)
@@ -58,7 +65,9 @@ def submit_quiz(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _get_owned_media_or_404(db, payload.media_id, current_user.id)
+    media = None
+    if payload.media_id and payload.media_id != "collective":
+        media = _get_owned_media_or_404(db, payload.media_id, current_user.id)
 
     total = len(payload.questions)
     if total == 0:
@@ -70,7 +79,7 @@ def submit_quiz(
 
     for q in payload.questions:
         answer = payload.answers.get(q.id, "")
-        if answer == q.correct_answer:
+        if answer.strip().lower() == q.correct_answer.strip().lower():
             score += 1
         else:
             weak_areas[q.category] = weak_areas.get(q.category, 0) + 1
@@ -85,7 +94,7 @@ def submit_quiz(
 
     attempt = QuizAttempt(
         user_id=current_user.id,
-        media_id=payload.media_id,
+        media_id=media.id if media else None,
         quiz_type=payload.quiz_type.value,
         score=score,
         total_questions=total,
@@ -138,7 +147,7 @@ def quiz_stats(
     if total:
         row = (
             db.query(QuizAttempt.media_id, func.avg(QuizAttempt.accuracy).label("avg_acc"), func.count(QuizAttempt.id).label("cnt"))
-            .filter(QuizAttempt.user_id == current_user.id)
+            .filter(QuizAttempt.user_id == current_user.id, QuizAttempt.media_id.isnot(None))
             .group_by(QuizAttempt.media_id)
             .order_by(func.avg(QuizAttempt.accuracy).desc())
             .first()

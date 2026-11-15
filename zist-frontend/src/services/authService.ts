@@ -275,6 +275,12 @@ export const authService = {
         : new Error("Failed to fetch current user");
     }
   },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return apiClient.post<{ message: string }>("/auth/forgot-password", {
+      email,
+    });
+  },
 };
 
 export type { OAuthSessionPayload, DisplayNameAvailabilityResponse };

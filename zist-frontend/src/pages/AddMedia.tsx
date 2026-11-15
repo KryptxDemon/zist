@@ -77,6 +77,7 @@ export default function AddMedia() {
     creator: "",
     description: "",
     coverUrl: "",
+    rating: "",
     status: "planned" as MediaStatus,
     tags: [] as string[],
     externalSource: "",
@@ -109,6 +110,7 @@ export default function AddMedia() {
       creator: item.creator || prev.creator,
       description: item.description || prev.description,
       coverUrl: item.cover_url || prev.coverUrl,
+      rating: item.rating !== undefined ? String(item.rating) : prev.rating,
       externalSource: item.external_source || prev.externalSource,
       externalId: item.external_id || prev.externalId,
     }));
@@ -131,6 +133,7 @@ export default function AddMedia() {
         description: item.description,
         coverUrl: item.cover_url,
         status: formData.status,
+        rating: item.rating,
         tags: formData.tags,
         externalSource: item.external_source,
         externalId: item.external_id,
@@ -176,6 +179,7 @@ export default function AddMedia() {
             creator?: string;
             description?: string;
             cover_url?: string;
+            rating?: number;
             external_source?: string;
             external_id?: string;
           }
@@ -207,6 +211,9 @@ export default function AddMedia() {
         coverUrl:
           formData.coverUrl.trim() || autoResult?.cover_url || undefined,
         status: formData.status,
+        rating: formData.rating
+          ? parseFloat(formData.rating)
+          : autoResult?.rating,
         tags: formData.tags,
         externalSource:
           formData.externalSource || autoResult?.external_source || undefined,

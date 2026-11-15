@@ -29,6 +29,8 @@ from app.schemas.auth import (
     AuthResponse,
     AuthUserResponse,
     DisplayNameAvailabilityResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     GoogleAuthStartResponse,
     LoginRequest,
     SignupRequest,
@@ -472,7 +474,9 @@ def logout(current_user: User = Depends(get_current_user)):
     return {"message": "Logged out successfully"}
 
 
-@router.post("/forgot-password")
-def forgot_password(email: str):
-    _ = email
-    return {"message": "If this email exists, a reset link has been sent."}
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(payload: ForgotPasswordRequest):
+    _ = payload.email
+    return ForgotPasswordResponse(
+        message="If this email exists, a reset link has been sent."
+    )

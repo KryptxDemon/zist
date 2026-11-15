@@ -104,8 +104,8 @@ export default function Library() {
         case "recent":
         default:
           return (
-            parseTimestamp(b.createdAt)?.getTime() ??
-              0 - (parseTimestamp(a.createdAt)?.getTime() ?? 0)
+            (parseTimestamp(b.createdAt)?.getTime() ?? 0) -
+            (parseTimestamp(a.createdAt)?.getTime() ?? 0)
           );
       }
     });

@@ -23,6 +23,7 @@ import {
   MessageSquareQuote,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { apiClient } from "@/services/apiClient";
 import {
   mediaService,
   quoteService,
@@ -77,7 +78,40 @@ export default function Insights() {
         setThemes(allThemesByMedia.flat());
         setVocab(allVocabByMedia.flat());
         setQuotes(allQuotesByMedia.flat());
-        setQuizAttempts(storage.get<QuizAttempt[]>(STORAGE_KEYS.QUIZZES) || []);
+
+        let attempts: QuizAttempt[] =
+          storage.get<QuizAttempt[]>(STORAGE_KEYS.QUIZZES) || [];
+        try {
+          const historyRes = await apiClient.get<{
+            items: {
+              id: string;
+              media_id?: string | null;
+              user_id: string;
+              question_payload?: string;
+              answers_payload?: string;
+              score: number;
+              total_questions: number;
+              created_at: string;
+            }[];
+          }>("/quiz/history", {
+            params: { limit: 100 },
+          });
+          if (historyRes?.items?.length) {
+            attempts = historyRes.items.map((item) => ({
+              id: item.id,
+              mediaId: item.media_id || "collective",
+              userId: item.user_id,
+              questions: JSON.parse(item.question_payload || "[]"),
+              answers: JSON.parse(item.answers_payload || "{}"),
+              score: item.score,
+              totalQuestions: item.total_questions,
+              completedAt: item.created_at,
+            }));
+          }
+        } catch {
+          // Fall back to storage if backend fails
+        }
+        setQuizAttempts(attempts);
       } finally {
         setIsLoading(false);
       }

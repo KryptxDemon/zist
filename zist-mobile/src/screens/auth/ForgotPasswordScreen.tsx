@@ -6,6 +6,7 @@ import { ArrowLeft, Mail } from "lucide-react-native";
 import { useTheme } from "@/theme";
 import { Button, Card, Field, Input, Text, useToast } from "@/components/ui";
 import { AuthScaffold } from "@/components/auth/AuthScaffold";
+import { authService } from "@/services/authService";
 
 /** Native port of the web `ForgotPassword` page. */
 export function ForgotPasswordScreen() {
@@ -19,14 +20,25 @@ export function ForgotPasswordScreen() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    // The backend has no reset endpoint yet; the web app simulates the call.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setIsSubmitted(true);
-    toast({
-      title: "Reset link sent",
-      description: "Check your email for password reset instructions.",
-    });
+    try {
+      await authService.forgotPassword(email);
+      setIsSubmitted(true);
+      toast({
+        title: "Reset link sent",
+        description: "Check your email for password reset instructions.",
+      });
+    } catch (error) {
+      toast({
+        title: "Request failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to request password reset. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

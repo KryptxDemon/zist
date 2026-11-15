@@ -78,8 +78,8 @@ export default function Vocabulary() {
           .flat()
           .sort(
             (a, b) =>
-              parseTimestamp(b.createdAt)?.getTime() ??
-                0 - (parseTimestamp(a.createdAt)?.getTime() ?? 0),
+              (parseTimestamp(b.createdAt)?.getTime() ?? 0) -
+              (parseTimestamp(a.createdAt)?.getTime() ?? 0),
           );
 
         setItems(flattened);

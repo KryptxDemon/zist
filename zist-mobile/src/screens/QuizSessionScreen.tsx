@@ -22,6 +22,7 @@ import {
   vocabService,
 } from "@/services/mediaService";
 import { aiService } from "@/services/externalServices";
+import { apiClient } from "@/services/apiClient";
 import { STORAGE_KEYS, storage } from "@/services/storage";
 import type { MediaItem, QuizAttempt, QuizQuestion } from "@/types";
 import { buildQuizQuestions, calculateQuizScore, isQuizAnswerCorrect } from "@/lib/quiz";
@@ -155,6 +156,25 @@ export function QuizSessionScreen() {
       };
       const existing = storage.get<QuizAttempt[]>(STORAGE_KEYS.QUIZZES) ?? [];
       storage.set(STORAGE_KEYS.QUIZZES, [...existing, attempt]);
+
+      // Submit to backend
+      apiClient
+        .post("/quiz/submit", {
+          media_id: mediaId,
+          quiz_type: "mixed",
+          questions: questions.map((q) => ({
+            id: q.id,
+            type: q.type,
+            category: q.category,
+            question: q.question,
+            options: q.options || [],
+            correct_answer: q.correctAnswer,
+          })),
+          answers,
+        })
+        .catch((err) => {
+          console.warn("Failed to persist quiz attempt to backend:", err);
+        });
     } catch (error) {
       console.error("Failed to save quiz attempt:", error);
     }
