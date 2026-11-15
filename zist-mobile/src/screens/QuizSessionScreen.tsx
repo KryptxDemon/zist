@@ -66,15 +66,15 @@ export function QuizSessionScreen() {
 
         const [themes, vocab, quotes] = isCollective
           ? await Promise.all([
-              Promise.all(allMedia.map((item) => themeService.getByMediaId(item.id))),
-              Promise.all(allMedia.map((item) => vocabService.getByMediaId(item.id))),
-              Promise.all(allMedia.map((item) => quoteService.getByMediaId(item.id))),
+              themeService.getAll(),
+              vocabService.getAll(),
+              quoteService.getAll(),
             ])
-          : [
-              await themeService.getByMediaId(mediaId),
-              await vocabService.getByMediaId(mediaId),
-              await quoteService.getByMediaId(mediaId),
-            ];
+          : await Promise.all([
+              themeService.getByMediaId(mediaId),
+              vocabService.getByMediaId(mediaId),
+              quoteService.getByMediaId(mediaId),
+            ]);
         if (cancelled) return;
 
         setMedia(mediaData);
@@ -204,7 +204,7 @@ export function QuizSessionScreen() {
 
   if (isLoading) {
     return (
-      <Screen scroll={false} contentContainerStyle={{ flex: 1 }}>
+      <Screen safeTop scroll={false} contentContainerStyle={{ flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
           <IconButton onPress={backToHub} accessibilityLabel="Back to Quiz Hub">
             <ArrowLeft size={20} color={colors.foreground} />
@@ -220,7 +220,7 @@ export function QuizSessionScreen() {
 
   if (showResults) {
     return (
-      <Screen>
+      <Screen safeTop>
         <QuizResultsPanel
           title={media?.title || "Collective Quiz"}
           questions={questions}
@@ -234,7 +234,7 @@ export function QuizSessionScreen() {
 
   if (!currentQuestion) {
     return (
-      <Screen scroll={false} contentContainerStyle={{ flex: 1 }}>
+      <Screen safeTop scroll={false} contentContainerStyle={{ flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
           <IconButton onPress={backToHub} accessibilityLabel="Back to Quiz Hub">
             <ArrowLeft size={20} color={colors.foreground} />
@@ -251,7 +251,7 @@ export function QuizSessionScreen() {
   const isLast = currentIndex === questions.length - 1;
 
   return (
-    <Screen>
+    <Screen safeTop>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <IconButton onPress={backToHub}>

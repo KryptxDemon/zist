@@ -21,6 +21,8 @@ export interface ScreenProps {
   padded?: boolean;
   /** Extra bottom padding for screens that sit above the tab bar. */
   bottomInset?: number;
+  /** Apply safe area top inset for screens that don't have a navigation header. */
+  safeTop?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   contentContainerStyle?: ViewStyle;
   style?: ViewStyle;
@@ -44,6 +46,7 @@ export function Screen({
   scroll = true,
   padded = true,
   bottomInset = 0,
+  safeTop = false,
   refreshControl,
   contentContainerStyle,
   style,
@@ -56,7 +59,7 @@ export function Screen({
   const padding = padded ? { paddingHorizontal: 16 } : null;
 
   const inner: ViewStyle = {
-    paddingTop: 12,
+    paddingTop: (safeTop ? insets.top : 0) + 12,
     paddingBottom: insets.bottom + 24 + bottomInset,
     gap: 16,
   };

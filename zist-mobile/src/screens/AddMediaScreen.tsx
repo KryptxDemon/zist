@@ -314,7 +314,7 @@ export function AddMediaScreen() {
   ];
 
   return (
-    <Screen>
+    <Screen safeTop>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 4 }}>
         <IconButton
           accessibilityLabel="Back"

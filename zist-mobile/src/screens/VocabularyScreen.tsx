@@ -106,21 +106,22 @@ export function VocabularyScreen() {
     async function loadVocabulary() {
       setIsLoading(true);
       try {
-        const media = await mediaService.getAll(1, 100);
+        const [media, allVocab] = await Promise.all([
+          mediaService.getAll(1, 100),
+          vocabService.getAll(),
+        ]);
         setMediaItems(media);
-        const vocabByMedia = await Promise.all(
-          media.map(async (m) => {
-            const vocab = await vocabService.getByMediaId(m.id);
-            return vocab.map((v) => ({
-              ...v,
-              mediaTitle: m.title,
-              mediaType: m.type,
-            }));
-          }),
-        );
 
-        const flattened = vocabByMedia
-          .flat()
+        const mediaById = new Map(media.map((m) => [m.id, m]));
+        const flattened = allVocab
+          .map((v) => {
+            const m = mediaById.get(v.mediaId);
+            return {
+              ...v,
+              mediaTitle: m?.title || "Unknown Media",
+              mediaType: (m?.type || "other") as MediaType,
+            };
+          })
           .sort(
             (a, b) =>
               (parseTimestamp(b.createdAt)?.getTime() ?? 0) -

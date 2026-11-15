@@ -249,6 +249,17 @@ export const mediaService = {
 
 // Theme service
 export const themeService = {
+  async getAll(): Promise<ThemeConcept[]> {
+    try {
+      const response = await apiClient.get<{ items: ApiObject[] }>("/themes");
+      return response.items.map(mapTheme);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to fetch themes",
+      );
+    }
+  },
+
   async getByMediaId(mediaId: string): Promise<ThemeConcept[]> {
     try {
       const response = await apiClient.get<{ items: ApiObject[] }>(
@@ -421,6 +432,17 @@ export const factService = {
 
 // Vocabulary service
 export const vocabService = {
+  async getAll(): Promise<VocabItem[]> {
+    try {
+      const response = await apiClient.get<{ items: ApiObject[] }>("/vocab");
+      return response.items.map(mapVocab);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to fetch vocab",
+      );
+    }
+  },
+
   async getByMediaId(mediaId: string): Promise<VocabItem[]> {
     try {
       const response = await apiClient.get<{ items: ApiObject[] }>(
@@ -551,6 +573,17 @@ export const vocabService = {
 
 // Quote service
 export const quoteService = {
+  async getAll(): Promise<QuoteItem[]> {
+    try {
+      const response = await apiClient.get<{ items: ApiObject[] }>("/quotes");
+      return response.items.map(mapQuote);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to fetch quotes",
+      );
+    }
+  },
+
   async getByMediaId(mediaId: string): Promise<QuoteItem[]> {
     try {
       const response = await apiClient.get<{ items: ApiObject[] }>(

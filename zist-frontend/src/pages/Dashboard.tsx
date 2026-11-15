@@ -274,18 +274,18 @@ export default function Dashboard() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const mediaData = await mediaService.getAll();
-        const [allThemesByMedia, allVocabByMedia, allQuotesByMedia] =
+        const [mediaData, allThemes, allVocab, allQuotes] =
           await Promise.all([
-            Promise.all(mediaData.map((m) => themeService.getByMediaId(m.id))),
-            Promise.all(mediaData.map((m) => vocabService.getByMediaId(m.id))),
-            Promise.all(mediaData.map((m) => quoteService.getByMediaId(m.id))),
+            mediaService.getAll(),
+            themeService.getAll(),
+            vocabService.getAll(),
+            quoteService.getAll(),
           ]);
 
         setMedia(mediaData);
-        setThemes(allThemesByMedia.flat());
-        setVocab(allVocabByMedia.flat());
-        setQuotes(allQuotesByMedia.flat());
+        setThemes(allThemes);
+        setVocab(allVocab);
+        setQuotes(allQuotes);
       } finally {
         setIsLoading(false);
       }

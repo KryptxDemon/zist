@@ -53,6 +53,39 @@ def _get_owned_media_or_404(db: Session, media_id: str, user_id: str) -> MediaIt
     return media
 
 
+@router.get("/vocab", response_model=VocabListResponse)
+def list_user_vocab(
+    search: str | None = None,
+    learned: bool | None = None,
+    sort: str = "recent",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all vocabulary items across all media items belonging to the current user."""
+    query = (
+        db.query(VocabItem)
+        .join(MediaItem, VocabItem.media_id == MediaItem.id)
+        .filter(MediaItem.user_id == current_user.id)
+    )
+
+    if search:
+        pattern = f"%{search.lower()}%"
+        query = query.filter(or_(VocabItem.word.ilike(pattern), VocabItem.definition.ilike(pattern)))
+
+    if learned is not None:
+        query = query.filter(VocabItem.is_learned == learned)
+
+    if sort == "word":
+        query = query.order_by(VocabItem.word.asc())
+    elif sort == "oldest":
+        query = query.order_by(VocabItem.created_at.asc())
+    else:
+        query = query.order_by(VocabItem.created_at.desc())
+
+    items = query.all()
+    return VocabListResponse(items=[_serialize_vocab(i) for i in items], total=len(items))
+
+
 @router.get("/media/{media_id}/vocab", response_model=VocabListResponse)
 def list_media_vocab(
     media_id: str,

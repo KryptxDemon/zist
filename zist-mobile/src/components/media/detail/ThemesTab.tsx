@@ -393,9 +393,10 @@ function ThemeCard({
         gap: 12,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-        <View style={{ flex: 1, gap: 6 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      {/* Content takes full width */}
+      <View style={{ gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, flexWrap: "wrap" }}>
             <Text variant="h4" style={{ flexShrink: 1 }}>
               {theme.title}
             </Text>
@@ -414,54 +415,6 @@ function ThemeCard({
               </View>
             ) : null}
           </View>
-          {theme.summary ? (
-            <Text variant="small" color="mutedForeground">
-              {theme.summary}
-            </Text>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              loading={isFetching}
-              icon={isFetching ? undefined : <Sparkles size={14} color={colors.foreground} />}
-              label="Fetch Summary"
-              onPress={() => void handleFetchSummary()}
-            />
-          )}
-        </View>
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-          <IconButton
-            size="iconSm"
-            accessibilityLabel="Share to feed"
-            onPress={() =>
-              onShareToFeed({
-                type: "theme",
-                id: theme.id,
-                title: theme.title,
-                subtitle: theme.summary,
-                mediaTitle,
-              })
-            }
-          >
-            <Rss size={18} color={colors.primary} />
-          </IconButton>
-          <IconButton size="iconSm" accessibilityLabel="Copy theme" onPress={() => void handleCopy()}>
-            <Copy size={18} color={colors.mutedForeground} />
-          </IconButton>
-          <IconButton size="iconSm" accessibilityLabel="Share theme" onPress={() => void handleShare()}>
-            <Share2 size={18} color={colors.mutedForeground} />
-          </IconButton>
-          <IconButton size="iconSm" accessibilityLabel="Bookmark theme" onPress={() => void handleToggleSave()}>
-            <Bookmark
-              size={18}
-              color={theme.savedForLater ? colors.primary : colors.mutedForeground}
-              fill={theme.savedForLater ? colors.primary : "none"}
-            />
-          </IconButton>
-          <IconButton size="iconSm" accessibilityLabel="Delete theme" onPress={() => setConfirmVisible(true)}>
-            <Trash2 size={18} color={colors.mutedForeground} />
-          </IconButton>
           <IconButton size="iconSm" accessibilityLabel="Toggle summary" onPress={() => setIsExpanded((prev) => !prev)}>
             {isExpanded ? (
               <ChevronUp size={18} color={colors.mutedForeground} />
@@ -470,6 +423,67 @@ function ThemeCard({
             )}
           </IconButton>
         </View>
+
+        {theme.summary ? (
+          <Text variant="small" color="mutedForeground" style={{ lineHeight: 20 }}>
+            {theme.summary}
+          </Text>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            loading={isFetching}
+            icon={isFetching ? undefined : <Sparkles size={14} color={colors.foreground} />}
+            label="Fetch Summary"
+            onPress={() => void handleFetchSummary()}
+          />
+        )}
+      </View>
+
+      {/* Action buttons row across full bottom */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 4,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: 8,
+          marginTop: 2,
+        }}
+      >
+        <IconButton
+          size="iconSm"
+          accessibilityLabel="Share to feed"
+          onPress={() =>
+            onShareToFeed({
+              type: "theme",
+              id: theme.id,
+              title: theme.title,
+              subtitle: theme.summary,
+              mediaTitle,
+            })
+          }
+        >
+          <Rss size={18} color={colors.primary} />
+        </IconButton>
+        <IconButton size="iconSm" accessibilityLabel="Copy theme" onPress={() => void handleCopy()}>
+          <Copy size={18} color={colors.mutedForeground} />
+        </IconButton>
+        <IconButton size="iconSm" accessibilityLabel="Share theme" onPress={() => void handleShare()}>
+          <Share2 size={18} color={colors.mutedForeground} />
+        </IconButton>
+        <IconButton size="iconSm" accessibilityLabel="Bookmark theme" onPress={() => void handleToggleSave()}>
+          <Bookmark
+            size={18}
+            color={theme.savedForLater ? colors.primary : colors.mutedForeground}
+            fill={theme.savedForLater ? colors.primary : "none"}
+          />
+        </IconButton>
+        <IconButton size="iconSm" accessibilityLabel="Delete theme" onPress={() => setConfirmVisible(true)}>
+          <Trash2 size={18} color={colors.mutedForeground} />
+        </IconButton>
       </View>
 
       {isExpanded ? (

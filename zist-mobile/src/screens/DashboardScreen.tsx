@@ -121,20 +121,18 @@ export function DashboardScreen() {
       if (!silent) setIsLoading(true);
       setError(null);
       try {
-        const page = await mediaService.getAllWithMeta(1, 50);
-        const mediaData = page.items;
-
-        const [themesByMedia, vocabByMedia, quotesByMedia] = await Promise.all([
-          Promise.all(mediaData.map((m) => themeService.getByMediaId(m.id))),
-          Promise.all(mediaData.map((m) => vocabService.getByMediaId(m.id))),
-          Promise.all(mediaData.map((m) => quoteService.getByMediaId(m.id))),
+        const [page, allThemes, allVocab, allQuotes] = await Promise.all([
+          mediaService.getAllWithMeta(1, 50),
+          themeService.getAll(),
+          vocabService.getAll(),
+          quoteService.getAll(),
         ]);
 
-        setMedia(mediaData);
+        setMedia(page.items);
         setTotalMedia(page.total);
-        setThemes(themesByMedia.flat());
-        setVocab(vocabByMedia.flat());
-        setQuotes(quotesByMedia.flat());
+        setThemes(allThemes);
+        setVocab(allVocab);
+        setQuotes(allQuotes);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Please try again in a moment.";

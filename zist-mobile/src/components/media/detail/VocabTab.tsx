@@ -226,6 +226,28 @@ export function VocabTab({
         </View>
       </View>
 
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search words…"
+            icon={<Search size={18} color={colors.mutedForeground} />}
+          />
+        </View>
+        <View style={{ width: 150 }}>
+          <Select
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "all", label: "All Words" },
+              { value: "learned", label: "Learned" },
+              { value: "unlearned", label: "Unlearned" },
+            ]}
+          />
+        </View>
+      </View>
+
       {generatedWords.length > 0 ? (
         <DetailSection title="Generated media words">
           <Text variant="caption">
@@ -261,28 +283,6 @@ export function VocabTab({
           </View>
         </DetailSection>
       ) : null}
-
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <SearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search words…"
-            icon={<Search size={18} color={colors.mutedForeground} />}
-          />
-        </View>
-        <View style={{ width: 150 }}>
-          <Select
-            value={filter}
-            onChange={setFilter}
-            options={[
-              { value: "all", label: "All Words" },
-              { value: "learned", label: "Learned" },
-              { value: "unlearned", label: "Unlearned" },
-            ]}
-          />
-        </View>
-      </View>
 
       {vocab.length === 0 ? (
         <EmptyState

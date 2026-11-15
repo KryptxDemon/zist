@@ -336,62 +336,12 @@ function QuoteCard({
         gap: 12,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text variant="lead" style={{ fontStyle: "italic" }}>
+      {/* Full width quote content */}
+      <View style={{ gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Text variant="lead" style={{ fontStyle: "italic", flex: 1, marginRight: 8 }}>
             “{quote.text}”
           </Text>
-          {quote.speaker ? (
-            <Text variant="small" color="mutedForeground">
-              — {quote.speaker}
-            </Text>
-          ) : null}
-          {relatedTheme ? (
-            <View
-              style={{
-                alignSelf: "flex-start",
-                backgroundColor: colors.primary + "33",
-                paddingHorizontal: 8,
-                paddingVertical: 1,
-                borderRadius: radius.full,
-              }}
-            >
-              <Text variant="caption" tint={colors.primary} weight="medium">
-                {relatedTheme.title}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-          <IconButton
-            size="iconSm"
-            accessibilityLabel="Share to feed"
-            onPress={() =>
-              onShareToFeed({
-                type: "quote",
-                id: quote.id,
-                title: quote.text,
-                subtitle: quote.speaker ? `— ${quote.speaker}` : undefined,
-                mediaTitle,
-              })
-            }
-          >
-            <Rss size={18} color={colors.primary} />
-          </IconButton>
-          <IconButton size="iconSm" accessibilityLabel="Copy quote" onPress={() => void handleCopy()}>
-            <Copy size={18} color={colors.mutedForeground} />
-          </IconButton>
-          <IconButton size="iconSm" accessibilityLabel="Share quote" onPress={() => void handleShare()}>
-            <Share2 size={18} color={colors.mutedForeground} />
-          </IconButton>
-          <IconButton size="iconSm" accessibilityLabel="Bookmark quote" onPress={() => void handleToggleBookmark()}>
-            <Bookmark
-              size={18}
-              color={quote.isBookmarked ? colors.primary : colors.mutedForeground}
-              fill={quote.isBookmarked ? colors.primary : "none"}
-            />
-          </IconButton>
           <IconButton size="iconSm" accessibilityLabel="Toggle meaning" onPress={() => setIsExpanded((prev) => !prev)}>
             {isExpanded ? (
               <ChevronUp size={18} color={colors.mutedForeground} />
@@ -400,6 +350,71 @@ function QuoteCard({
             )}
           </IconButton>
         </View>
+
+        {quote.speaker ? (
+          <Text variant="small" color="mutedForeground">
+            — {quote.speaker}
+          </Text>
+        ) : null}
+
+        {relatedTheme ? (
+          <View
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: colors.primary + "33",
+              paddingHorizontal: 8,
+              paddingVertical: 1,
+              borderRadius: radius.full,
+            }}
+          >
+            <Text variant="caption" tint={colors.primary} weight="medium">
+              {relatedTheme.title}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* Action buttons row across full bottom */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 4,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: 8,
+          marginTop: 2,
+        }}
+      >
+        <IconButton
+          size="iconSm"
+          accessibilityLabel="Share to feed"
+          onPress={() =>
+            onShareToFeed({
+              type: "quote",
+              id: quote.id,
+              title: quote.text,
+              subtitle: quote.speaker ? `— ${quote.speaker}` : undefined,
+              mediaTitle,
+            })
+          }
+        >
+          <Rss size={18} color={colors.primary} />
+        </IconButton>
+        <IconButton size="iconSm" accessibilityLabel="Copy quote" onPress={() => void handleCopy()}>
+          <Copy size={18} color={colors.mutedForeground} />
+        </IconButton>
+        <IconButton size="iconSm" accessibilityLabel="Share quote" onPress={() => void handleShare()}>
+          <Share2 size={18} color={colors.mutedForeground} />
+        </IconButton>
+        <IconButton size="iconSm" accessibilityLabel="Bookmark quote" onPress={() => void handleToggleBookmark()}>
+          <Bookmark
+            size={18}
+            color={quote.isBookmarked ? colors.primary : colors.mutedForeground}
+            fill={quote.isBookmarked ? colors.primary : "none"}
+          />
+        </IconButton>
       </View>
 
       {isExpanded ? (

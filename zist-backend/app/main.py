@@ -53,7 +53,7 @@ def create_application() -> FastAPI:
 
     app.include_router(api_router, prefix=settings.API_V1_STR)
 
-    @app.get("/", tags=["Root"])
+    @app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
     def root():
         return {
             "message": "Welcome to Zist API",
@@ -61,16 +61,15 @@ def create_application() -> FastAPI:
             "version": settings.VERSION,
         }
 
-    @app.get("/health", tags=["Health"])
+    @app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"])
     def health_check():
-
         return {
             "status": "ok",
             "project": settings.PROJECT_NAME,
             "version": settings.VERSION,
         }
 
-    @app.get("/healthz", tags=["Health"])
+    @app.api_route("/healthz", methods=["GET", "HEAD"], tags=["Health"])
     def health_check_probe():
         return {
             "status": "ok",

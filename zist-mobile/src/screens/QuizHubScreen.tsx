@@ -123,26 +123,24 @@ export function QuizHubScreen() {
 
     async function loadMedia() {
       try {
-        const data = await mediaService.getAll();
-        if (cancelled) return;
-        setMedia(data);
-
-        const [quizStats, themesByMedia, vocabByMedia, quotesByMedia] = await Promise.all([
+        const [data, quizStats, allThemes, allVocab, allQuotes] = await Promise.all([
+          mediaService.getAll(),
           apiClient
             .get<{ total_quizzes?: number; average_accuracy?: number }>("/quiz/stats")
             .catch(() => ({ total_quizzes: 0, average_accuracy: 0 })),
-          Promise.all(data.map((item) => themeService.getByMediaId(item.id).catch(() => []))),
-          Promise.all(data.map((item) => vocabService.getByMediaId(item.id).catch(() => []))),
-          Promise.all(data.map((item) => quoteService.getByMediaId(item.id).catch(() => []))),
+          themeService.getAll().catch(() => []),
+          vocabService.getAll().catch(() => []),
+          quoteService.getAll().catch(() => []),
         ]);
         if (cancelled) return;
+        setMedia(data);
 
         const byMedia: Record<string, MediaContent> = {};
-        data.forEach((item, index) => {
+        data.forEach((item) => {
           byMedia[item.id] = {
-            themes: themesByMedia[index] ?? [],
-            vocab: vocabByMedia[index] ?? [],
-            quotes: quotesByMedia[index] ?? [],
+            themes: allThemes.filter((t) => t.mediaId === item.id),
+            vocab: allVocab.filter((v) => v.mediaId === item.id),
+            quotes: allQuotes.filter((q) => q.mediaId === item.id),
           };
         });
 
@@ -150,8 +148,8 @@ export function QuizHubScreen() {
         setStats({
           totalQuizzes: quizStats.total_quizzes || 0,
           averageAccuracy: Math.round(quizStats.average_accuracy || 0),
-          themesTested: themesByMedia.flat().length,
-          wordsReviewed: vocabByMedia.flat().length,
+          themesTested: allThemes.length,
+          wordsReviewed: allVocab.length,
         });
       } catch (error) {
         console.error("Failed to load media:", error);

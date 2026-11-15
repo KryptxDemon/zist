@@ -106,13 +106,13 @@ export function FriendsScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/");
+      router.replace("/(app)/(tabs)");
     }
   };
 
   if (loading && !friends) {
     return (
-      <Screen>
+      <Screen safeTop>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 6 }}>
           <IconButton accessibilityLabel="Back" onPress={handleBack}>
             <ArrowLeft size={22} color={colors.foreground} />
@@ -128,6 +128,7 @@ export function FriendsScreen() {
 
   return (
     <Screen
+      safeTop
       refreshControl={
         <RefreshControl
           refreshing={refreshing}

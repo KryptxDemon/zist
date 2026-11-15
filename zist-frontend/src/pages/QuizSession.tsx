@@ -192,21 +192,15 @@ export default function QuizSession() {
 
         const [themes, vocab, quotes] = isCollective
           ? await Promise.all([
-              Promise.all(
-                allMedia.map((item) => themeService.getByMediaId(item.id)),
-              ),
-              Promise.all(
-                allMedia.map((item) => vocabService.getByMediaId(item.id)),
-              ),
-              Promise.all(
-                allMedia.map((item) => quoteService.getByMediaId(item.id)),
-              ),
+              themeService.getAll(),
+              vocabService.getAll(),
+              quoteService.getAll(),
             ])
-          : [
-              await themeService.getByMediaId(mediaId),
-              await vocabService.getByMediaId(mediaId),
-              await quoteService.getByMediaId(mediaId),
-            ];
+          : await Promise.all([
+              themeService.getByMediaId(mediaId),
+              vocabService.getByMediaId(mediaId),
+              quoteService.getByMediaId(mediaId),
+            ]);
 
         setMedia(mediaData);
         const generatedQuestions = await buildQuizQuestions(

@@ -604,10 +604,10 @@ function LandingContent() {
                   <Text style={[mono, { color: brandColors.accent }]}>
                     {theme.count} captures
                   </Text>
-                  <Text style={[display, { fontSize: 25, marginTop: 13, marginBottom: 9, textTransform: "uppercase" }]}>
+                  <Text style={[display, { fontSize: 24, lineHeight: 30, marginTop: 13, marginBottom: 9, textTransform: "uppercase" }]}>
                     {theme.title}
                   </Text>
-                  <Text style={[bodyFont, { lineHeight: 22, maxWidth: 230 }]}>
+                  <Text style={[bodyFont, { lineHeight: 22, paddingRight: 24 }]}>
                     {theme.summary || "A theme surfaced by the Zist community."}
                   </Text>
                   <View style={{ position: "absolute", right: 21, bottom: 22 }}>

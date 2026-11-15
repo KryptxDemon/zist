@@ -57,17 +57,17 @@ export function InsightsScreen() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const mediaData = await mediaService.getAll(1, 100);
-        const [allThemesByMedia, allVocabByMedia, allQuotesByMedia] = await Promise.all([
-          Promise.all(mediaData.map((m) => themeService.getByMediaId(m.id))),
-          Promise.all(mediaData.map((m) => vocabService.getByMediaId(m.id))),
-          Promise.all(mediaData.map((m) => quoteService.getByMediaId(m.id))),
+        const [mediaData, allThemes, allVocab, allQuotes] = await Promise.all([
+          mediaService.getAll(1, 100),
+          themeService.getAll(),
+          vocabService.getAll(),
+          quoteService.getAll(),
         ]);
 
         setMedia(mediaData);
-        setThemes(allThemesByMedia.flat());
-        setVocab(allVocabByMedia.flat());
-        setQuotes(allQuotesByMedia.flat());
+        setThemes(allThemes);
+        setVocab(allVocab);
+        setQuotes(allQuotes);
         setQuizAttempts(storage.get<QuizAttempt[]>(STORAGE_KEYS.QUIZZES) || []);
       } finally {
         setIsLoading(false);

@@ -16,7 +16,7 @@
       "versionCode": 1,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#080909",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -39,7 +39,15 @@
       "tsconfigPaths": true
     },
     "extra": {
-      "apiUrl": "https://zist-g4h2.onrender.com/api/v1"
+      "apiUrl": "https://zist-g4h2.onrender.com/api/v1",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "d74ec20f-3a91-4586-9025-22ace9c93d58"
+      }
     }
   }
 }

@@ -85,6 +85,22 @@ def get_top_themes(
 	return TopThemeListResponse(items=top_themes, total=len(top_themes))
 
 
+@router.get("/themes", response_model=ThemeListResponse)
+def list_user_themes(
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+):
+	"""Get all themes across all media items belonging to the current user."""
+	items = (
+		db.query(ThemeConcept)
+		.join(MediaItem, ThemeConcept.media_id == MediaItem.id)
+		.filter(MediaItem.user_id == current_user.id)
+		.order_by(ThemeConcept.updated_at.desc())
+		.all()
+	)
+	return ThemeListResponse(items=[ThemeResponse.model_validate(i) for i in items], total=len(items))
+
+
 @router.get("/media/{media_id}/themes", response_model=ThemeListResponse)
 def list_themes(
 	media_id: str,

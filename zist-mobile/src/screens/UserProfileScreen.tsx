@@ -180,7 +180,7 @@ export function UserProfileScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/");
+      router.replace("/(app)/(tabs)");
     }
   };
 
@@ -262,7 +262,7 @@ export function UserProfileScreen() {
 
   if (isLoading && !profile) {
     return (
-      <Screen>
+      <Screen safeTop>
         {renderTopBar("Profile")}
         <FeedPostSkeleton />
         <FeedPostSkeleton />
@@ -273,7 +273,7 @@ export function UserProfileScreen() {
 
   if (!profile) {
     return (
-      <Screen>
+      <Screen safeTop>
         {renderTopBar("Profile")}
         <EmptyState
           icon={
@@ -312,6 +312,7 @@ export function UserProfileScreen() {
 
   return (
     <Screen
+      safeTop
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}

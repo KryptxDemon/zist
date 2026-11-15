@@ -217,7 +217,7 @@ export function ProfileScreen() {
   };
 
   return (
-    <Screen>
+    <Screen safeTop>
       {/* Top Bar */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>

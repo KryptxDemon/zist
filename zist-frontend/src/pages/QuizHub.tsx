@@ -33,25 +33,21 @@ export default function QuizHub() {
   useEffect(() => {
     async function loadMedia() {
       try {
-        const data = await mediaService.getAll();
-        setMedia(data);
-
-        const [quizStats, themesByMedia, vocabByMedia] = await Promise.all([
+        const [data, quizStats, allThemes, allVocab] = await Promise.all([
+          mediaService.getAll(),
           apiClient.get<{ total_quizzes: number; average_accuracy: number }>(
             "/quiz/stats",
           ),
-          Promise.all(data.map((item) => themeService.getByMediaId(item.id))),
-          Promise.all(data.map((item) => vocabService.getByMediaId(item.id))),
+          themeService.getAll(),
+          vocabService.getAll(),
         ]);
-
-        const themeCount = themesByMedia.flat().length;
-        const vocabCount = vocabByMedia.flat().length;
+        setMedia(data);
 
         setStats({
           totalQuizzes: quizStats.total_quizzes || 0,
           averageAccuracy: Math.round(quizStats.average_accuracy || 0),
-          themesTested: themeCount,
-          wordsReviewed: vocabCount,
+          themesTested: allThemes.length,
+          wordsReviewed: allVocab.length,
         });
       } catch (error) {
         console.error("Failed to load media:", error);
