@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { UserAvatar } from "@/components/UserAvatar";
+import { UserSearch } from "@/components/UserSearch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -113,29 +114,73 @@ export default function Friends() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="incoming" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="incoming" className="gap-2">
-                <Inbox className="h-4 w-4" />
-                Incoming
-                {(incoming?.total ?? 0) > 0 ? (
-                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] text-white">
-                    {incoming?.total}
+          <div className="space-y-6">
+            <Card className="border-border/60 bg-card/60 backdrop-blur">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-primary" />
+                  Find & Add Friends
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <UserSearch
+                  placeholder="Search users by name to add as friend..."
+                  showAddFriend={true}
+                  variant="dropdown"
+                  onFriendChange={refresh}
+                />
+              </CardContent>
+            </Card>
+
+            <Tabs defaultValue={(incoming?.total ?? 0) > 0 ? "incoming" : "friends"} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="friends" className="gap-2 text-xs sm:text-sm">
+                  <Users className="h-4 w-4" />
+                  Friends
+                  <span className="ml-1 text-[11px] text-muted-foreground">
+                    ({friends?.total ?? 0})
                   </span>
-                ) : null}
-              </TabsTrigger>
-              <TabsTrigger value="outgoing" className="gap-2">
-                <Send className="h-4 w-4" />
-                Outgoing
-              </TabsTrigger>
-              <TabsTrigger value="friends" className="gap-2">
-                <Users className="h-4 w-4" />
-                Friends
-                <span className="ml-1 text-[11px] text-muted-foreground">
-                  ({friends?.total ?? 0})
-                </span>
-              </TabsTrigger>
-            </TabsList>
+                </TabsTrigger>
+                <TabsTrigger value="find" className="gap-2 text-xs sm:text-sm">
+                  <UserPlus className="h-4 w-4" />
+                  Find People
+                </TabsTrigger>
+                <TabsTrigger value="incoming" className="gap-2 text-xs sm:text-sm">
+                  <Inbox className="h-4 w-4" />
+                  Incoming
+                  {(incoming?.total ?? 0) > 0 ? (
+                    <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] text-white">
+                      {incoming?.total}
+                    </span>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="outgoing" className="gap-2 text-xs sm:text-sm">
+                  <Send className="h-4 w-4" />
+                  Outgoing
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="find" className="space-y-4 mt-4">
+                <Card className="border-border/60">
+                  <CardHeader>
+                    <CardTitle className="text-base font-medium flex items-center gap-2">
+                      <UserPlus className="h-4 w-4 text-primary" />
+                      Search for Readers & Friends
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Find fellow readers by typing their name and send them a friend request instantly.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <UserSearch
+                      placeholder="Type a name to search and add friends..."
+                      variant="inline"
+                      showAddFriend={true}
+                      onFriendChange={refresh}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
             <TabsContent value="incoming" className="space-y-3 mt-4">
               {incoming?.items?.length ? (
@@ -250,7 +295,8 @@ export default function Friends() {
               )}
             </TabsContent>
           </Tabs>
-        )}
+        </div>
+      )}
       </div>
     </AppLayout>
   );

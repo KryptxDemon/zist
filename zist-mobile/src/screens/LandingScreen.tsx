@@ -33,7 +33,7 @@ import { localStorage } from "@/lib/webStorage";
 import { Text, useToast } from "@/components/ui";
 
 const LOGO = require("../../assets/brand/zist-logo.png");
-const HERO = require("../../assets/brand/anime.png");
+const HERO = require("../../assets/brand/anime.webp");
 const ABOUT_BG = require("../../assets/brand/bg.jpg");
 
 /** `anime.png` is 1530×1028; the web lets the image size itself. */

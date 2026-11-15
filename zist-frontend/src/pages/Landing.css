@@ -275,26 +275,24 @@ img {
   background: var(--landing-line);
 }
 .landing-hero-media {
-  position: absolute;
-  top: -40px;
-  right: -12vw;
-  z-index: 0;
+  position: relative;
+  z-index: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
-  width: 58%;
-  height: calc(100% + 210px);
-  pointer-events: none;
+  width: 100%;
+  max-width: 620px;
+  margin-left: auto;
 }
 .landing-hero-media::after {
   content: none;
 }
 .landing-hero-media img {
-  width: 145%;
-  max-width: none;
+  width: 100%;
+  max-width: 100%;
   height: auto;
-  margin-left: auto;
-  transform: translateX(4%);
+  object-fit: contain;
+  display: block;
 }
 .landing-hero-copy {
   position: relative;

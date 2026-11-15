@@ -14,7 +14,7 @@ import { apiClient } from "@/services/apiClient";
 import "./Landing.css";
 
 const logoImg = "/zistv2-logo.png";
-const heroImg = "/anime.png";
+const heroImg = "/anime.webp";
 
 interface LandingThemeItem {
   title: string;
@@ -296,7 +296,10 @@ export default function Landing() {
             <div className="landing-hero-media">
               <img
                 src={heroImg}
-                alt="A vivid abstract collage representing stories and memory"
+                alt="A reader at work with books and notes"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
               />
             </div>
           </div>

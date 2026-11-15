@@ -27,6 +27,8 @@ interface FriendActionButtonProps {
   className?: string;
   /** Optional callback fired after a successful mutation (refresh parent). */
   onChange?: () => void;
+  /** When true, do not render a button if target user is self */
+  hideSelf?: boolean;
 }
 
 /**
@@ -47,6 +49,7 @@ export function FriendActionButton({
   targetUserName,
   className,
   onChange,
+  hideSelf,
 }: FriendActionButtonProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -177,6 +180,7 @@ export function FriendActionButton({
   const state: FriendRelationshipState = relationship.state;
 
   if (state === "self") {
+    if (hideSelf) return null;
     return (
       <Button
         variant="outline"
