@@ -57,25 +57,40 @@ const capabilities = [
 
 const defaultThemes: LandingThemeItem[] = [
   {
-    title: "Identity & growth",
-    count: 42,
-    latestCreatedAt: "",
-    summary: "Character transformation and self-definition.",
-    media: { title: "Zist community", type: "theme" },
+    title: "The Persistence of Suspicion",
+    count: 5,
+    latestCreatedAt: "2026-11-15T14:22:24.537299",
+    summary:
+      "Even after formal clearance and the fading of overt hostility, the psychological stain of an accusation lingers indefinitely over an individual's life.",
+    media: {
+      title: "The Hunt",
+      type: "movie",
+      coverUrl: "https://image.tmdb.org/t/p/w500/jkixsXzRh28q3PCqFoWcf7unghT.jpg",
+    },
   },
   {
-    title: "Power & society",
-    count: 31,
-    latestCreatedAt: "",
-    summary: "Influence, systems, and the consequences of control.",
-    media: { title: "Zist community", type: "theme" },
+    title: "Justice and Reasonable Doubt",
+    count: 5,
+    latestCreatedAt: "2026-11-10T15:03:32.109398",
+    summary:
+      "The arduous deliberation process underscores the fundamental legal principle that a man must be proven guilty beyond a shadow of a doubt.",
+    media: {
+      title: "12 Angry Men",
+      type: "movie",
+      coverUrl: "https://image.tmdb.org/t/p/w500/zhG3vKWyDRaZYoaww1UVAi29T9h.jpg",
+    },
   },
   {
-    title: "Faith & meaning",
-    count: 26,
-    latestCreatedAt: "",
-    summary: "Belief, purpose, and personal conviction.",
-    media: { title: "Zist community", type: "theme" },
+    title: "The Mechanization of Death",
+    count: 15,
+    latestCreatedAt: "2026-11-07T08:17:56.035354",
+    summary:
+      "The Terminator embodies a chilling lack of empathy, functioning purely as a systematic instrument of murder programmed without conscience or remorse.",
+    media: {
+      title: "The Terminator",
+      type: "movie",
+      coverUrl: "https://image.tmdb.org/t/p/w500/qvktm0BHcnmDpul4Hz01GIazWPr.jpg",
+    },
   },
 ];
 
@@ -97,7 +112,18 @@ const socials = [
 export default function Landing() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [topThemes, setTopThemes] = useState<LandingThemeItem[]>(defaultThemes);
+  const [topThemes, setTopThemes] = useState<LandingThemeItem[]>(() => {
+    try {
+      const cached = localStorage.getItem("zist_top_themes");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback to defaultThemes
+    }
+    return defaultThemes;
+  });
 
   useEffect(() => {
     let active = true;
@@ -113,19 +139,23 @@ export default function Landing() {
           }>;
         }>("/top?limit=3");
         if (active && response.items?.length) {
-          setTopThemes(
-            response.items.map((theme) => ({
-              title: theme.title,
-              count: theme.count,
-              latestCreatedAt: theme.latest_created_at,
-              summary: theme.summary,
-              media: {
-                title: theme.media.title,
-                type: theme.media.type,
-                coverUrl: theme.media.cover_url ?? null,
-              },
-            })),
-          );
+          const mapped = response.items.map((theme) => ({
+            title: theme.title,
+            count: theme.count,
+            latestCreatedAt: theme.latest_created_at,
+            summary: theme.summary,
+            media: {
+              title: theme.media.title,
+              type: theme.media.type,
+              coverUrl: theme.media.cover_url ?? null,
+            },
+          }));
+          setTopThemes(mapped);
+          try {
+            localStorage.setItem("zist_top_themes", JSON.stringify(mapped));
+          } catch {
+            // ignore
+          }
         }
       } catch {
         // Public landing content remains useful when the API is unavailable.
@@ -377,7 +407,9 @@ export default function Landing() {
                     </span>
                   </div>
                   <div className="landing-theme-body">
-                    <span className="landing-mono">{theme.count} captures</span>
+                    <span className="landing-mono">
+                      {theme.media.title ? `${theme.media.title.toUpperCase()} · ` : ""}{theme.count} captures
+                    </span>
                     <h3>{theme.title}</h3>
                     <p>
                       {theme.summary ||

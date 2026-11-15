@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { brandColors, landingAboutOverlay } from "@/theme/brandTokens";
 import { apiClient } from "@/services/apiClient";
 import { consumeSessionNotice } from "@/lib/sessionNotice";
+import { localStorage } from "@/lib/webStorage";
 import { Text, useToast } from "@/components/ui";
 
 const LOGO = require("../../assets/brand/zist-logo.png");
@@ -87,22 +88,37 @@ const CAPABILITIES = [
 /** Shown until (or instead of) `/top` answering — the web's `defaultThemes`. */
 const DEFAULT_THEMES: LandingThemeItem[] = [
   {
-    title: "Identity & growth",
-    count: 42,
-    summary: "Character transformation and self-definition.",
-    media: { title: "Zist community", type: "theme" },
+    title: "The Persistence of Suspicion",
+    count: 5,
+    summary:
+      "Even after formal clearance and the fading of overt hostility, the psychological stain of an accusation lingers indefinitely over an individual's life.",
+    media: {
+      title: "The Hunt",
+      type: "movie",
+      coverUrl: "https://image.tmdb.org/t/p/w500/jkixsXzRh28q3PCqFoWcf7unghT.jpg",
+    },
   },
   {
-    title: "Power & society",
-    count: 31,
-    summary: "Influence, systems, and the consequences of control.",
-    media: { title: "Zist community", type: "theme" },
+    title: "Justice and Reasonable Doubt",
+    count: 5,
+    summary:
+      "The arduous deliberation process underscores the fundamental legal principle that a man must be proven guilty beyond a shadow of a doubt.",
+    media: {
+      title: "12 Angry Men",
+      type: "movie",
+      coverUrl: "https://image.tmdb.org/t/p/w500/zhG3vKWyDRaZYoaww1UVAi29T9h.jpg",
+    },
   },
   {
-    title: "Faith & meaning",
-    count: 26,
-    summary: "Belief, purpose, and personal conviction.",
-    media: { title: "Zist community", type: "theme" },
+    title: "The Mechanization of Death",
+    count: 15,
+    summary:
+      "The Terminator embodies a chilling lack of empathy, functioning purely as a systematic instrument of murder programmed without conscience or remorse.",
+    media: {
+      title: "The Terminator",
+      type: "movie",
+      coverUrl: "https://image.tmdb.org/t/p/w500/qvktm0BHcnmDpul4Hz01GIazWPr.jpg",
+    },
   },
 ];
 
@@ -149,7 +165,18 @@ function LandingContent() {
   const { width } = useWindowDimensions();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [topThemes, setTopThemes] = useState<LandingThemeItem[]>(DEFAULT_THEMES);
+  const [topThemes, setTopThemes] = useState<LandingThemeItem[]>(() => {
+    try {
+      const cached = localStorage.getItem("zist_top_themes");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_THEMES;
+  });
   const scrollRef = useRef<any>(null);
   const sectionY = useRef<Record<string, number>>({});
 
@@ -190,18 +217,22 @@ function LandingContent() {
           }[];
         }>("/top", { params: { limit: 3 } });
         if (active && response.items?.length) {
-          setTopThemes(
-            response.items.map((theme) => ({
-              title: theme.title,
-              count: theme.count,
-              summary: theme.summary,
-              media: {
-                title: theme.media.title,
-                type: theme.media.type,
-                coverUrl: theme.media.cover_url ?? null,
-              },
-            })),
-          );
+          const mapped = response.items.map((theme) => ({
+            title: theme.title,
+            count: theme.count,
+            summary: theme.summary,
+            media: {
+              title: theme.media.title,
+              type: theme.media.type,
+              coverUrl: theme.media.cover_url ?? null,
+            },
+          }));
+          setTopThemes(mapped);
+          try {
+            localStorage.setItem("zist_top_themes", JSON.stringify(mapped));
+          } catch {
+            // ignore
+          }
         }
       } catch {
         // Public landing content stays useful when the API is unavailable.
@@ -606,7 +637,7 @@ function LandingContent() {
 
                 <View style={{ minHeight: 185, paddingVertical: 21, paddingHorizontal: 22 }}>
                   <Text style={[mono, { color: brandColors.accent }]}>
-                    {theme.count} captures
+                    {theme.media.title ? `${theme.media.title.toUpperCase()} · ` : ""}{theme.count} captures
                   </Text>
                   <Text
                     style={[

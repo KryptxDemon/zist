@@ -45,45 +45,74 @@ def _get_owned_theme_or_404(db: Session, theme_id: str, user_id: str) -> ThemeCo
 
 @router.get("/top", response_model=TopThemeListResponse)
 def get_top_themes(
-	limit: int = Query(default=5, ge=1, le=20),
+	limit: int = Query(default=3, ge=1, le=20),
 	db: Session = Depends(get_db),
 ):
-	"""Get the most recent top themes across all users, grouped by title."""
-	theme_counts = (
-		db.query(
-			ThemeConcept.title.label("title"),
-			func.count(ThemeConcept.id).label("count"),
-			func.max(ThemeConcept.created_at).label("latest_created_at"),
+	"""Get the most recent themes across all users from different media items."""
+	cache_key = f"public:top_themes:{limit}"
+	cached = cache.get(cache_key)
+	if cached is not None:
+		return cached
+
+	# Query recent themes with media eager loaded in 1 SQL query
+	themes = (
+		db.query(ThemeConcept)
+		.join(MediaItem, ThemeConcept.media_id == MediaItem.id)
+		.options(joinedload(ThemeConcept.media))
+		.filter(
+			ThemeConcept.summary.isnot(None),
+			ThemeConcept.summary != "",
+			ThemeConcept.title.notin_([
+				"Based On Novel Or Book",
+				"based on novel or book",
+				"Allegory",
+				"allegory",
+				"Spy",
+				"spy",
+				"Unknown",
+				"unknown",
+			]),
 		)
-		.group_by(ThemeConcept.title)
-		.order_by(func.count(ThemeConcept.id).desc(), func.max(ThemeConcept.created_at).desc())
-		.limit(limit)
+		.order_by(ThemeConcept.created_at.desc())
+		.limit(limit * 10)
 		.all()
 	)
 
-	top_themes: list[TopThemeResponse] = []
-	for row in theme_counts:
-		theme = (
-			db.query(ThemeConcept)
-			.options(joinedload(ThemeConcept.media))
-			.filter(ThemeConcept.title == row.title)
-			.order_by(ThemeConcept.created_at.desc())
-			.first()
-		)
-		if not theme or not theme.media:
+	seen_media_ids: set[str] = set()
+	unique_movie_themes: list[ThemeConcept] = []
+	for t in themes:
+		if not t.media or t.media_id in seen_media_ids:
 			continue
+		seen_media_ids.add(t.media_id)
+		unique_movie_themes.append(t)
+		if len(unique_movie_themes) == limit:
+			break
 
-		top_themes.append(
-			TopThemeResponse(
-				title=row.title,
-				count=row.count,
-				latest_created_at=row.latest_created_at or theme.created_at,
-				summary=theme.summary,
-				media=TopThemeMediaResponse.model_validate(theme.media),
-			)
+	# Efficient bulk count of themes per selected media
+	media_ids = [t.media_id for t in unique_movie_themes]
+	counts_dict: dict[str, int] = {}
+	if media_ids:
+		counts_dict = dict(
+			db.query(ThemeConcept.media_id, func.count(ThemeConcept.id))
+			.filter(ThemeConcept.media_id.in_(media_ids))
+			.group_by(ThemeConcept.media_id)
+			.all()
 		)
 
-	return TopThemeListResponse(items=top_themes, total=len(top_themes))
+	top_themes = [
+		TopThemeResponse(
+			title=t.title,
+			count=counts_dict.get(t.media_id, 1),
+			latest_created_at=t.created_at,
+			summary=t.summary,
+			media=TopThemeMediaResponse.model_validate(t.media),
+		)
+		for t in unique_movie_themes
+	]
+
+	res = TopThemeListResponse(items=top_themes, total=len(top_themes))
+	cache.set(cache_key, res, ttl=300)
+	return res
 
 
 @router.get("/themes", response_model=ThemeListResponse)
@@ -141,6 +170,8 @@ def create_theme(
 	db.commit()
 	db.refresh(item)
 	cache.invalidate_user(current_user.id)
+	cache.invalidate_prefix("public:top_themes")
+	cache.invalidate_prefix("public:top_themes")
 	return ThemeResponse.model_validate(item)
 
 
@@ -297,6 +328,7 @@ async def generate_themes_for_media(
 		db.refresh(item)
 
 	cache.invalidate_user(current_user.id)
+	cache.invalidate_prefix("public:top_themes")
 
 	return {
 		"media_id": media_id,
@@ -322,6 +354,8 @@ def update_theme(
 	db.commit()
 	db.refresh(item)
 	cache.invalidate_user(current_user.id)
+	cache.invalidate_prefix("public:top_themes")
+	cache.invalidate_prefix("public:top_themes")
 	return ThemeResponse.model_validate(item)
 
 
@@ -335,6 +369,7 @@ def delete_theme(
 	db.delete(item)
 	db.commit()
 	cache.invalidate_user(current_user.id)
+	cache.invalidate_prefix("public:top_themes")
 	return {"message": "Theme deleted"}
 
 
@@ -349,4 +384,6 @@ def toggle_saved_for_later(
 	db.commit()
 	db.refresh(item)
 	cache.invalidate_user(current_user.id)
+	cache.invalidate_prefix("public:top_themes")
+	cache.invalidate_prefix("public:top_themes")
 	return ThemeResponse.model_validate(item)
