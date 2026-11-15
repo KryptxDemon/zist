@@ -233,7 +233,11 @@ function LandingContent() {
   const h2Size = Math.min(67, Math.max(38, width * 0.05));
   const statSize = Math.min(52, Math.max(30, width * 0.04));
 
-  const display = { fontFamily: fontFamily.authDisplay, color: brandColors.paper };
+  const display = {
+    fontFamily: fontFamily.authDisplay,
+    color: brandColors.paper,
+    includeFontPadding: false,
+  };
   // `.landing-about h2` — white over the photograph, with a soft shadow.
   const aboutTitle = {
     ...display,
@@ -604,7 +608,18 @@ function LandingContent() {
                   <Text style={[mono, { color: brandColors.accent }]}>
                     {theme.count} captures
                   </Text>
-                  <Text style={[display, { fontSize: 24, lineHeight: 30, marginTop: 13, marginBottom: 9, textTransform: "uppercase" }]}>
+                  <Text
+                    style={[
+                      display,
+                      {
+                        fontSize: 22,
+                        lineHeight: 32,
+                        marginTop: 10,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                      },
+                    ]}
+                  >
                     {theme.title}
                   </Text>
                   <Text style={[bodyFont, { lineHeight: 22, paddingRight: 24 }]}>

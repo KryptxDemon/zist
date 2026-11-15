@@ -4,6 +4,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.core.deps import get_current_user, get_db
 from app.models.ai_cache import AICache
 from app.models.media import MediaItem
@@ -31,6 +32,11 @@ def list_user_quotes(
     current_user: User = Depends(get_current_user),
 ):
     """Get all quotes across all media items belonging to the current user."""
+    cache_key = f"user:{current_user.id}:quotes:all"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     items = (
         db.query(QuoteItem)
         .join(MediaItem, QuoteItem.media_id == MediaItem.id)
@@ -38,7 +44,9 @@ def list_user_quotes(
         .order_by(QuoteItem.created_at.desc())
         .all()
     )
-    return QuoteListResponse(items=[QuoteResponse.model_validate(i) for i in items], total=len(items))
+    res = QuoteListResponse(items=[QuoteResponse.model_validate(i) for i in items], total=len(items))
+    cache.set(cache_key, res, ttl=60)
+    return res
 
 
 @router.get("/media/{media_id}/quotes", response_model=QuoteListResponse)
@@ -47,9 +55,16 @@ def list_quotes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    cache_key = f"user:{current_user.id}:quotes:{media_id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     _get_owned_media_or_404(db, media_id, current_user.id)
     items = db.query(QuoteItem).filter(QuoteItem.media_id == media_id).order_by(QuoteItem.created_at.desc()).all()
-    return QuoteListResponse(items=[QuoteResponse.model_validate(i) for i in items], total=len(items))
+    res = QuoteListResponse(items=[QuoteResponse.model_validate(i) for i in items], total=len(items))
+    cache.set(cache_key, res, ttl=60)
+    return res
 
 
 @router.post("/media/{media_id}/quotes", response_model=QuoteResponse, status_code=status.HTTP_201_CREATED)
@@ -64,6 +79,7 @@ def create_quote(
     db.add(item)
     db.commit()
     db.refresh(item)
+    cache.invalidate_user(current_user.id)
     return QuoteResponse.model_validate(item)
 
 
@@ -201,6 +217,8 @@ async def generate_quotes_for_media(
     for item in created_items + updated_items:
         db.refresh(item)
 
+    cache.invalidate_user(current_user.id)
+
     return {
         "media_id": media_id,
         "used_ai": used_ai, "used_model": used_model, "ai_error": ai_error,
@@ -227,6 +245,7 @@ def update_quote(
 
     db.commit()
     db.refresh(item)
+    cache.invalidate_user(current_user.id)
     return QuoteResponse.model_validate(item)
 
 
@@ -243,6 +262,7 @@ def delete_quote(
 
     db.delete(item)
     db.commit()
+    cache.invalidate_user(current_user.id)
     return {"message": "Quote deleted"}
 
 
@@ -260,4 +280,5 @@ def toggle_bookmark(
     item.is_bookmarked = not item.is_bookmarked
     db.commit()
     db.refresh(item)
+    cache.invalidate_user(current_user.id)
     return QuoteResponse.model_validate(item)

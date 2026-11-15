@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.core.deps import get_current_user, get_db
 from app.models.fact import FactItem
 from app.models.media import MediaItem
@@ -35,6 +36,11 @@ def list_media(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ):
+	cache_key = f"user:{current_user.id}:media:list:{page}:{limit}:{search}:{type}:{status_filter}:{sort}"
+	cached = cache.get(cache_key)
+	if cached is not None:
+		return cached
+
 	query = db.query(MediaItem).filter(MediaItem.user_id == current_user.id)
 
 	if search:
@@ -63,12 +69,14 @@ def list_media(
 		query = query.order_by(MediaItem.created_at.desc())
 
 	paged = paginate(query, page=page, limit=limit)
-	return MediaListResponse(
+	response = MediaListResponse(
 		items=[MediaResponse.model_validate(item) for item in paged["items"]],
 		total=paged["total"],
 		page=paged["page"],
 		limit=paged["limit"],
 	)
+	cache.set(cache_key, response, ttl=60)
+	return response
 
 
 @router.post("/media", response_model=MediaResponse, status_code=status.HTTP_201_CREATED)
@@ -86,6 +94,7 @@ def create_media(
 	db.add(item)
 	db.commit()
 	db.refresh(item)
+	cache.invalidate_user(current_user.id)
 	return MediaResponse.model_validate(item)
 
 
@@ -95,8 +104,14 @@ def get_media(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ):
+	cache_key = f"user:{current_user.id}:media:{media_id}"
+	cached = cache.get(cache_key)
+	if cached is not None:
+		return cached
 	item = _get_owned_media_or_404(db, media_id, current_user.id)
-	return MediaResponse.model_validate(item)
+	response = MediaResponse.model_validate(item)
+	cache.set(cache_key, response, ttl=60)
+	return response
 
 
 @router.patch("/media/{media_id}", response_model=MediaResponse)
@@ -121,6 +136,7 @@ def update_media(
 
 	db.commit()
 	db.refresh(item)
+	cache.invalidate_user(current_user.id)
 	return MediaResponse.model_validate(item)
 
 
@@ -133,6 +149,7 @@ def delete_media(
 	item = _get_owned_media_or_404(db, media_id, current_user.id)
 	db.delete(item)
 	db.commit()
+	cache.invalidate_user(current_user.id)
 	return {"message": "Media item deleted"}
 
 

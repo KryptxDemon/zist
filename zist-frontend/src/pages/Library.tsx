@@ -11,6 +11,7 @@ import { mediaService } from "@/services/mediaService";
 import { useToast } from "@/hooks/use-toast";
 import { MediaItem, MediaType, MediaStatus } from "@/types";
 import { parseTimestamp } from "@/lib/time";
+import { prefetchImages } from "@/utils/prefetch";
 import {
   Plus,
   Search,
@@ -61,6 +62,7 @@ export default function Library() {
       try {
         const data = await mediaService.getAll();
         setMedia(data);
+        prefetchImages(data.map((m) => m.coverUrl));
       } catch (error) {
         console.error("Failed to load media:", error);
         toast({

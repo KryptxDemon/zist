@@ -106,7 +106,7 @@ export function FriendsScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/(app)/(tabs)");
+      router.replace("/");
     }
   };
 

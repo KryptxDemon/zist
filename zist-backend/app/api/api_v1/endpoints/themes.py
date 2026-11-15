@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.cache import cache
 from app.core.deps import get_current_user, get_db
 from app.models.ai_cache import AICache
 from app.models.media import MediaItem
@@ -91,6 +92,11 @@ def list_user_themes(
 	current_user: User = Depends(get_current_user),
 ):
 	"""Get all themes across all media items belonging to the current user."""
+	cache_key = f"user:{current_user.id}:themes:all"
+	cached = cache.get(cache_key)
+	if cached is not None:
+		return cached
+
 	items = (
 		db.query(ThemeConcept)
 		.join(MediaItem, ThemeConcept.media_id == MediaItem.id)
@@ -98,7 +104,9 @@ def list_user_themes(
 		.order_by(ThemeConcept.updated_at.desc())
 		.all()
 	)
-	return ThemeListResponse(items=[ThemeResponse.model_validate(i) for i in items], total=len(items))
+	res = ThemeListResponse(items=[ThemeResponse.model_validate(i) for i in items], total=len(items))
+	cache.set(cache_key, res, ttl=60)
+	return res
 
 
 @router.get("/media/{media_id}/themes", response_model=ThemeListResponse)
@@ -107,9 +115,16 @@ def list_themes(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ):
+	cache_key = f"user:{current_user.id}:themes:{media_id}"
+	cached = cache.get(cache_key)
+	if cached is not None:
+		return cached
+
 	_get_owned_media_or_404(db, media_id, current_user.id)
 	items = db.query(ThemeConcept).filter(ThemeConcept.media_id == media_id).order_by(ThemeConcept.updated_at.desc()).all()
-	return ThemeListResponse(items=[ThemeResponse.model_validate(i) for i in items], total=len(items))
+	res = ThemeListResponse(items=[ThemeResponse.model_validate(i) for i in items], total=len(items))
+	cache.set(cache_key, res, ttl=60)
+	return res
 
 
 @router.post("/media/{media_id}/themes", response_model=ThemeResponse, status_code=status.HTTP_201_CREATED)
@@ -125,6 +140,7 @@ def create_theme(
 	db.add(item)
 	db.commit()
 	db.refresh(item)
+	cache.invalidate_user(current_user.id)
 	return ThemeResponse.model_validate(item)
 
 
@@ -280,6 +296,8 @@ async def generate_themes_for_media(
 	for item in created_items + updated_items:
 		db.refresh(item)
 
+	cache.invalidate_user(current_user.id)
+
 	return {
 		"media_id": media_id,
 		"used_ai": used_ai, "used_model": used_model, "ai_error": ai_error,
@@ -303,6 +321,7 @@ def update_theme(
 
 	db.commit()
 	db.refresh(item)
+	cache.invalidate_user(current_user.id)
 	return ThemeResponse.model_validate(item)
 
 
@@ -315,6 +334,7 @@ def delete_theme(
 	item = _get_owned_theme_or_404(db, theme_id, current_user.id)
 	db.delete(item)
 	db.commit()
+	cache.invalidate_user(current_user.id)
 	return {"message": "Theme deleted"}
 
 
@@ -328,4 +348,5 @@ def toggle_saved_for_later(
 	item.saved_for_later = not item.saved_for_later
 	db.commit()
 	db.refresh(item)
+	cache.invalidate_user(current_user.id)
 	return ThemeResponse.model_validate(item)

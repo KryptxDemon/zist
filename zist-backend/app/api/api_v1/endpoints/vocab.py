@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.core.deps import get_current_user, get_db
 from app.models.ai_cache import AICache
 from app.models.media import MediaItem
@@ -62,6 +63,11 @@ def list_user_vocab(
     current_user: User = Depends(get_current_user),
 ):
     """Get all vocabulary items across all media items belonging to the current user."""
+    cache_key = f"user:{current_user.id}:vocab:all:{search}:{learned}:{sort}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     query = (
         db.query(VocabItem)
         .join(MediaItem, VocabItem.media_id == MediaItem.id)
@@ -83,7 +89,9 @@ def list_user_vocab(
         query = query.order_by(VocabItem.created_at.desc())
 
     items = query.all()
-    return VocabListResponse(items=[_serialize_vocab(i) for i in items], total=len(items))
+    res = VocabListResponse(items=[_serialize_vocab(i) for i in items], total=len(items))
+    cache.set(cache_key, res, ttl=60)
+    return res
 
 
 @router.get("/media/{media_id}/vocab", response_model=VocabListResponse)
@@ -95,6 +103,11 @@ def list_media_vocab(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    cache_key = f"user:{current_user.id}:vocab:{media_id}:{search}:{learned}:{sort}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     _get_owned_media_or_404(db, media_id, current_user.id)
     query = db.query(VocabItem).filter(VocabItem.media_id == media_id)
 
@@ -113,7 +126,9 @@ def list_media_vocab(
         query = query.order_by(VocabItem.created_at.desc())
 
     items = query.all()
-    return VocabListResponse(items=[_serialize_vocab(i) for i in items], total=len(items))
+    res = VocabListResponse(items=[_serialize_vocab(i) for i in items], total=len(items))
+    cache.set(cache_key, res, ttl=60)
+    return res
 
 
 @router.post("/media/{media_id}/vocab", response_model=VocabResponse, status_code=status.HTTP_201_CREATED)
@@ -131,6 +146,7 @@ def create_vocab(
     db.add(item)
     db.commit()
     db.refresh(item)
+    cache.invalidate_user(current_user.id)
     return _serialize_vocab(item)
 
 
@@ -155,6 +171,7 @@ def update_vocab(
 
     db.commit()
     db.refresh(item)
+    cache.invalidate_user(current_user.id)
     return _serialize_vocab(item)
 
 
@@ -171,6 +188,7 @@ def delete_vocab(
 
     db.delete(item)
     db.commit()
+    cache.invalidate_user(current_user.id)
     return {"message": "Vocab deleted"}
 
 
@@ -188,6 +206,7 @@ def toggle_learned(
     item.is_learned = not item.is_learned
     db.commit()
     db.refresh(item)
+    cache.invalidate_user(current_user.id)
     return _serialize_vocab(item)
 
 

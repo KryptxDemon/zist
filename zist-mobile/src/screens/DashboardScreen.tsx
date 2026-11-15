@@ -65,6 +65,7 @@ import {
 } from "@/services/mediaService";
 import type { MediaItem, QuoteItem, ThemeConcept, VocabItem } from "@/types";
 import { isWithinLastDays, parseTimestamp } from "@/lib/time";
+import { prefetchImages } from "@/lib/prefetch";
 
 /** "Recently added" window filter. */
 type RangeValue = "7" | "30" | "90" | "all";

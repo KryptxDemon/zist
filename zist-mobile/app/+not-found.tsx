@@ -14,7 +14,7 @@ export default function NotFound() {
         title="Page not found"
         description="The screen you were looking for doesn't exist in the app."
         action={
-          <Link href="/(app)/(tabs)" asChild>
+          <Link href="/" asChild>
             <Button label="Back to dashboard" />
           </Link>
         }

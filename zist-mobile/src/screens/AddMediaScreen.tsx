@@ -36,6 +36,8 @@ import {
   type MediaResultItem,
 } from "@/components/library/mediaResult";
 
+import { prefetchImages } from "@/lib/prefetch";
+
 type Mode = "discover" | "manual";
 
 interface AddFormData {
@@ -276,6 +278,10 @@ export function AddMediaScreen() {
           const results = await mediaSearchService.searchMediaGrouped(query);
           if (requestId !== searchRequestId.current) return;
           setGroupedResults(results);
+          prefetchImages([
+            ...(results.moviesTv || []).map((m) => m.cover_url),
+            ...(results.books || []).map((b) => b.cover_url),
+          ]);
         } catch (error) {
           if (requestId !== searchRequestId.current) return;
           setGroupedResults({ moviesTv: [], books: [] });

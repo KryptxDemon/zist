@@ -17,7 +17,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 30_000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 30 * 60 * 1000, // 30 minutes
       refetchOnWindowFocus: false,
     },
   },
@@ -42,6 +43,7 @@ function ThemedStack() {
         <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
         {/* Signed-out home (the web's marketing landing page). */}
         <Stack.Screen name="welcome" options={{ animation: "fade" }} />
+        <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />
       </Stack>
     </View>
   );

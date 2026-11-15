@@ -1,8 +1,41 @@
 import asyncio
+import time
 
 import httpx
 
 from app.core.config import settings
+
+_tmdb_cache: dict[str, tuple[float, any]] = {}
+CACHE_TTL = 900  # 15 minutes
+
+
+def _get_cached(key: str):
+	if key in _tmdb_cache:
+		timestamp, data = _tmdb_cache[key]
+		if time.time() - timestamp < CACHE_TTL:
+			return data
+		del _tmdb_cache[key]
+	return None
+
+
+def _set_cached(key: str, data: any):
+	if len(_tmdb_cache) > 500:
+		oldest_key = min(_tmdb_cache.keys(), key=lambda k: _tmdb_cache[k][0])
+		del _tmdb_cache[oldest_key]
+	_tmdb_cache[key] = (time.time(), data)
+
+
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+	global _client
+	if _client is None or _client.is_closed:
+		_client = httpx.AsyncClient(
+			timeout=8.0,
+			limits=httpx.Limits(max_keepalive_connections=20, max_connections=40),
+		)
+	return _client
 
 
 def _image_url(path: str | None) -> str | None:
@@ -53,13 +86,20 @@ async def _tmdb_get_json(path: str, params: dict | None = None) -> dict | None:
 	"""Generic GET against the TMDb v3 API. Returns the parsed JSON body or None."""
 	if not settings.TMDB_API_KEY:
 		return None
+	cache_key = f"json:{path}:{sorted((params or {}).items())}"
+	cached = _get_cached(cache_key)
+	if cached is not None:
+		return cached
+
 	url = f"{settings.TMDB_BASE_URL}{path}"
 	merged = {"api_key": settings.TMDB_API_KEY, **(params or {})}
 	try:
-		async with httpx.AsyncClient(timeout=10) as client:
-			response = await client.get(url, params=merged)
-			response.raise_for_status()
-		return response.json()
+		client = _get_client()
+		response = await client.get(url, params=merged)
+		response.raise_for_status()
+		data = response.json()
+		_set_cached(cache_key, data)
+		return data
 	except Exception:
 		return None
 
@@ -126,45 +166,90 @@ async def _enrich_with_creator(item: dict, media_type: str) -> dict:
 async def _tmdb_get(path: str, query: str, params: dict | None = None) -> list[dict]:
 	if not settings.TMDB_API_KEY:
 		return []
+	cache_key = f"get:{path}:{query.strip().lower()}:{sorted((params or {}).items())}"
+	cached = _get_cached(cache_key)
+	if cached is not None:
+		return cached
+
 	url = f"{settings.TMDB_BASE_URL}{path}"
 	merged = {"api_key": settings.TMDB_API_KEY, "query": query, **(params or {})}
 
 	try:
-		async with httpx.AsyncClient(timeout=10) as client:
-			response = await client.get(url, params=merged)
-			response.raise_for_status()
+		client = _get_client()
+		response = await client.get(url, params=merged)
+		response.raise_for_status()
 		payload = response.json()
-		return payload.get("results", [])
+		results = payload.get("results", [])
+		_set_cached(cache_key, results)
+		return results
 	except Exception:
 		return []
 
 
 async def search_movies(query: str) -> list[dict]:
+	cache_key = f"search_movies:{query.strip().lower()}"
+	cached = _get_cached(cache_key)
+	if cached is not None:
+		return cached
+
 	items = await _tmdb_get("/search/movie", query)
-	return [
-		await _enrich_with_creator(item, "movie")
-		for item in items[:20]
-	]
+	if not items:
+		return []
+
+	# Concurrently enrich top 6 results
+	enriched_top = await asyncio.gather(
+		*[_enrich_with_creator(item, "movie") for item in items[:6]]
+	)
+	remaining = [_normalize_tmdb_item(item, "movie") for item in items[6:20]]
+	results = list(enriched_top) + remaining
+	_set_cached(cache_key, results)
+	return results
 
 
 async def search_tv(query: str) -> list[dict]:
+	cache_key = f"search_tv:{query.strip().lower()}"
+	cached = _get_cached(cache_key)
+	if cached is not None:
+		return cached
+
 	items = await _tmdb_get("/search/tv", query)
-	return [
-		await _enrich_with_creator(item, "tv")
-		for item in items[:20]
-	]
+	if not items:
+		return []
+
+	# Concurrently enrich top 6 results
+	enriched_top = await asyncio.gather(
+		*[_enrich_with_creator(item, "tv") for item in items[:6]]
+	)
+	remaining = [_normalize_tmdb_item(item, "tv") for item in items[6:20]]
+	results = list(enriched_top) + remaining
+	_set_cached(cache_key, results)
+	return results
 
 
 async def search_multi(query: str) -> list[dict]:
+	cache_key = f"search_multi:{query.strip().lower()}"
+	cached = _get_cached(cache_key)
+	if cached is not None:
+		return cached
+
 	items = await _tmdb_get("/search/multi", query)
-	results = await asyncio.gather(
+	filtered = [i for i in items if i.get("media_type") in {"movie", "tv"}][:20]
+	if not filtered:
+		return []
+
+	enriched_top = await asyncio.gather(
 		*[
 			_enrich_with_creator(item, item.get("media_type") or "movie")
-			for item in items[:30]
-			if item.get("media_type") in {"movie", "tv"}
+			for item in filtered[:8]
 		]
 	)
-	return list(results)
+	remaining = [
+		_normalize_tmdb_item(item, item.get("media_type") or "movie")
+		for item in filtered[8:]
+	]
+	results = list(enriched_top) + remaining
+	_set_cached(cache_key, results)
+	return results
 
 
 async def get_movie_by_tmdb_id(tmdb_id: str) -> dict | None:

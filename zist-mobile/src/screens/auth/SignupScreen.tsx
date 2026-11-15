@@ -115,7 +115,7 @@ export function SignupScreen() {
     try {
       await signup(email, password, displayName, firstName, lastName);
       toast({ title: "Welcome to Zist!", description: "Your account has been created successfully." });
-      router.replace("/(app)/(tabs)");
+      router.replace("/");
     } catch (error) {
       toast({
         title: "Signup failed",
@@ -137,7 +137,7 @@ export function SignupScreen() {
       }
       await reload();
       toast({ title: "Welcome to Zist!", description: "Your account has been created successfully." });
-      router.replace("/(app)/(tabs)");
+      router.replace("/");
     } catch (error) {
       setIsGoogleLoading(false);
       toast({

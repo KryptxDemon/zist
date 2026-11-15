@@ -112,7 +112,7 @@ export function LoginScreen() {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      router.replace("/(app)/(tabs)");
+      router.replace("/");
     } catch (error) {
       toast({
         title: "Login failed",
@@ -134,7 +134,7 @@ export function LoginScreen() {
       }
       await reload();
       toast({ title: "Welcome back!", description: "You have successfully logged in." });
-      router.replace("/(app)/(tabs)");
+      router.replace("/");
     } catch (error) {
       setIsGoogleLoading(false);
       toast({

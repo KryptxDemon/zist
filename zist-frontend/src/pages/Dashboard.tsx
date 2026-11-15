@@ -22,6 +22,7 @@ import {
 import { storage, STORAGE_KEYS } from "@/services/storage";
 import { MediaItem, QuoteItem, ThemeConcept, VocabItem } from "@/types";
 import { isWithinLastDays, parseTimestamp } from "@/lib/time";
+import { prefetchImages } from "@/utils/prefetch";
 
 const TYPE_FALLBACKS: Record<string, string> = {
   movie:
@@ -283,6 +284,7 @@ export default function Dashboard() {
           ]);
 
         setMedia(mediaData);
+        prefetchImages(mediaData.map((m) => m.coverUrl));
         setThemes(allThemes);
         setVocab(allVocab);
         setQuotes(allQuotes);

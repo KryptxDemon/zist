@@ -180,7 +180,7 @@ export function UserProfileScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/(app)/(tabs)");
+      router.replace("/");
     }
   };
 

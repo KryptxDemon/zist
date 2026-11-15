@@ -25,6 +25,7 @@ import {
 } from "@/components/ui";
 import { PageHeader } from "@/components/layout/AppHeader";
 import { MediaGridCard } from "@/components/library/MediaGridCard";
+import { prefetchImages } from "@/lib/prefetch";
 
 type SortOption = "recent" | "title" | "themes" | "vocab";
 
@@ -83,6 +84,7 @@ export function LibraryScreen() {
       try {
         const data = await mediaService.getAll();
         setMedia(data);
+        prefetchImages(data.map((m) => m.coverUrl));
       } catch (error) {
         // Kept identical to the web's `console.error` so a failing request is
         // visible in the Metro log — the toast is deliberately generic.

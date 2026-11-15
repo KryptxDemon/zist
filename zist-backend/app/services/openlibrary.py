@@ -1,8 +1,28 @@
 import asyncio
+import time
 
 import httpx
 
 from app.core.config import settings
+
+_books_cache: dict[str, tuple[float, list[dict]]] = {}
+CACHE_TTL = 900  # 15 minutes
+
+
+def _get_cached_books(key: str):
+	if key in _books_cache:
+		timestamp, data = _books_cache[key]
+		if time.time() - timestamp < CACHE_TTL:
+			return data
+		del _books_cache[key]
+	return None
+
+
+def _set_cached_books(key: str, data: list[dict]):
+	if len(_books_cache) > 300:
+		oldest_key = min(_books_cache.keys(), key=lambda k: _books_cache[k][0])
+		del _books_cache[oldest_key]
+	_books_cache[key] = (time.time(), data)
 
 
 def _coerce_description(value) -> str | None:
@@ -154,6 +174,11 @@ async def search_books(query: str) -> list[dict]:
 	if not normalized:
 		return []
 
+	cache_key = f"books:{normalized.lower()}"
+	cached = _get_cached_books(cache_key)
+	if cached is not None:
+		return cached
+
 	search_attempts = [
 		{"q": normalized},
 		{"title": normalized},
@@ -161,17 +186,21 @@ async def search_books(query: str) -> list[dict]:
 	]
 
 	for params in search_attempts:
-		docs = await _search_openlibrary({**params, "limit": 20})
+		docs = await _search_openlibrary({**params, "limit": 15})
 		if docs:
-			limited = docs[:20]
-			descriptions = await _enrich_books(limited)
-			return [
-				_normalize_book(doc, description=description)
-				for doc, description in zip(limited, descriptions)
+			limited = docs[:15]
+			# Enrich only the top 3 with individual work descriptions to keep response fast
+			descriptions = await _enrich_books(limited[:3])
+			results = [
+				_normalize_book(doc, description=descriptions[i] if i < len(descriptions) else None)
+				for i, doc in enumerate(limited)
 			]
+			_set_cached_books(cache_key, results)
+			return results
 
 	google_books = await _search_google_books(normalized)
 	if google_books:
+		_set_cached_books(cache_key, google_books)
 		return google_books
 
 	return []

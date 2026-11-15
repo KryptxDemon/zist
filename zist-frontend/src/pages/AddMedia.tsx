@@ -34,6 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { prefetchImages } from "@/utils/prefetch";
+
 type SearchResultItem = MediaResultItem;
 
 const mediaTypes: { value: MediaType; label: string }[] = [
@@ -288,6 +290,10 @@ export default function AddMedia() {
         try {
           const results = await mediaSearchService.searchMediaGrouped(query);
           setGroupedResults(results);
+          prefetchImages([
+            ...(results.moviesTv || []).map((m) => m.cover_url),
+            ...(results.books || []).map((b) => b.cover_url),
+          ]);
         } finally {
           setIsSearching(false);
         }
