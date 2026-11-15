@@ -707,7 +707,7 @@ export function FeedPostCard({
             />
             <div className="flex-1 flex gap-2">
               <Textarea
-                placeholder="Inscribe a considered remark... (Enter to publish)"
+                placeholder="Write a comment... (Enter to post)"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 rows={1}

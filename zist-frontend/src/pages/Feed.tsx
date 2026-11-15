@@ -187,6 +187,7 @@ export default function Feed() {
             </div>
 
             {/* Shortcuts Navigation Card */}
+            {/* Shortcuts Navigation Card */}
             <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur p-2.5 space-y-1 shadow-xs">
               <div className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Shortcuts
@@ -196,7 +197,7 @@ export default function Feed() {
                 className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium bg-primary/10 text-primary transition-colors"
               >
                 <Rss className="h-4 w-4" />
-                <span>Dispatches</span>
+                <span>Community Feed</span>
               </Link>
               <Link
                 to="/app/library"
@@ -206,18 +207,18 @@ export default function Feed() {
                 <span>Media Library</span>
               </Link>
               <Link
-                to="/app/vocab"
+                to="/app/vocabulary"
                 className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
               >
                 <BookOpen className="h-4 w-4" />
-                <span>Vocabulary Vault</span>
+                <span>Vocabulary</span>
               </Link>
               <Link
-                to="/app/themes"
+                to="/app/insights"
                 className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
               >
                 <Lightbulb className="h-4 w-4" />
-                <span>Themes & Motifs</span>
+                <span>Themes & Insights</span>
               </Link>
               <Link
                 to="/app/quiz"
@@ -243,17 +244,17 @@ export default function Feed() {
             </div>
           </aside>
 
-          {/* Center Column: Dispatches Feed */}
-          <main className="flex-1 max-w-2xl min-w-0 space-y-7">
-            {/* Header & Editorial Intro */}
+          {/* Center Column: Community Feed */}
+          <main className="flex-1 max-w-2xl min-w-0 space-y-6">
+            {/* Header & Search */}
             <div className="space-y-4">
               <div className="flex flex-col gap-3.5 sm:flex-row sm:items-baseline sm:justify-between border-b border-border/40 pb-5">
                 <div>
                   <h1 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-                    Dispatches
+                    Community Feed
                   </h1>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 font-sans leading-relaxed">
-                    A quiet forum for marginalia, cinematic reflections, and critical thought.
+                    See what friends and the community are watching, reading, and sharing.
                   </p>
                 </div>
                 <FeedComposeDialog
@@ -263,47 +264,12 @@ export default function Feed() {
                 />
               </div>
 
-              {/* Curated Search */}
+              {/* Search */}
               <MediaDiscoverySearch
-                placeholder="Search titles, authors, and directors across the archive…"
+                placeholder="Search titles, authors, and creators across the archive…"
                 className="w-full"
               />
             </div>
-
-            {/* Noteworthy Works in Discourse */}
-            {mediaHighlights.length > 0 && (
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground tracking-[0.16em] uppercase">
-                    Works in Discourse
-                  </span>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
-                  {mediaHighlights.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group relative shrink-0 w-20 sm:w-24 cursor-pointer text-left"
-                      onClick={() => {
-                        const el = document.getElementById(`post-${item.id}`);
-                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      }}
-                    >
-                      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-md">
-                        <img
-                          src={item.cover}
-                          alt={item.title}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-75" />
-                      </div>
-                      <p className="mt-1 text-[11px] font-medium text-foreground/90 truncate text-center">
-                        {item.title}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Filter Controls: Public / Circle + Category Pills */}
             <div className="space-y-3">
@@ -314,16 +280,16 @@ export default function Feed() {
                 <TabsList className="w-full grid grid-cols-2 p-1 bg-accent/30 border border-border/50 rounded-xl">
                   <TabsTrigger value="global" className="gap-2 text-xs font-medium py-1.5">
                     <Globe className="h-3.5 w-3.5 opacity-70" />
-                    The Public Forum
+                    Public Feed
                   </TabsTrigger>
                   <TabsTrigger value="friends" className="gap-2 text-xs font-medium py-1.5">
                     <Users className="h-3.5 w-3.5 opacity-70" />
-                    Fellow Readers (Friends)
+                    Friends Only
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              {/* Refined Literary Category Pills */}
+              {/* Category Pills */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                 <button
                   type="button"
@@ -336,7 +302,7 @@ export default function Feed() {
                   )}
                 >
                   <Library className="h-3 w-3 opacity-70" />
-                  All Reflections
+                  All Posts
                 </button>
 
                 <button
@@ -350,7 +316,7 @@ export default function Feed() {
                   )}
                 >
                   <Film className="h-3 w-3 opacity-75" />
-                  Cinema & Books
+                  Movies & Books
                 </button>
 
                 <button
@@ -364,7 +330,7 @@ export default function Feed() {
                   )}
                 >
                   <Quote className="h-3 w-3 opacity-75" />
-                  Passages
+                  Quotes
                 </button>
 
                 <button
@@ -378,7 +344,7 @@ export default function Feed() {
                   )}
                 >
                   <Lightbulb className="h-3 w-3 opacity-75" />
-                  Themes & Motifs
+                  Themes
                 </button>
 
                 <button
@@ -392,12 +358,12 @@ export default function Feed() {
                   )}
                 >
                   <BookOpen className="h-3 w-3 opacity-75" />
-                  Lexicon
+                  Vocabulary
                 </button>
               </div>
             </div>
 
-            {/* Dispatches List or Empty States */}
+            {/* Posts List or Empty States */}
             {isLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -409,22 +375,22 @@ export default function Feed() {
                 icon={Rss}
                 title={
                   contentFilter !== "all"
-                    ? `No ${contentFilter} entries recorded`
+                    ? `No ${contentFilter} posts yet`
                     : audienceFilter === "friends"
-                      ? "Your literary circle is quiet"
-                      : "The forum awaits its first entry"
+                      ? "No posts from friends yet"
+                      : "The community feed is quiet"
                 }
                 description={
                   contentFilter !== "all"
-                    ? "No reader has yet inscribed notes under this category. Offer the first observation."
+                    ? "Nobody has shared a post under this category yet. Be the first to share one!"
                     : audienceFilter === "friends"
-                      ? "Follow fellow readers and cinephiles to see their marginalia here, or explore the Public Forum."
-                      : "Inscribe your considered thoughts on a recent volume, scene, or passage to inaugurate the discourse."
+                      ? "Connect with friends to see their notes here, or check out the Public Feed."
+                      : "Share your thoughts, favorite quotes, or new vocabulary to get the conversation started."
                 }
                 action={
                   <Button onClick={() => setIsComposeOpen(true)} className="gap-2 text-xs font-medium">
                     <PenTool className="h-3.5 w-3.5" />
-                    Inscribe a Reflection
+                    Share a Thought
                   </Button>
                 }
               />
@@ -443,8 +409,50 @@ export default function Feed() {
             )}
           </main>
 
-          {/* Right Column: Friends, User Search, Literary Circle */}
+          {/* Right Column: Trending Works, Friends, User Search */}
           <aside className="w-80 hidden xl:block shrink-0 sticky top-20 self-start space-y-5">
+            {/* Works in Discourse Widget */}
+            {mediaHighlights.length > 0 && (
+              <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Film className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                      Works in Discourse
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    Trending
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {mediaHighlights.slice(0, 6).map((item) => (
+                    <div
+                      key={item.id}
+                      className="group relative cursor-pointer text-left"
+                      onClick={() => {
+                        const el = document.getElementById(`post-${item.id}`);
+                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }}
+                      title={item.title}
+                    >
+                      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border/60 transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-md">
+                        <img
+                          src={item.cover}
+                          alt={item.title}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+                      </div>
+                      <p className="mt-1 text-[10px] font-medium text-foreground/90 truncate text-center">
+                        {item.title}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Find Friends Search Widget */}
             <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
@@ -472,7 +480,7 @@ export default function Feed() {
               />
             </div>
 
-            {/* Literary Circle Friends List Widget */}
+            {/* Friends List Widget */}
             <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -538,14 +546,14 @@ export default function Feed() {
               )}
             </div>
 
-            {/* Reflection Callout */}
+            {/* Share a Thought Prompt */}
             <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card/80 to-accent/20 p-4 space-y-2.5 shadow-xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                 <PenTool className="h-3.5 w-3.5 text-primary" />
-                <span>Reading or Watching something?</span>
+                <span>Watching or reading something?</span>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Turn your thoughts, favourite lines, or newly discovered words into a dispatch for fellow cinephiles.
+                Turn your thoughts, favorite quotes, or memorable moments into a post for your community.
               </p>
               <Button
                 size="sm"
@@ -554,7 +562,7 @@ export default function Feed() {
                 className="w-full text-xs font-medium gap-1.5 mt-1"
               >
                 <PenTool className="h-3 w-3" />
-                Inscribe Reflection
+                Share a Thought
               </Button>
             </div>
           </aside>

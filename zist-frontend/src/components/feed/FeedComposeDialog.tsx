@@ -126,13 +126,13 @@ export function FeedComposeDialog({
         <DialogTrigger asChild>
           <Button size="sm" className="gap-2 font-medium text-xs rounded-lg shadow-xs">
             <PenTool className="h-3.5 w-3.5" />
-            Inscribe Reflection
+            Share a Thought
           </Button>
         </DialogTrigger>
       ) : null}
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl tracking-tight">Inscribe a Reflection</DialogTitle>
+          <DialogTitle className="font-serif text-xl tracking-tight">Share a Thought</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
@@ -147,19 +147,19 @@ export function FeedComposeDialog({
             <TabsList className="w-full grid grid-cols-4 p-1 bg-accent/30 border border-border/50 rounded-lg">
               <TabsTrigger value="media" className="gap-1.5 text-xs">
                 <Film className="h-3.5 w-3.5 opacity-70" />
-                Work
+                Media
               </TabsTrigger>
               <TabsTrigger value="theme" className="gap-1.5 text-xs">
                 <Lightbulb className="h-3.5 w-3.5 opacity-70" />
-                Motif
+                Theme
               </TabsTrigger>
               <TabsTrigger value="vocab" className="gap-1.5 text-xs">
                 <BookOpen className="h-3.5 w-3.5 opacity-70" />
-                Lexicon
+                Vocabulary
               </TabsTrigger>
               <TabsTrigger value="quote" className="gap-1.5 text-xs">
                 <Quote className="h-3.5 w-3.5 opacity-70" />
-                Passage
+                Quote
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -167,23 +167,23 @@ export function FeedComposeDialog({
           {/* Item Selector */}
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
-              Select {postType === "media" ? "Film or Book" : postType === "quote" ? "Passage" : postType} from Archive
+              Select {postType === "media" ? "Movie or Book" : postType === "quote" ? "Quote" : postType} from Library
             </Label>
             {isLoadingContent ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Accessing your archive...
+                Loading your library...
               </div>
             ) : items.length === 0 ? (
-              <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/80 p-4 text-center font-serif italic">
-                No recorded entries found. Inscribe some into your library first.
+              <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/80 p-4 text-center italic">
+                No saved items found. Add some to your library first.
               </p>
             ) : (
               <Select value={selectedId} onValueChange={setSelectedId}>
                 <SelectTrigger className="w-full text-xs">
                   <SelectValue
                     placeholder={`Select a ${
-                      postType === "media" ? "work" : postType === "quote" ? "passage" : postType
+                      postType === "media" ? "title" : postType === "quote" ? "quote" : postType
                     }…`}
                   />
                 </SelectTrigger>
@@ -240,7 +240,7 @@ export function FeedComposeDialog({
           {/* Visibility selector */}
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
-              Circulation
+              Who can see this
             </Label>
             <Select
               value={visibility}
@@ -250,17 +250,17 @@ export function FeedComposeDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="global" className="text-xs">Public Forum (Open to all)</SelectItem>
-                <SelectItem value="friends" className="text-xs">Fellow Readers (Friends only)</SelectItem>
+                <SelectItem value="global" className="text-xs">Public Feed (Everyone)</SelectItem>
+                <SelectItem value="friends" className="text-xs">Friends Only</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Marginalia & Critical Reflection */}
+          {/* Your Thoughts */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
-                Marginalia & Reflection
+                Your Thoughts
               </Label>
               <button
                 type="button"
@@ -274,8 +274,8 @@ export function FeedComposeDialog({
             <Textarea
               placeholder={
                 postType === "media"
-                  ? "Record your critical thoughts, reflections, or commentary on this work..."
-                  : "Reflect upon why this passage, motif, or word arrested your attention..."
+                  ? "What did you think of this? Add your commentary, favorite themes, or thoughts..."
+                  : "Why did this stand out to you? Add a thought or reflection..."
               }
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
@@ -288,7 +288,7 @@ export function FeedComposeDialog({
           {showImageInput && (
             <div className="space-y-1.5 animate-fade-in">
               <Label className="text-[11px] text-muted-foreground">
-                Artifact / Poster Link (optional)
+                Poster or Image Link (optional)
               </Label>
               <Input
                 placeholder="https://example.com/poster.jpg"
@@ -316,7 +316,7 @@ export function FeedComposeDialog({
             className="w-full font-medium py-4 text-xs tracking-wide"
           >
             {isPosting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
-            Publish Reflection
+            Post to Feed
           </Button>
         </div>
       </DialogContent>

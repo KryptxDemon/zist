@@ -84,7 +84,7 @@ export function DirectShareFeedDialog({
         <DialogHeader>
           <DialogTitle className="font-serif text-lg tracking-tight flex items-center gap-2">
             <Rss className="h-4 w-4 opacity-70" />
-            Inscribe to Dispatches
+            Share to Feed
           </DialogTitle>
         </DialogHeader>
 
@@ -145,7 +145,7 @@ export function DirectShareFeedDialog({
                 }`}
               >
                 <Users className="h-3.5 w-3.5 opacity-70" />
-                Fellow Readers Only
+                Friends Only
               </button>
             </div>
           </div>
@@ -153,12 +153,12 @@ export function DirectShareFeedDialog({
           {/* Caption Textarea */}
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
-              Marginalia & Critical Notes
+              Your Thoughts
             </Label>
             <Textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="What makes this work memorable? Record your reflections or commentary..."
+              placeholder="What did you think of this? Add a note, quote context, or commentary..."
               rows={3}
               className="resize-none text-xs sm:text-sm font-sans"
             />
@@ -183,7 +183,7 @@ export function DirectShareFeedDialog({
               className="gap-2 text-xs font-medium"
             >
               {isPosting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              Publish Reflection
+              Share Post
             </Button>
           </div>
         </div>
