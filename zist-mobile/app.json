@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zist",
     "slug": "zist-mobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "zist",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "app.zist.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#080909",
