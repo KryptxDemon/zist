@@ -42,18 +42,27 @@ export function DirectShareFeedDialog({
   if (!item) return null;
 
   const handlePost = async () => {
+    if (!item.id) {
+      toast({
+        title: "Could not publish reflection",
+        description: "Content ID is missing. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsPosting(true);
     try {
       await feedService.createPost({
         type: item.type,
         contentId: item.id,
         caption: caption.trim() || undefined,
-        imageUrl: item.coverUrl,
+        imageUrl: item.coverUrl || undefined,
         visibility,
       });
       toast({
-        title: "Reflection published",
-        description: `Your thoughts on this ${item.type} are now shared with fellow readers.`,
+        title: "Post shared to feed",
+        description: `Your ${item.type === "vocab" ? "vocabulary" : item.type} has been shared.`,
       });
       setCaption("");
       onOpenChange(false);
@@ -80,7 +89,7 @@ export function DirectShareFeedDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-xl">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md rounded-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-lg tracking-tight flex items-center gap-2">
             <Rss className="h-4 w-4 opacity-70" />
@@ -102,7 +111,7 @@ export function DirectShareFeedDialog({
               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.14em]">
                 <Icon className="h-3 w-3" />
                 <span>
-                  {item.type === "quote" ? "Passage" : item.type === "vocab" ? "Lexicon" : item.type}
+                  {item.type === "quote" ? "Quote" : item.type === "vocab" ? "Vocabulary" : item.type === "theme" ? "Theme" : "Media"}
                   {item.mediaTitle && item.type !== "media" ? ` · ${item.mediaTitle}` : ""}
                 </span>
               </div>
@@ -117,10 +126,10 @@ export function DirectShareFeedDialog({
             </div>
           </div>
 
-          {/* Circulation toggle */}
+          {/* Visibility toggle */}
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">
-              Circulation
+              Who can see this
             </Label>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -133,7 +142,7 @@ export function DirectShareFeedDialog({
                 }`}
               >
                 <Globe className="h-3.5 w-3.5 opacity-70" />
-                Public Forum
+                Public Feed
               </button>
               <button
                 type="button"

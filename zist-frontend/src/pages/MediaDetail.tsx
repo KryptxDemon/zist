@@ -227,102 +227,164 @@ export default function MediaDetail() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto pb-20 md:pb-0 animate-fade-in">
+      <div className="max-w-5xl mx-auto pb-20 md:pb-0 animate-fade-in w-full max-w-full overflow-hidden">
         {/* Header */}
-        <div className="flex items-start gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/app/library")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 flex-wrap mb-2">
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground truncate">
-                {media.title}
-              </h1>
-              <MediaTypeBadge type={media.type} size="sm" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="cursor-pointer transition-transform hover:scale-105 focus:outline-none"
-                    title="Click to change status"
-                  >
-                    <StatusBadge status={media.status} size="sm" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-36">
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange("planned")}
-                    className="cursor-pointer"
-                  >
-                    Planned
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange("in-progress")}
-                    className="cursor-pointer"
-                  >
-                    In Progress
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange("completed")}
-                    className="cursor-pointer"
-                  >
-                    Completed
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+        <div className="space-y-4 mb-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/app/library")}
+                className="shrink-0 -ml-2"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <h1 className="font-display text-xl sm:text-3xl font-bold text-foreground truncate">
+                    {media.title}
+                  </h1>
+                  <MediaTypeBadge type={media.type} size="sm" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="cursor-pointer transition-transform hover:scale-105 focus:outline-none"
+                        title="Click to change status"
+                      >
+                        <StatusBadge status={media.status} size="sm" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-36">
+                      <DropdownMenuItem
+                        onClick={() => handleStatusChange("planned")}
+                        className="cursor-pointer"
+                      >
+                        Planned
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleStatusChange("in-progress")}
+                        className="cursor-pointer"
+                      >
+                        In Progress
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleStatusChange("completed")}
+                        className="cursor-pointer"
+                      >
+                        Completed
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {media.creator && `${media.creator} • `}
+                  {media.year}
+                </p>
+              </div>
             </div>
-            <p className="text-muted-foreground">
-              {media.creator && `${media.creator} • `}
-              {media.year}
-            </p>
+
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setIsEditDialogOpen(true)}
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit Work
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() =>
+                  setDirectShareItem({
+                    type: "media",
+                    id: media.id,
+                    title: media.title,
+                    subtitle: media.creator
+                      ? `by ${media.creator}${media.year ? ` · ${media.year}` : ""}`
+                      : media.year
+                        ? String(media.year)
+                        : undefined,
+                    mediaTitle: media.title,
+                    coverUrl: media.coverUrl,
+                  })
+                }
+              >
+                <Rss className="h-4 w-4" />
+                Share Work
+              </Button>
+              <Link to={`/app/quiz/${media.id}`}>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Brain className="h-4 w-4" />
+                  Quiz
+                </Button>
+              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-destructive hover:text-destructive"
+                onClick={handleDeleteMedia}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setIsEditDialogOpen(true)}
-          >
-            <Edit2 className="h-4 w-4" />
-            Edit Work
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() =>
-              setDirectShareItem({
-                type: "media",
-                id: media.id,
-                title: media.title,
-                subtitle: media.creator
-                  ? `by ${media.creator}${media.year ? ` · ${media.year}` : ""}`
-                  : media.year
-                    ? String(media.year)
-                    : undefined,
-                mediaTitle: media.title,
-                coverUrl: media.coverUrl,
-              })
-            }
-          >
-            <Rss className="h-4 w-4" />
-            Share Work
-          </Button>
-          <Link to={`/app/quiz/${media.id}`}>
-            <Button variant="outline" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Quiz
+
+          {/* Mobile Actions Grid */}
+          <div className="grid grid-cols-4 gap-2 sm:hidden pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 text-xs px-2 h-9"
+              onClick={() => setIsEditDialogOpen(true)}
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              <span>Edit</span>
             </Button>
-          </Link>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleDeleteMedia}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 text-xs px-2 h-9"
+              onClick={() =>
+                setDirectShareItem({
+                  type: "media",
+                  id: media.id,
+                  title: media.title,
+                  subtitle: media.creator
+                    ? `by ${media.creator}${media.year ? ` · ${media.year}` : ""}`
+                    : media.year
+                      ? String(media.year)
+                      : undefined,
+                  mediaTitle: media.title,
+                  coverUrl: media.coverUrl,
+                })
+              }
+            >
+              <Rss className="h-3.5 w-3.5" />
+              <span>Share</span>
+            </Button>
+            <Link to={`/app/quiz/${media.id}`} className="contents">
+              <Button variant="outline" size="sm" className="gap-1 text-xs px-2 h-9 w-full">
+                <Brain className="h-3.5 w-3.5" />
+                <span>Quiz</span>
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 text-xs px-2 h-9 text-destructive hover:text-destructive"
+              onClick={handleDeleteMedia}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete</span>
+            </Button>
+          </div>
         </div>
 
         {/* Media Header with Cover */}
@@ -413,6 +475,7 @@ export default function MediaDetail() {
             <ThemesTab
               mediaId={media.id}
               mediaTitle={media.title}
+              mediaCoverUrl={media.coverUrl}
               themes={themes}
               setThemes={setThemes}
               onDirectShare={(item) => setDirectShareItem(item)}
@@ -423,6 +486,7 @@ export default function MediaDetail() {
             <VocabTab
               mediaId={media.id}
               mediaTitle={media.title}
+              mediaCoverUrl={media.coverUrl}
               mediaOverview={media.description}
               vocab={vocab}
               setVocab={setVocab}
@@ -434,6 +498,7 @@ export default function MediaDetail() {
             <QuotesTab
               mediaId={media.id}
               mediaTitle={media.title}
+              mediaCoverUrl={media.coverUrl}
               quotes={quotes}
               setQuotes={setQuotes}
               themes={themes}
@@ -611,12 +676,14 @@ function ProgressBar({
 function ThemesTab({
   mediaId,
   mediaTitle,
+  mediaCoverUrl,
   themes,
   setThemes,
   onDirectShare,
 }: {
   mediaId: string;
   mediaTitle: string;
+  mediaCoverUrl?: string;
   themes: ThemeConcept[];
   setThemes: (themes: ThemeConcept[]) => void;
   onDirectShare?: (item: DirectShareItem) => void;
@@ -753,11 +820,11 @@ function ThemesTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h3 className="font-display text-lg font-semibold text-foreground">
           Themes & Concepts
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
             variant="secondary"
@@ -861,6 +928,7 @@ function ThemesTab({
               themes={themes}
               setThemes={setThemes}
               mediaTitle={mediaTitle}
+              mediaCoverUrl={mediaCoverUrl}
               onDirectShare={onDirectShare}
             />
           ))}
@@ -875,12 +943,14 @@ function ThemeCard({
   themes,
   setThemes,
   mediaTitle,
+  mediaCoverUrl,
   onDirectShare,
 }: {
   theme: ThemeConcept;
   themes: ThemeConcept[];
   setThemes: (themes: ThemeConcept[]) => void;
   mediaTitle?: string;
+  mediaCoverUrl?: string;
   onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
@@ -996,9 +1066,11 @@ function ThemeCard({
               onClick={() =>
                 onDirectShare({
                   type: "theme",
+                  id: theme.id,
                   title: theme.title,
-                  content: theme.summary || theme.userUnderstanding || undefined,
+                  subtitle: theme.summary || theme.userUnderstanding || undefined,
                   mediaTitle,
+                  coverUrl: mediaCoverUrl,
                 })
               }
               title="Share to Feed"
@@ -1119,7 +1191,7 @@ function FactsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h3 className="font-display text-lg font-semibold text-foreground">
           Facts & Context
         </h3>
@@ -1516,6 +1588,7 @@ function EditMediaDialog({
 function VocabTab({
   mediaId,
   mediaTitle,
+  mediaCoverUrl,
   mediaOverview,
   vocab,
   setVocab,
@@ -1523,6 +1596,7 @@ function VocabTab({
 }: {
   mediaId: string;
   mediaTitle: string;
+  mediaCoverUrl?: string;
   mediaOverview?: string | null;
   vocab: VocabItem[];
   setVocab: (vocab: VocabItem[]) => void;
@@ -1859,6 +1933,7 @@ function VocabTab({
               vocab={vocab}
               setVocab={setVocab}
               mediaTitle={mediaTitle}
+              mediaCoverUrl={mediaCoverUrl}
               onDirectShare={onDirectShare}
             />
           ))}
@@ -1873,12 +1948,14 @@ function VocabCard({
   vocab,
   setVocab,
   mediaTitle,
+  mediaCoverUrl,
   onDirectShare,
 }: {
   word: VocabItem;
   vocab: VocabItem[];
   setVocab: (vocab: VocabItem[]) => void;
   mediaTitle?: string;
+  mediaCoverUrl?: string;
   onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
@@ -1937,11 +2014,13 @@ function VocabCard({
               onClick={() =>
                 onDirectShare({
                   type: "vocab",
+                  id: word.id,
                   title: word.word,
-                  content: word.definition
+                  subtitle: word.definition
                     ? `${word.definition}${word.exampleSentence ? ` — "${word.exampleSentence}"` : ""}`
                     : word.exampleSentence || undefined,
                   mediaTitle,
+                  coverUrl: mediaCoverUrl,
                 })
               }
               title="Share to Feed"
@@ -1995,6 +2074,7 @@ function VocabCard({
 function QuotesTab({
   mediaId,
   mediaTitle,
+  mediaCoverUrl,
   quotes,
   setQuotes,
   themes,
@@ -2002,6 +2082,7 @@ function QuotesTab({
 }: {
   mediaId: string;
   mediaTitle?: string;
+  mediaCoverUrl?: string;
   quotes: QuoteItem[];
   setQuotes: (quotes: QuoteItem[]) => void;
   themes: ThemeConcept[];
@@ -2094,11 +2175,11 @@ function QuotesTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h3 className="font-display text-lg font-semibold text-foreground">
           Quotes & Meaning
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
             variant="secondary"
@@ -2227,6 +2308,7 @@ function QuotesTab({
               setQuotes={setQuotes}
               themes={themes}
               mediaTitle={mediaTitle}
+              mediaCoverUrl={mediaCoverUrl}
               onDirectShare={onDirectShare}
             />
           ))}
@@ -2242,6 +2324,7 @@ function QuoteCard({
   setQuotes,
   themes,
   mediaTitle,
+  mediaCoverUrl,
   onDirectShare,
 }: {
   quote: QuoteItem;
@@ -2249,6 +2332,7 @@ function QuoteCard({
   setQuotes: (quotes: QuoteItem[]) => void;
   themes: ThemeConcept[];
   mediaTitle?: string;
+  mediaCoverUrl?: string;
   onDirectShare?: (item: DirectShareItem) => void;
 }) {
   const { toast } = useToast();
@@ -2309,9 +2393,11 @@ function QuoteCard({
               onClick={() =>
                 onDirectShare({
                   type: "quote",
+                  id: quote.id,
                   title: quote.speaker ? `Quote by ${quote.speaker}` : "Memorable Quote",
-                  content: quote.text,
+                  subtitle: quote.text,
                   mediaTitle,
+                  coverUrl: mediaCoverUrl,
                 })
               }
               title="Share to Feed"

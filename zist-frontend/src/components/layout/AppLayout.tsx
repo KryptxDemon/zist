@@ -72,7 +72,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isQuizActive = location.pathname.startsWith("/app/quiz");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       {/* Top Navbar */}
       <header className="fixed top-0 left-0 right-0 z-50 h-[62px] bg-background/80 backdrop-blur-xl border-b border-border/40 shadow-xs">
         <div className="flex h-full items-center justify-between px-4 lg:px-8 max-w-[1600px] mx-auto">
@@ -289,8 +289,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content */}
-      <main className="pt-16 min-h-screen">
-        <div className="p-4 lg:p-6">{children}</div>
+      <main className="pt-16 pb-20 md:pb-6 min-h-screen w-full max-w-full overflow-x-hidden">
+        <div className="p-3 sm:p-4 lg:p-6 w-full max-w-full overflow-x-hidden">{children}</div>
       </main>
 
       {/* Mobile Bottom Navigation */}
