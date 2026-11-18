@@ -14,6 +14,7 @@ import { User } from "@/types";
 import { authService } from "@/services/authService";
 import { ApiError, onUnauthorized } from "@/services/apiClient";
 import { consumeSessionNotice, setSessionNotice } from "@/lib/sessionNotice";
+import { resolveUserFromAccessToken } from "@/lib/googleAuth";
 
 /**
  * How long to keep retrying `/auth/me` on a stored session before giving up.
@@ -56,6 +57,8 @@ interface AuthContextType {
     token_type: string;
     user: Parameters<typeof authService.completeGoogleAuth>[0]["user"];
   }) => Promise<void>;
+  /** Adopt a session from a freshly issued OAuth access token. */
+  completeTokenLogin: (accessToken: string) => Promise<User>;
   /** Re-run the bootstrap (used after a manual session change). */
   reload: () => Promise<void>;
 }
@@ -213,6 +216,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(next);
   }, []);
 
+  const completeTokenLogin = useCallback(async (accessToken: string) => {
+    const next = await resolveUserFromAccessToken(accessToken);
+    sessionEpoch.current += 1;
+    setUser(next);
+    return next;
+  }, []);
+
   const logout = useCallback(async () => {
     await authService.logout();
     sessionEpoch.current += 1;
@@ -240,9 +250,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       updateProfile,
       completeOAuth,
+      completeTokenLogin,
       reload,
     }),
-    [user, isLoading, login, signup, logout, updateProfile, completeOAuth, reload],
+    [user, isLoading, login, signup, logout, updateProfile, completeOAuth, completeTokenLogin, reload],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

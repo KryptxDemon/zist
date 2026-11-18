@@ -28,7 +28,7 @@ import {
 
 /** Native port of the web `Login` page. */
 export function LoginScreen() {
-  const { login, reload } = useAuth();
+  const { login, completeTokenLogin } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -127,21 +127,21 @@ export function LoginScreen() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      const user = await signInWithGoogle("login");
-      if (!user) {
-        setIsGoogleLoading(false);
+      const accessToken = await signInWithGoogle("login");
+      if (!accessToken) {
         return;
       }
-      await reload();
+      await completeTokenLogin(accessToken);
       toast({ title: "Welcome back!", description: "You have successfully logged in." });
       router.replace("/");
     } catch (error) {
-      setIsGoogleLoading(false);
       toast({
         title: "Google sign-in unavailable",
         description: error instanceof Error ? error.message : "Unable to start Google sign-in.",
         variant: "destructive",
       });
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 

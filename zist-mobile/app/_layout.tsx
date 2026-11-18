@@ -41,6 +41,7 @@ function ThemedStack() {
       >
         <Stack.Screen name="(app)" />
         <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
+        <Stack.Screen name="auth" options={{ animation: "fade" }} />
         {/* Signed-out home (the web's marketing landing page). */}
         <Stack.Screen name="welcome" options={{ animation: "fade" }} />
         <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />

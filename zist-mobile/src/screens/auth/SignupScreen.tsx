@@ -45,7 +45,7 @@ const EMPTY_STATUS: DisplayNameStatus = { available: null, suggestions: [], chec
 
 /** Native port of the web `Signup` page (incl. display-name availability check). */
 export function SignupScreen() {
-  const { signup, reload } = useAuth();
+  const { signup, completeTokenLogin } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -130,21 +130,21 @@ export function SignupScreen() {
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     try {
-      const user = await signInWithGoogle("signup");
-      if (!user) {
-        setIsGoogleLoading(false);
+      const accessToken = await signInWithGoogle("signup");
+      if (!accessToken) {
         return;
       }
-      await reload();
+      await completeTokenLogin(accessToken);
       toast({ title: "Welcome to Zist!", description: "Your account has been created successfully." });
       router.replace("/");
     } catch (error) {
-      setIsGoogleLoading(false);
       toast({
         title: "Google sign-up unavailable",
         description: error instanceof Error ? error.message : "Unable to start Google sign-up.",
         variant: "destructive",
       });
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 

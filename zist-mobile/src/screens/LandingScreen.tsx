@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -244,7 +244,8 @@ function LandingContent() {
     };
   }, []);
 
-  if (isAuthenticated) return <Redirect href="/" />;
+  const pathname = usePathname();
+  if (isAuthenticated && pathname === "/welcome") return <Redirect href="/" />;
 
   const goTo = (path: string) => {
     setMenuOpen(false);
