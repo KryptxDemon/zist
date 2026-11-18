@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
@@ -18,40 +18,63 @@ import { mediaSearchService } from "@/services/externalServices";
 import { MediaStatus, MediaType } from "@/types";
 import {
   ArrowLeft,
-  LibraryBig,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Film,
+  Gamepad2,
+  Headphones,
   Loader2,
+  PenLine,
   Plus,
   Search,
-  Star,
-  WandSparkles,
+  Tv,
+  Video,
   X,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
 import { prefetchImages } from "@/utils/prefetch";
 
-type SearchResultItem = MediaResultItem;
+type Mode = "search" | "manual";
+type ResultFilter = "all" | "moviesTv" | "books";
 
-const mediaTypes: { value: MediaType; label: string }[] = [
-  { value: "movie", label: "Movie" },
-  { value: "tv", label: "TV Show" },
-  { value: "book", label: "Book" },
-  { value: "documentary", label: "Documentary" },
-  { value: "podcast", label: "Podcast" },
-  { value: "game", label: "Game" },
+const MEDIA_TYPES: {
+  value: MediaType;
+  label: string;
+  icon: typeof Film;
+}[] = [
+  { value: "movie", label: "Movie", icon: Film },
+  { value: "tv", label: "TV Show", icon: Tv },
+  { value: "book", label: "Book", icon: BookOpen },
+  { value: "documentary", label: "Documentary", icon: Video },
+  { value: "podcast", label: "Podcast", icon: Headphones },
+  { value: "game", label: "Game", icon: Gamepad2 },
 ];
 
-const statusOptions: { value: MediaStatus; label: string }[] = [
+const STATUS_OPTIONS: { value: MediaStatus; label: string }[] = [
   { value: "planned", label: "Planned" },
   { value: "in-progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
 ];
+
+const EXAMPLE_SEARCHES = [
+  "Interstellar",
+  "Dune",
+  "In the Mood for Love",
+  "Atomic Habits",
+  "The Bear",
+];
+
+function getItemKey(item: MediaResultItem, idx: number): string {
+  return `${item.type}-${item.external_id || item.title}-${idx}`;
+}
+
+function getCreatorLabel(type: MediaType): string {
+  if (type === "book") return "Author";
+  if (type === "movie" || type === "documentary") return "Director";
+  if (type === "podcast") return "Host / Creator";
+  if (type === "game") return "Studio / Developer";
+  return "Creator";
+}
 
 export default function AddMedia() {
   const navigate = useNavigate();
@@ -61,17 +84,25 @@ export default function AddMedia() {
   const initialType = (searchParams.get("type") as MediaType) || "movie";
   const initialQuery = searchParams.get("q")?.trim() || "";
 
+  const [mode, setMode] = useState<Mode>("search");
+  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [isLoading, setIsLoading] = useState(false);
+  const [addingKey, setAddingKey] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [showCoverField, setShowCoverField] = useState(false);
+  const searchRequestId = useRef(0);
+
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [selectedResult, setSelectedResult] = useState<SearchResultItem | null>(
+  const [selectedResult, setSelectedResult] = useState<MediaResultItem | null>(
     null,
   );
   const [groupedResults, setGroupedResults] = useState<{
-    moviesTv: SearchResultItem[];
-    books: SearchResultItem[];
+    moviesTv: MediaResultItem[];
+    books: MediaResultItem[];
   }>({ moviesTv: [], books: [] });
-  const [previewItem, setPreviewItem] = useState<SearchResultItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<MediaResultItem | null>(null);
+
   const [formData, setFormData] = useState({
     title: initialQuery,
     type: initialType,
@@ -90,65 +121,160 @@ export default function AddMedia() {
   const handleAddTag = () => {
     const nextTag = tagInput.trim();
     if (nextTag && !formData.tags.includes(nextTag)) {
-      setFormData({ ...formData, tags: [...formData.tags, nextTag] });
+      setFormData((prev) => ({ ...prev, tags: [...prev.tags, nextTag] }));
       setTagInput("");
     }
   };
 
   const handleRemoveTag = (tag: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter((item) => item !== tag),
-    });
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((item) => item !== tag),
+    }));
   };
 
-  const applyResultToForm = (item: SearchResultItem) => {
+  const applyResultToForm = (item: MediaResultItem) => {
     setSelectedResult(item);
     setFormData((prev) => ({
       ...prev,
       title: item.title || prev.title,
       type: item.type || prev.type,
-      year: item.year ? String(item.year) : prev.year,
-      creator: item.creator || prev.creator,
-      description: item.description || prev.description,
-      coverUrl: item.cover_url || prev.coverUrl,
-      rating: item.rating !== undefined ? String(item.rating) : prev.rating,
-      externalSource: item.external_source || prev.externalSource,
-      externalId: item.external_id || prev.externalId,
+      year: item.year ? String(item.year) : "",
+      creator: item.creator || "",
+      description: item.description || "",
+      coverUrl: item.cover_url || "",
+      rating: item.rating !== undefined && item.rating !== null ? String(item.rating) : "",
+      externalSource: item.external_source || "",
+      externalId: item.external_id || "",
     }));
-
-    toast({
-      title: "Details fetched",
-      description: "Form updated with API data. You can edit and save.",
-    });
+    setMode("manual");
   };
 
-  const addResultDirectly = async (item: SearchResultItem) => {
+  const clearSelectedResult = () => {
+    setSelectedResult(null);
+    setFormData((prev) => ({
+      ...prev,
+      title: "",
+      year: "",
+      creator: "",
+      description: "",
+      coverUrl: "",
+      rating: "",
+      externalSource: "",
+      externalId: "",
+    }));
+  };
+
+  const openManualWithQuery = (title?: string) => {
+    const prefill = (title ?? searchQuery).trim();
+    if (prefill && !formData.title.trim()) {
+      setFormData((prev) => ({ ...prev, title: prefill }));
+    }
+    setMode("manual");
+  };
+
+  const addResultDirectly = async (item: MediaResultItem, key?: string) => {
     setIsLoading(true);
+    setAddingKey(key ?? item.title);
     try {
       const media = await mediaService.create({
         userId: "current-user",
         title: item.title,
         type: item.type,
-        year: item.year,
-        creator: item.creator,
-        description: item.description,
-        coverUrl: item.cover_url,
+        year: item.year ?? undefined,
+        creator: item.creator ?? undefined,
+        description: item.description ?? undefined,
+        coverUrl: item.cover_url ?? undefined,
         status: formData.status,
-        rating: item.rating,
+        rating: item.rating ?? undefined,
         tags: formData.tags,
         externalSource: item.external_source,
         externalId: item.external_id,
       });
 
       toast({
-        title: "Media added!",
-        description: `${item.title} was fetched and added automatically.`,
+        title: "Added to your library",
+        description: `${item.title} has been saved.`,
       });
       navigate(`/app/media/${media.id}`);
     } catch (error) {
       toast({
-        title: "Failed to add media",
+        title: "Couldn't add title",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setAddingKey(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const title = formData.title.trim();
+    if (!title) {
+      toast({
+        title: "Title required",
+        description: "Give your entry a title to save it.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let autoResult: MediaResultItem | undefined;
+      const needsDetails =
+        !formData.externalId &&
+        (!formData.coverUrl ||
+          !formData.year ||
+          !formData.creator ||
+          !formData.description);
+
+      if (needsDetails) {
+        try {
+          const results = await mediaSearchService.searchMedia(
+            title,
+            formData.type,
+          );
+          autoResult = results[0] as MediaResultItem | undefined;
+        } catch {
+          // Proceed with manual entry even if lookup fails
+        }
+      }
+
+      const media = await mediaService.create({
+        userId: "current-user",
+        title: title || autoResult?.title || "",
+        type: formData.type || autoResult?.type || "movie",
+        year: formData.year
+          ? parseInt(formData.year, 10)
+          : autoResult?.year ?? undefined,
+        creator: formData.creator.trim() || autoResult?.creator || undefined,
+        description:
+          formData.description.trim() || autoResult?.description || undefined,
+        coverUrl:
+          formData.coverUrl.trim() || autoResult?.cover_url || undefined,
+        status: formData.status,
+        rating: formData.rating
+          ? parseFloat(formData.rating)
+          : autoResult?.rating ?? undefined,
+        tags: formData.tags,
+        externalSource:
+          formData.externalSource || autoResult?.external_source || undefined,
+        externalId: formData.externalId || autoResult?.external_id || undefined,
+      });
+
+      toast({
+        title: "Added to your library",
+        description: `${title} has been saved.`,
+      });
+      navigate(`/app/media/${media.id}`);
+    } catch (error) {
+      toast({
+        title: "Couldn't save entry",
         description:
           error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
@@ -158,166 +284,72 @@ export default function AddMedia() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.title.trim()) {
-      toast({
-        title: "Title required",
-        description: "Please enter a title for your media.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      let autoResult:
-        | {
-            title: string;
-            type: MediaType;
-            year?: number;
-            creator?: string;
-            description?: string;
-            cover_url?: string;
-            rating?: number;
-            external_source?: string;
-            external_id?: string;
-          }
-        | undefined;
-
-      const needsAutoFetch =
-        !formData.externalId &&
-        (!formData.coverUrl ||
-          !formData.year ||
-          !formData.creator ||
-          !formData.description);
-
-      if (needsAutoFetch) {
-        const results = await mediaSearchService.searchMedia(
-          formData.title.trim(),
-          formData.type,
-        );
-        autoResult = results[0] as typeof autoResult;
-      }
-
-      const media = await mediaService.create({
-        userId: "current-user",
-        title: formData.title.trim() || autoResult?.title || "",
-        type: autoResult?.type || formData.type,
-        year: formData.year ? parseInt(formData.year) : autoResult?.year,
-        creator: formData.creator.trim() || autoResult?.creator || undefined,
-        description:
-          formData.description.trim() || autoResult?.description || undefined,
-        coverUrl:
-          formData.coverUrl.trim() || autoResult?.cover_url || undefined,
-        status: formData.status,
-        rating: formData.rating
-          ? parseFloat(formData.rating)
-          : autoResult?.rating,
-        tags: formData.tags,
-        externalSource:
-          formData.externalSource || autoResult?.external_source || undefined,
-        externalId: formData.externalId || autoResult?.external_id || undefined,
-      });
-
-      toast({
-        title: "Media added!",
-        description: autoResult
-          ? `${formData.title} was auto-enriched from external APIs and added.`
-          : `${formData.title} has been added to your library.`,
-      });
-
-      navigate(`/app/media/${media.id}`);
-    } catch (error) {
-      toast({
-        title: "Failed to add media",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSearch = async () => {
-    const query = searchQuery.trim();
+  const runSearch = async (rawQuery: string) => {
+    const query = rawQuery.trim();
+    const reqId = ++searchRequestId.current;
     if (!query) {
       setGroupedResults({ moviesTv: [], books: [] });
-      toast({
-        title: "Search query required",
-        description: "Type a title to fetch media details from APIs.",
-        variant: "destructive",
-      });
+      setHasSearched(false);
+      setIsSearching(false);
       return;
     }
 
     setIsSearching(true);
     try {
       const results = await mediaSearchService.searchMediaGrouped(query);
+      if (reqId !== searchRequestId.current) return;
       setGroupedResults(results);
-      if (!results.moviesTv.length && !results.books.length) {
-        toast({
-          title: "No results found",
-          description: "Try a different title.",
-        });
-      }
-    } catch (error) {
+      setHasSearched(true);
+      setResultFilter("all");
+      prefetchImages([
+        ...(results.moviesTv || []).map((m) => m.cover_url),
+        ...(results.books || []).map((b) => b.cover_url),
+      ]);
+    } catch {
+      if (reqId !== searchRequestId.current) return;
       toast({
-        title: "Search failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Could not fetch data from API.",
+        title: "Search unavailable",
+        description: "Couldn't load results right now. You can still add it manually.",
         variant: "destructive",
       });
     } finally {
-      setIsSearching(false);
+      if (reqId === searchRequestId.current) {
+        setIsSearching(false);
+      }
     }
   };
 
   useEffect(() => {
     const query = searchQuery.trim();
     if (!query) {
+      searchRequestId.current += 1;
       setGroupedResults({ moviesTv: [], books: [] });
+      setHasSearched(false);
+      setIsSearching(false);
       return;
     }
 
     const timeout = window.setTimeout(() => {
-      setIsSearching(true);
-      void (async () => {
-        try {
-          const results = await mediaSearchService.searchMediaGrouped(query);
-          setGroupedResults(results);
-          prefetchImages([
-            ...(results.moviesTv || []).map((m) => m.cover_url),
-            ...(results.books || []).map((b) => b.cover_url),
-          ]);
-        } finally {
-          setIsSearching(false);
-        }
-      })();
-    }, 350);
+      void runSearch(query);
+    }, 320);
 
     return () => window.clearTimeout(timeout);
   }, [searchQuery]);
 
-  const selectedPreview = useMemo(
-    () =>
-      selectedResult ||
-      groupedResults.moviesTv[0] ||
-      groupedResults.books[0] ||
-      null,
-    [groupedResults.books, groupedResults.moviesTv, selectedResult],
-  );
+  const totalMoviesTv = groupedResults.moviesTv.length;
+  const totalBooks = groupedResults.books.length;
+  const totalResults = totalMoviesTv + totalBooks;
 
-  const previewCover = selectedPreview
-    ? getResultCover(selectedPreview)
-    : getResultCover({
-        type: formData.type,
-        cover_url: formData.coverUrl || undefined,
-      });
+  const visibleMoviesTv = useMemo(
+    () =>
+      resultFilter === "books" ? [] : groupedResults.moviesTv.slice(0, 8),
+    [groupedResults.moviesTv, resultFilter],
+  );
+  const visibleBooks = useMemo(
+    () =>
+      resultFilter === "moviesTv" ? [] : groupedResults.books.slice(0, 8),
+    [groupedResults.books, resultFilter],
+  );
 
   return (
     <AppLayout>
@@ -326,513 +358,577 @@ export default function AddMedia() {
           item={previewItem}
           isAdding={isLoading}
           onClose={() => setPreviewItem(null)}
-          onAutofill={(item) => {
-            applyResultToForm(item);
-          }}
-          onAdd={addResultDirectly}
+          onAutofill={(item) => applyResultToForm(item)}
+          onAdd={(item) => addResultDirectly(item)}
         />
       ) : null}
-      <div className="max-w-7xl mx-auto pb-20 md:pb-0 animate-fade-in">
-        <div className="mb-8 rounded-[2rem] border border-border/60 bg-gradient-to-br from-background via-background to-primary/5 p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="shrink-0 rounded-2xl"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="space-y-2">
-                <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground">
-                  Add Media
-                </h1>
-                <p className="max-w-2xl text-muted-foreground">
-                  Search by title, preview rich results with thumbnails, and add
-                  a polished entry to your library in one pass.
-                </p>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:w-[32rem]">
-              <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Step 1
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  Search title
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Step 2
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  Choose details
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border/60 bg-background/70 p-4 col-span-2 sm:col-span-1">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Step 3
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  Save instantly
-                </p>
-              </div>
+      <div className="mx-auto max-w-3xl pb-20 md:pb-8 animate-fade-in">
+        {/* Clean Header */}
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="shrink-0 rounded-full"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                Add to Library
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Search for a movie, show, or book — or add your own.
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <form
-            onSubmit={handleSubmit}
-            className="glass grain rounded-[2rem] p-6 sm:p-8 space-y-8 border border-border/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)]"
+        {/* Mode Switcher */}
+        <div className="mb-6 inline-flex w-full rounded-2xl border border-border/60 bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => setMode("search")}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+              mode === "search"
+                ? "bg-card text-foreground shadow-sm border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <div className="space-y-4 rounded-[1.5rem] border border-border/60 bg-background/45 p-4 sm:p-5">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-primary" />
-                <Label htmlFor="apiSearch" className="text-base font-semibold">
-                  Find title details automatically
-                </Label>
+            <Search className="h-4 w-4" />
+            Search
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("manual")}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+              mode === "manual"
+                ? "bg-card text-foreground shadow-sm border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <PenLine className="h-4 w-4" />
+            Add manually
+          </button>
+        </div>
+
+        {mode === "search" ? (
+          <div className="space-y-5">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                autoFocus
+                placeholder="Search movies, TV shows, or books..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void runSearch(searchQuery);
+                  }
+                }}
+                className="h-14 rounded-2xl border-border/70 bg-card/80 pl-12 pr-12 text-base shadow-sm focus-visible:ring-primary/40"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {isSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-1" />
+                ) : null}
+                {searchQuery ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Save Status Quick Selector */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Save as:
+                </span>
+                <div className="inline-flex rounded-full border border-border/60 bg-card/60 p-0.5">
+                  {STATUS_OPTIONS.map((opt) => {
+                    const active = formData.status === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, status: opt.value }))
+                        }
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              {totalMoviesTv > 0 && totalBooks > 0 ? (
+                <div className="inline-flex rounded-full border border-border/60 bg-card/60 p-0.5">
+                  {(
+                    [
+                      { id: "all", label: `All (${totalResults})` },
+                      { id: "moviesTv", label: `Movies & TV (${totalMoviesTv})` },
+                      { id: "books", label: `Books (${totalBooks})` },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setResultFilter(tab.id)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        resultFilter === tab.id
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Results / Empty States */}
+            {!searchQuery.trim() ? (
+              <div className="rounded-3xl border border-border/60 bg-card/40 p-6 sm:p-8 text-center space-y-5">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <Search className="h-5 w-5" />
+                </div>
+                <div className="space-y-1.5">
+                  <h2 className="font-display text-lg font-semibold text-foreground">
+                    Find something to watch or read
+                  </h2>
+                  <p className="mx-auto max-w-md text-sm text-muted-foreground">
+                    Type a title above to add it in one click, with its poster
+                    and details filled in for you.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  {EXAMPLE_SEARCHES.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      onClick={() => setSearchQuery(example)}
+                      className="rounded-full border border-border/70 bg-background/70 px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-2 border-t border-border/40">
+                  <button
+                    type="button"
+                    onClick={() => setMode("manual")}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Adding a podcast, game, or custom entry? Add it manually →
+                  </button>
+                </div>
+              </div>
+            ) : isSearching && totalResults === 0 ? (
+              <div className="space-y-3">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="flex gap-3.5 rounded-2xl border border-border/50 bg-card/50 p-3 animate-pulse"
+                  >
+                    <div className="h-28 w-20 shrink-0 rounded-xl bg-muted/70" />
+                    <div className="flex-1 space-y-2.5 py-1">
+                      <div className="h-4 w-2/5 rounded bg-muted/70" />
+                      <div className="h-3 w-1/4 rounded bg-muted/60" />
+                      <div className="h-3 w-4/5 rounded bg-muted/50" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : totalResults === 0 && hasSearched ? (
+              <div className="rounded-3xl border border-border/60 bg-card/40 p-8 text-center space-y-4">
+                <div className="space-y-1">
+                  <h2 className="font-display text-lg font-semibold text-foreground">
+                    No matches for "{searchQuery.trim()}"
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Try a different spelling, or add it yourself in seconds.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => openManualWithQuery(searchQuery)}
+                  className="gap-2 rounded-xl"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add "{searchQuery.trim()}" manually
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {visibleMoviesTv.length > 0 ? (
+                  <section className="space-y-3">
+                    {visibleBooks.length > 0 ? (
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                        Movies & TV
+                      </h2>
+                    ) : null}
+                    <div className="space-y-2.5">
+                      {visibleMoviesTv.map((item, idx) => {
+                        const key = getItemKey(item, idx);
+                        return (
+                          <MediaResultCard
+                            key={key}
+                            item={item}
+                            isAdding={addingKey === key}
+                            onPreview={(it) => setPreviewItem(it)}
+                            onAutofill={(it) => applyResultToForm(it)}
+                            onAdd={(it) => addResultDirectly(it, key)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                ) : null}
+
+                {visibleBooks.length > 0 ? (
+                  <section className="space-y-3">
+                    {visibleMoviesTv.length > 0 ? (
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                        Books
+                      </h2>
+                    ) : null}
+                    <div className="space-y-2.5">
+                      {visibleBooks.map((item, idx) => {
+                        const key = getItemKey(item, idx);
+                        return (
+                          <MediaResultCard
+                            key={key}
+                            item={item}
+                            isBook
+                            isAdding={addingKey === key}
+                            onPreview={(it) => setPreviewItem(it)}
+                            onAutofill={(it) => applyResultToForm(it)}
+                            onAdd={(it) => addResultDirectly(it, key)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                ) : null}
+
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => openManualWithQuery(searchQuery)}
+                    className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Didn't see the right one? Add "{searchQuery.trim()}" manually →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Manual Entry Form */
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-3xl border border-border/60 bg-card/60 p-5 sm:p-7 space-y-6 shadow-sm"
+          >
+            {selectedResult ? (
+              <div className="flex items-center gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-3">
+                <img
+                  src={getResultCover(selectedResult)}
+                  alt={selectedResult.title}
+                  className="h-16 w-11 rounded-lg object-cover shrink-0 bg-muted"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-primary">
+                    Selected from search
+                  </p>
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {selectedResult.title}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {getMediaLabel(selectedResult.type)}
+                    {selectedResult.year ? ` · ${selectedResult.year}` : ""}
+                    {selectedResult.creator ? ` · ${selectedResult.creator}` : ""}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelectedResult}
+                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </Button>
+              </div>
+            ) : null}
+
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-sm font-medium">
+                Title <span className="text-primary">*</span>
+              </Label>
+              <Input
+                id="title"
+                placeholder="e.g., Interstellar, Atomic Habits..."
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, title: e.target.value }))
+                }
+                className="h-12 rounded-xl bg-background/80"
+              />
+            </div>
+
+            {/* Type Pills */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Type</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {MEDIA_TYPES.map((t) => {
+                  const Icon = t.icon;
+                  const active = formData.type === t.value;
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, type: t.value }))
+                      }
+                      className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all ${
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/60 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Status Pills */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Status</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {STATUS_OPTIONS.map((opt) => {
+                  const active = formData.status === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, status: opt.value }))
+                      }
+                      className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/60 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Creator & Year */}
+            <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+              <div className="space-y-2">
+                <Label htmlFor="creator" className="text-sm font-medium">
+                  {getCreatorLabel(formData.type)}
+                </Label>
                 <Input
-                  id="apiSearch"
-                  placeholder="Search a movie, show, book, documentary, podcast, or game..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  id="creator"
+                  placeholder="Optional"
+                  value={formData.creator}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, creator: e.target.value }))
+                  }
+                  className="h-11 rounded-xl bg-background/80"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="year" className="text-sm font-medium">
+                  Year
+                </Label>
+                <Input
+                  id="year"
+                  type="number"
+                  placeholder="2024"
+                  value={formData.year}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, year: e.target.value }))
+                  }
+                  className="h-11 rounded-xl bg-background/80"
+                />
+              </div>
+            </div>
+
+            {/* Notes / Summary */}
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Summary or notes
+              </Label>
+              <Textarea
+                id="description"
+                placeholder="Write a short description or why you want to check this out..."
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                className="min-h-24 rounded-xl bg-background/80"
+              />
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Tags</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a tag and press Enter..."
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      void handleSearch();
+                      handleAddTag();
                     }
                   }}
-                  className="h-12 bg-background/80"
+                  className="h-11 rounded-xl bg-background/80"
                 />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleSearch}
-                  disabled={isSearching || !searchQuery.trim()}
-                  className="h-12 min-w-28"
-                >
-                  {isSearching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <WandSparkles className="mr-2 h-4 w-4" />
-                      Fetch
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                Results appear as you type. Press Enter or Fetch to search
-                again.
-                {groupedResults.moviesTv.length + groupedResults.books.length >
-                0
-                  ? ` Found ${groupedResults.moviesTv.length + groupedResults.books.length} result${groupedResults.moviesTv.length + groupedResults.books.length > 1 ? "s" : ""}.`
-                  : ""}
-              </p>
-            </div>
-
-            <div className="grid gap-5 2xl:grid-cols-2">
-              <div className="rounded-[1.5rem] border border-border/60 bg-background/45 p-4 sm:p-5">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                      Movies & TV
-                    </p>
-                    <h2 className="font-display text-xl font-bold text-foreground">
-                      Visual results
-                    </h2>
-                  </div>
-                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    {groupedResults.moviesTv.length}
-                  </span>
-                </div>
-
-                {groupedResults.moviesTv.length === 0 ? (
-                  <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/40 px-4 text-center text-sm text-muted-foreground">
-                    Start typing a title to see rich suggestions with posters
-                    and quick actions.
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[34rem] overflow-auto pr-1">
-                    {groupedResults.moviesTv.slice(0, 8).map((item, idx) => (
-                      <MediaResultCard
-                        key={`movies-${item.external_source || "ext"}-${item.external_id || item.title}-${idx}`}
-                        item={item}
-                        isAdding={isLoading}
-                        onPreview={(it) => setPreviewItem(it)}
-                        onAutofill={(it) => applyResultToForm(it)}
-                        onAdd={(it) => addResultDirectly(it)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-[1.5rem] border border-border/60 bg-background/45 p-4 sm:p-5">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                      Books
-                    </p>
-                    <h2 className="font-display text-xl font-bold text-foreground">
-                      Curated suggestions
-                    </h2>
-                  </div>
-                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    {groupedResults.books.length}
-                  </span>
-                </div>
-
-                {groupedResults.books.length === 0 ? (
-                  <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/40 px-4 text-center text-sm text-muted-foreground">
-                    Search a title and books will appear here with matching
-                    covers and metadata.
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[34rem] overflow-auto pr-1">
-                    {groupedResults.books.slice(0, 8).map((item, idx) => (
-                      <MediaResultCard
-                        key={`books-${item.external_source || "ext"}-${item.external_id || item.title}-${idx}`}
-                        item={item}
-                        isBook
-                        isAdding={isLoading}
-                        onPreview={(it) => setPreviewItem(it)}
-                        onAutofill={(it) => applyResultToForm(it)}
-                        onAdd={(it) => addResultDirectly(it)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-5 rounded-[1.5rem] border border-border/60 bg-background/45 p-4 sm:p-5">
-              <div className="flex items-center gap-2">
-                <LibraryBig className="h-4 w-4 text-primary" />
-                <h2 className="font-display text-xl font-semibold text-foreground">
-                  Final details
-                </h2>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="Enter title..."
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="h-12 bg-background/80"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, type: v as MediaType })
-                    }
-                  >
-                    <SelectTrigger id="type" className="h-12 bg-background/80">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mediaTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, status: v as MediaStatus })
-                    }
-                  >
-                    <SelectTrigger
-                      id="status"
-                      className="h-12 bg-background/80"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Auto-filled from API when available"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="min-h-28 bg-background/80"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="year">Year</Label>
-                  <Input
-                    id="year"
-                    type="number"
-                    placeholder="2024"
-                    value={formData.year}
-                    onChange={(e) =>
-                      setFormData({ ...formData, year: e.target.value })
-                    }
-                    className="h-12 bg-background/80"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="creator">Creator/Author/Director</Label>
-                  <Input
-                    id="creator"
-                    placeholder="Enter name..."
-                    value={formData.creator}
-                    onChange={(e) =>
-                      setFormData({ ...formData, creator: e.target.value })
-                    }
-                    className="h-12 bg-background/80"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="coverUrl">Cover Image URL</Label>
-                <Input
-                  id="coverUrl"
-                  type="url"
-                  placeholder="https://..."
-                  value={formData.coverUrl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, coverUrl: e.target.value })
-                  }
-                  className="h-12 bg-background/80"
-                />
-                {formData.coverUrl ? (
-                  <div className="mt-3 w-fit overflow-hidden rounded-2xl border border-border/60 bg-background/70 p-2">
-                    <img
-                      src={formData.coverUrl}
-                      alt="Preview"
-                      className="h-36 w-24 rounded-xl object-cover"
-                      onError={(e) => (e.currentTarget.style.display = "none")}
-                    />
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tags</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add a tag..."
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
-                    }}
-                    className="h-12 bg-background/80"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddTag}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                {formData.tags.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {formData.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-sm"
-                      >
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTag(tag)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate(-1)}
-                  className="flex-1 h-12"
+                  onClick={handleAddTag}
+                  className="h-11 rounded-xl px-3.5"
+                  aria-label="Add tag"
                 >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1 h-12"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    "Add to Library"
-                  )}
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
+              {formData.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {formData.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs font-medium"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`Remove ${tag}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Optional Custom Cover Toggle */}
+            <div className="border-t border-border/50 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowCoverField((v) => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showCoverField || formData.coverUrl ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+                {formData.coverUrl
+                  ? "Cover image attached"
+                  : "Add a custom cover image (optional)"}
+              </button>
+
+              {showCoverField || formData.coverUrl ? (
+                <div className="mt-3 space-y-3">
+                  <Input
+                    id="coverUrl"
+                    type="url"
+                    placeholder="Paste an image link (https://...)"
+                    value={formData.coverUrl}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        coverUrl: e.target.value,
+                      }))
+                    }
+                    className="h-11 rounded-xl bg-background/80"
+                  />
+                  {formData.coverUrl ? (
+                    <div className="w-fit overflow-hidden rounded-xl border border-border/60 bg-background/70 p-1.5">
+                      <img
+                        src={formData.coverUrl}
+                        alt="Cover preview"
+                        className="h-28 w-20 rounded-lg object-cover"
+                        onError={(e) =>
+                          (e.currentTarget.style.display = "none")
+                        }
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Submit Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(-1)}
+                className="h-12 flex-1 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="h-12 flex-1 rounded-xl"
+                disabled={isLoading || !formData.title.trim()}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save to Library"
+                )}
+              </Button>
             </div>
           </form>
-
-          <aside className="space-y-6">
-            <div className="glass grain sticky top-6 rounded-[2rem] p-5 border border-border/50 shadow-[0_24px_80px_rgba(0,0,0,0.22)]">
-              <div className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-primary" />
-                <h2 className="font-display text-xl font-semibold text-foreground">
-                  Live preview
-                </h2>
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/60">
-                <div className="relative aspect-[3/4] w-full">
-                  <img
-                    src={previewCover}
-                    alt={
-                      selectedPreview?.title ||
-                      formData.title ||
-                      "Media preview"
-                    }
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/70">
-                      Selected media
-                    </p>
-                    <h3 className="mt-1 font-display text-2xl font-bold leading-tight">
-                      {formData.title || selectedPreview?.title || "Untitled"}
-                    </h3>
-                    <p className="mt-1 text-sm text-white/80">
-                      {getMediaLabel(formData.type)}
-                      {formData.year ? ` • ${formData.year}` : ""}
-                      {formData.creator ? ` • ${formData.creator}` : ""}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4 p-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Status
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-foreground">
-                        {
-                          statusOptions.find((s) => s.value === formData.status)
-                            ?.label
-                        }
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Tags
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-foreground">
-                        {formData.tags.length} added
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      Summary
-                    </p>
-                    <p className="mt-1 line-clamp-4 text-sm text-muted-foreground">
-                      {formData.description ||
-                        selectedPreview?.description ||
-                        "Search results can auto-fill the form so you spend less time typing and more time learning."}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      Cover URL
-                    </p>
-                    <p className="mt-1 break-all text-sm text-muted-foreground">
-                      {formData.coverUrl ||
-                        selectedPreview?.cover_url ||
-                        "No custom cover selected yet."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground">
-                Pick a result on the left to autofill the form, or keep editing
-                manually before saving.
-              </div>
-            </div>
-
-            <div className="glass grain rounded-[2rem] p-5 border border-border/50 space-y-4">
-              <div className="flex items-center gap-2">
-                <LibraryBig className="h-4 w-4 text-primary" />
-                <h2 className="font-display text-xl font-semibold text-foreground">
-                  Tips
-                </h2>
-              </div>
-
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li className="rounded-2xl border border-border/60 bg-background/60 p-3">
-                  Use Autofill when a result already looks accurate. It saves
-                  time and keeps data consistent.
-                </li>
-                <li className="rounded-2xl border border-border/60 bg-background/60 p-3">
-                  The thumbnail list is the fastest way to verify you picked the
-                  right title.
-                </li>
-                <li className="rounded-2xl border border-border/60 bg-background/60 p-3">
-                  Tags help you find items later, so add only the ones that
-                  actually matter.
-                </li>
-              </ul>
-            </div>
-          </aside>
-        </div>
+        )}
       </div>
     </AppLayout>
   );

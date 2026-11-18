@@ -1,6 +1,6 @@
 import React from "react";
 import { View } from "react-native";
-import { Check, Star } from "lucide-react-native";
+import { Pencil, Plus, Star } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import { Button, Row, Sheet, Text } from "@/components/ui";
@@ -15,9 +15,7 @@ import {
 } from "./mediaResult";
 
 /**
- * Full-screen preview of an external search result. Ported from the web
- * `MediaPreviewDialog` — the poster, metadata, tags and the Close / Autofill /
- * Add actions are identical.
+ * Clean preview sheet for a search result before adding it to the library.
  */
 export function MediaPreviewSheet({
   item,
@@ -43,7 +41,7 @@ export function MediaPreviewSheet({
   const tags = getResultTags(item);
   const meta = [getMediaLabel(item.type), item.year ? String(item.year) : null, item.creator]
     .filter(Boolean)
-    .join(" • ");
+    .join(" · ");
 
   return (
     <Sheet
@@ -53,18 +51,31 @@ export function MediaPreviewSheet({
       description={meta}
       footer={
         <View style={{ gap: 8 }}>
-          <Button variant="outline" fullWidth label="Close" onPress={onClose} />
-          <Button variant="secondary" fullWidth label="Autofill form" icon={<Check size={16} color={colors.secondaryForeground} />} onPress={() => onAutofill(item)} />
-          <Button fullWidth label="Add to Library" loading={isAdding} disabled={isAdding} onPress={() => onAdd(item)} />
+          <Button
+            fullWidth
+            label="Add to Library"
+            icon={<Plus size={16} color={colors.primaryForeground} />}
+            loading={isAdding}
+            disabled={isAdding}
+            onPress={() => onAdd(item)}
+          />
+          <Button
+            variant="secondary"
+            fullWidth
+            label="Edit details first"
+            icon={<Pencil size={15} color={colors.secondaryForeground} />}
+            onPress={() => onAutofill(item)}
+          />
+          <Button variant="ghost" fullWidth label="Close" onPress={onClose} />
         </View>
       }
     >
       <View style={{ flexDirection: "row", gap: 16 }}>
-        <View style={{ width: 120 }}>
-          <MediaPoster coverUrl={cover} type={item.type} title={item.title} height={180} style={{ width: 120 }} />
+        <View style={{ width: 112 }}>
+          <MediaPoster coverUrl={cover} type={item.type} title={item.title} height={168} style={{ width: 112 }} />
         </View>
 
-        <View style={{ flex: 1, gap: 12 }}>
+        <View style={{ flex: 1, gap: 10 }}>
           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
             <View
               style={{
@@ -74,7 +85,7 @@ export function MediaPreviewSheet({
                 backgroundColor: colors.primary + "1a",
               }}
             >
-              <Text variant="caption" tint={colors.primary} weight="medium" uppercase>
+              <Text variant="caption" tint={colors.primary} weight="medium">
                 {getMediaLabel(item.type)}
               </Text>
             </View>
@@ -117,7 +128,7 @@ export function MediaPreviewSheet({
 
       <View style={{ gap: 4 }}>
         <Text variant="caption" uppercase letterSpacing={1}>
-          Description
+          About
         </Text>
         <Text variant="small" color="mutedForeground">
           {item.description || MISSING_DESCRIPTION}
@@ -127,7 +138,7 @@ export function MediaPreviewSheet({
       {tags.length > 0 ? (
         <View style={{ gap: 6 }}>
           <Text variant="caption" uppercase letterSpacing={1}>
-            Tags
+            Genres & tags
           </Text>
           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
             {tags.map((tag) => (

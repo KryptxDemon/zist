@@ -1,22 +1,21 @@
 import React from "react";
-import { View } from "react-native";
-import { Check, Eye } from "lucide-react-native";
+import { Pressable, View } from "react-native";
+import { Pencil, Plus } from "lucide-react-native";
 
 import { useTheme } from "@/theme";
 import { Button, Card, Text } from "@/components/ui";
 import { MediaPoster } from "@/components/media/MediaCard";
 import {
+  getMediaLabel,
   getMissingCreator,
   getResultCover,
-  getResultTags,
-  MISSING_DESCRIPTION,
   type MediaResultItem,
 } from "./mediaResult";
 
 /**
- * Result row for the external discovery search. Ported from the web
- * `components/feed/MediaResultCard` — callers own `onPreview`, `onAutofill`
- * and `onAdd` so the card stays decoupled from the AddMedia flow.
+ * Clean, scannable search result card for AddMedia.
+ * Tapping the card opens the full preview; Edit opens the manual form prefilled;
+ * Add saves straight to the user's library in one tap.
  */
 export function MediaResultCard({
   item,
@@ -33,22 +32,47 @@ export function MediaResultCard({
   onAutofill: (item: MediaResultItem) => void;
   onAdd: (item: MediaResultItem) => void;
 }) {
-  const { colors } = useTheme();
+  const { colors, radius } = useTheme();
   const cover = getResultCover(item);
-  const tags = getResultTags(item);
 
   return (
     <Card variant="glass" style={{ padding: 12 }}>
-      <View style={{ flexDirection: "row", gap: 12 }}>
+      <Pressable
+        onPress={() => onPreview(item)}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          gap: 12,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
         <View style={{ width: 64 }}>
-          <MediaPoster coverUrl={cover} type={item.type} height={100} style={{ width: 64 }} />
+          <MediaPoster
+            coverUrl={cover}
+            type={item.type}
+            title={item.title}
+            height={96}
+            style={{ width: 64 }}
+          />
         </View>
 
-        <View style={{ flex: 1, gap: 6 }}>
+        <View style={{ flex: 1, gap: 4, justifyContent: "center" }}>
+          <Text variant="label" weight="semibold" numberOfLines={2}>
+            {item.title}
+          </Text>
+
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <Text variant="label" weight="semibold" numberOfLines={1} style={{ flexShrink: 1 }}>
-              {item.title}
-            </Text>
+            <View
+              style={{
+                borderRadius: radius.full,
+                backgroundColor: colors.primary + "1a",
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+              }}
+            >
+              <Text variant="caption" tint={colors.primary} weight="medium">
+                {getMediaLabel(item.type)}
+              </Text>
+            </View>
             {item.year ? (
               <Text variant="caption" color="mutedForeground">
                 {item.year}
@@ -56,55 +80,40 @@ export function MediaResultCard({
             ) : null}
           </View>
 
-          <Text variant="caption" numberOfLines={1}>
+          <Text variant="caption" color="mutedForeground" numberOfLines={1}>
             {item.creator || getMissingCreator(isBook)}
           </Text>
 
-          <Text variant="small" numberOfLines={2}>
-            {item.description || MISSING_DESCRIPTION}
-          </Text>
-
-          {tags.length > 0 ? (
-            <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-              {tags.slice(0, 3).map((tag) => (
-                <View
-                  key={tag}
-                  style={{
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    paddingHorizontal: 8,
-                    paddingVertical: 1,
-                  }}
-                >
-                  <Text variant="caption" color="mutedForeground">
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
+          {item.description ? (
+            <Text variant="small" color="mutedForeground" numberOfLines={2}>
+              {item.description}
+            </Text>
           ) : null}
         </View>
-      </View>
+      </Pressable>
 
-      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 10,
+          paddingTop: 10,
+          borderTopWidth: 1,
+          borderTopColor: colors.border + "66",
+        }}
+      >
         <Button
           size="sm"
           variant="ghost"
-          label="Preview"
-          icon={<Eye size={15} color={colors.foreground} />}
-          onPress={() => onPreview(item)}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          label="Autofill"
-          icon={<Check size={15} color={colors.foreground} />}
+          label="Edit"
+          icon={<Pencil size={14} color={colors.mutedForeground} />}
           onPress={() => onAutofill(item)}
         />
         <Button
           size="sm"
           label="Add"
+          icon={<Plus size={15} color={colors.primaryForeground} />}
           loading={isAdding}
           disabled={isAdding}
           onPress={() => onAdd(item)}
@@ -114,13 +123,13 @@ export function MediaResultCard({
   );
 }
 
-/** Small heading + count used above each grouped result list. */
+/** Clean section label used above grouped search results. */
 export function ResultGroupHeader({
   overline,
   title,
   count,
 }: {
-  overline: string;
+  overline?: string;
   title: string;
   count: number;
 }) {
@@ -128,10 +137,12 @@ export function ResultGroupHeader({
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="caption" uppercase letterSpacing={1.5}>
-          {overline}
-        </Text>
-        <Text variant="h4" weight="semibold">
+        {overline ? (
+          <Text variant="caption" uppercase letterSpacing={1.2}>
+            {overline}
+          </Text>
+        ) : null}
+        <Text variant="label" weight="semibold">
           {title}
         </Text>
       </View>
@@ -139,7 +150,7 @@ export function ResultGroupHeader({
         style={{
           borderRadius: 999,
           paddingHorizontal: 10,
-          paddingVertical: 3,
+          paddingVertical: 2,
           backgroundColor: colors.primary + "1a",
         }}
       >

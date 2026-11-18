@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MediaType } from "@/types";
-import { Check, Eye, Loader2, Star } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Star } from "lucide-react";
 
 /**
  * Shared media-result UI used by both the AddMedia page and the Feed
@@ -110,26 +110,35 @@ export function MediaResultCard({
   const cover = getResultCover(item);
   const tags = getResultTags(item);
   return (
-    <article className="group flex gap-4 rounded-2xl border border-border/60 bg-card/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg">
-      <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl bg-muted">
+    <article className="group flex gap-3.5 rounded-2xl border border-border/60 bg-card/85 p-3 shadow-sm transition-all hover:border-primary/35 hover:bg-card">
+      <button
+        type="button"
+        onClick={() => onPreview(item)}
+        className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label={`Preview ${item.title}`}
+      >
         <img
           src={cover}
           alt={item.title}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/95">
           {getMediaLabel(item.type)}
         </div>
-      </div>
+      </button>
 
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="min-w-0 flex-1 flex flex-col justify-between gap-2">
         <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-semibold text-foreground">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onPreview(item)}
+              className="truncate text-left text-base font-semibold text-foreground hover:text-primary transition-colors"
+            >
               {item.title}
-            </h3>
+            </button>
             {item.year ? (
-              <span className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+              <span className="rounded-full bg-accent/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 {item.year}
               </span>
             ) : null}
@@ -139,65 +148,60 @@ export function MediaResultCard({
               </span>
             ) : null}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="truncate text-xs text-muted-foreground">
             {item.creator || getMissingCreator(isBook)}
           </p>
+          {item.description ? (
+            <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground/90">
+              {item.description}
+            </p>
+          ) : null}
         </div>
 
-        {item.description ? (
-          <p className="line-clamp-2 text-sm text-muted-foreground">
-            {item.description}
-          </p>
-        ) : (
-          <p className="line-clamp-2 text-sm text-muted-foreground/80">
-            {MISSING_DESCRIPTION}
-          </p>
-        )}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+          {tags.length > 0 ? (
+            <div className="hidden sm:flex flex-wrap gap-1">
+              {tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-accent/50 px-2 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div />
+          )}
 
-        {tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
-              >
-                {tag}
-              </span>
-            ))}
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onAutofill(item)}
+              className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => onAdd(item)}
+              disabled={isAdding || isAlreadySaved}
+              className="h-8 gap-1.5 px-3 text-xs"
+            >
+              {isAdding ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : isAlreadySaved ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
+              {isAlreadySaved ? "Saved" : "Add"}
+            </Button>
           </div>
-        ) : null}
-
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onPreview(item)}
-            className="gap-2"
-          >
-            <Eye className="h-4 w-4" />
-            Preview
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onAutofill(item)}
-            className="gap-2"
-          >
-            <Check className="h-4 w-4" />
-            Autofill
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => onAdd(item)}
-            disabled={isAdding || isAlreadySaved}
-            className="gap-2"
-          >
-            {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isAlreadySaved ? "Saved" : "Add"}
-          </Button>
         </div>
       </div>
     </article>
@@ -263,11 +267,6 @@ export function MediaPreviewDialog({
                   {item.rating.toFixed(1)}
                 </span>
               ) : null}
-              {item.external_source ? (
-                <span className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  via {item.external_source}
-                </span>
-              ) : null}
             </div>
 
             <div>
@@ -323,8 +322,8 @@ export function MediaPreviewDialog({
             }}
             className="gap-2"
           >
-            <Check className="h-4 w-4" />
-            Autofill form
+            <Pencil className="h-4 w-4" />
+            Edit details
           </Button>
           <Button
             type="button"
@@ -335,7 +334,7 @@ export function MediaPreviewDialog({
             disabled={isAdding || isAlreadySaved}
             className="gap-2"
           >
-            {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {isAlreadySaved ? "Already in library" : "Add to Library"}
           </Button>
         </DialogFooter>
